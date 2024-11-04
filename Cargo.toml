@@ -1,0 +1,11 @@
+[package]
+name = "komofig"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-std = "1.12.0"
+iced = { version = "0.13.1", features = ["advanced", "async-std", "debug"] }
+komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
