@@ -1,5 +1,5 @@
 mod komorebi_connect;
-mod monitors_widget;
+mod monitors_viewer;
 
 use iced::{
     color,
@@ -61,7 +61,7 @@ impl Komofig {
         let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
             let mut col: Column<Message> = column![text("Monitors:").size(20)];
             let m: Element<Message> =
-                monitors_widget::Monitors::new(state.monitors.elements().iter().collect())
+                monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
                     .on_press(Message::ConfigMonitor)
                     .into();
             // let m = m.explain(color!(0x00aaff));
