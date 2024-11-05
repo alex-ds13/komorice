@@ -8,4 +8,6 @@ async-std = "1.12.0"
 iced = { version = "0.13.1", features = ["advanced", "async-std", "debug"] }
 komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
 serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
+serde_json = { package = "serde_json_lenient", version = "0.2" }
+dirs = "5"
+notify-debouncer-mini = "*"

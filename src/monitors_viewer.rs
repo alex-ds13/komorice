@@ -191,7 +191,7 @@ where
         _cursor: iced::advanced::mouse::Cursor,
         _viewport: &Rectangle,
     ) {
-        println!("DRAW -> layout: {:#?}", layout);
+        // println!("DRAW -> layout: {:#?}", layout);
         let background: iced::Background = iced::color!(0x333333).into();
         let selected_background: iced::Background = iced::color!(0x555555).into();
         for (((idx, monitor), rect), child_layout) in self
