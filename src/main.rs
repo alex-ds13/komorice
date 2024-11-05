@@ -2,20 +2,35 @@ mod apperror;
 mod config;
 mod komorebi_connect;
 mod monitors_viewer;
+mod views;
+mod widget;
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use apperror::AppError;
+use config::{
+    ConfigStrs, GlobalConfigChangeType, GlobalConfigStrs, MonitorConfigStrs, WorkspaceConfigStrs,
+};
 use iced::{
     widget::{
         checkbox, column, container, horizontal_rule, row, scrollable, text, vertical_rule, Column,
         Space,
     },
     Alignment::Center,
-    Element,
+    Element, Font,
     Length::{Fill, Shrink},
     Subscription, Task, Theme,
 };
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI Emoji");
+    static ref BOLD_FONT: Font = {
+        let mut f = Font::with_name("Segoe UI");
+        f.weight = iced::font::Weight::Bold;
+        f
+    };
+}
 
 fn main() -> iced::Result {
     iced::application("Komofig", Komofig::update, Komofig::view)
@@ -24,13 +39,23 @@ fn main() -> iced::Result {
         .run_with(Komofig::initialize)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Message {
+    // General App Messages
     AppError(AppError),
+
+    // View related Messages
     ConfigMonitor(usize),
+
+    // Global Editing config related Messages
+    GlobalConfigChanged(GlobalConfigChangeType),
+
+    // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
+
+    // Komorebi Command Messages
     ToggleWorkspaceTile(usize, usize, bool),
 }
 
@@ -39,7 +64,9 @@ struct Komofig {
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitor_to_config: Option<usize>,
-    loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
+    config: Option<komorebi_client::StaticConfig>,
+    config_strs: Option<ConfigStrs>,
+    // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
 }
@@ -48,12 +75,10 @@ impl Komofig {
     pub fn initialize() -> (Self, Task<Message>) {
         (
             Self::default(),
-            Task::perform(config::load(), |res| {
-                match res {
-                    Ok(config) => Message::LoadedConfig(Arc::new(config)),
-                    Err(apperror) => Message::AppError(apperror),
-                }
-            })
+            Task::perform(config::load(), |res| match res {
+                Ok(config) => Message::LoadedConfig(Arc::new(config)),
+                Err(apperror) => Message::AppError(apperror),
+            }),
         )
     }
 
@@ -75,6 +100,95 @@ impl Komofig {
                     }
                 }
             }
+            Message::GlobalConfigChanged(change_type) => match change_type {
+                GlobalConfigChangeType::CrossBoundaryBehaviour(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.cross_boundary_behaviour = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.cross_monitor_move_behaviour = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::DefaultContainerPadding(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.default_container_padding = Some(value.parse().unwrap_or_default());
+                        if let Some(config_strs) = &mut self.config_strs {
+                            config_strs.global_config_strs.default_container_padding = value;
+                        }
+                    }
+                }
+                GlobalConfigChangeType::DefaultWorkspacePadding(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.default_workspace_padding = Some(value.parse().unwrap_or_default());
+                        if let Some(config_strs) = &mut self.config_strs {
+                            config_strs.global_config_strs.default_workspace_padding = value;
+                        }
+                    }
+                }
+                GlobalConfigChangeType::DisplayIndexPreferences(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.display_index_preferences = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::FloatOverride(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.float_override = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::FocusFollowsMouse(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.focus_follows_mouse = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::GlobalWorkAreaOffset(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.global_work_area_offset = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::MouseFollowsFocus(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.mouse_follows_focus = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::ResizeDelta(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.resize_delta = Some(value.parse().unwrap_or_default());
+                        if let Some(config_strs) = &mut self.config_strs {
+                            config_strs.global_config_strs.resize_delta = value;
+                        }
+                    }
+                }
+                GlobalConfigChangeType::Transparency(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.transparency = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::TransparencyAlpha(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.transparency_alpha = Some(value.parse().unwrap_or_default());
+                        if let Some(config_strs) = &mut self.config_strs {
+                            config_strs.global_config_strs.transparency_alpha = value;
+                        }
+                    }
+                }
+                GlobalConfigChangeType::UnmanagedWindowBehaviour(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.unmanaged_window_operation_behaviour = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::WindowContainerBehaviour(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.window_container_behaviour = Some(value);
+                    }
+                }
+                GlobalConfigChangeType::WindowHidingBehaviour(value) => {
+                    if let Some(config) = &mut self.config {
+                        config.window_hiding_behaviour = Some(value);
+                    }
+                }
+            },
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
                     self.notifications.push(Arc::from(notification.event));
@@ -90,8 +204,15 @@ impl Komofig {
                 }
             }
             Message::LoadedConfig(config) => {
-                println!("Config Loaded: {config:#?}");
-                self.loaded_config = Some(config);
+                if let Some(config) = Arc::into_inner(config) {
+                    println!("Config Loaded: {config:#?}");
+                    // self.loaded_config = Some(Arc::new(config));
+                    if self.config.is_none() {
+                        self.populate_config_strs(&config);
+                        self.config = Some(config);
+                    }
+                    //TODO: show message on app to load external changes
+                }
             }
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
@@ -176,8 +297,17 @@ impl Komofig {
         };
         let col = column![
             text("Config:").size(20),
-            text!("Config was {} loaded!", if self.loaded_config.is_some() { "successfully" } else { "not" }),
-            horizontal_rule(2.0),
+            text!(
+                "Config was {} loaded!",
+                if self.config.is_some() {
+                    "successfully"
+                } else {
+                    "not"
+                }
+            ),
+            horizontal_rule(8.0),
+            views::config::view(self),
+            horizontal_rule(8.0),
             text("Notifications:").size(20),
         ];
         let notifications = self.notifications.iter().fold(col, |col, notification| {
@@ -191,13 +321,88 @@ impl Komofig {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            komorebi_connect::connect(),
-            config::worker(),
-        ])
+        Subscription::batch([komorebi_connect::connect(), config::worker()])
     }
 
     pub fn theme(&self) -> Theme {
         Theme::TokyoNightStorm
+    }
+
+    fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
+        let global_config_strs = GlobalConfigStrs {
+            default_container_padding: config.default_container_padding.map_or(
+                komorebi::DEFAULT_CONTAINER_PADDING
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    .to_string(),
+                |v| v.to_string(),
+            ),
+            default_workspace_padding: config.default_workspace_padding.map_or(
+                komorebi::DEFAULT_WORKSPACE_PADDING
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    .to_string(),
+                |v| v.to_string(),
+            ),
+            resize_delta: config.resize_delta.unwrap_or(50).to_string(),
+            transparency_alpha: config.transparency_alpha.unwrap_or(200).to_string(),
+        };
+
+        let monitors_config_strs = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
+            monitors
+                .iter()
+                .enumerate()
+                .map(|(idx, m)| {
+                    (
+                        idx,
+                        MonitorConfigStrs {
+                            window_based_work_area_offset_limit: m
+                                .window_based_work_area_offset_limit
+                                .unwrap_or(1)
+                                .to_string(),
+                        },
+                    )
+                })
+                .collect()
+        });
+
+        let workspaces_config_strs: HashMap<(usize, usize), WorkspaceConfigStrs> =
+            config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
+                monitors
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(idx, m)| {
+                        let hm: HashMap<_, _> = m
+                            .workspaces
+                            .iter()
+                            .enumerate()
+                            .map(|(w_idx, w)| {
+                                (
+                                    (idx, w_idx),
+                                    WorkspaceConfigStrs {
+                                        container_padding: w.container_padding.map_or(
+                                            komorebi::DEFAULT_CONTAINER_PADDING
+                                                .load(std::sync::atomic::Ordering::SeqCst)
+                                                .to_string(),
+                                            |v| v.to_string(),
+                                        ),
+                                        workspace_padding: w.workspace_padding.map_or(
+                                            komorebi::DEFAULT_WORKSPACE_PADDING
+                                                .load(std::sync::atomic::Ordering::SeqCst)
+                                                .to_string(),
+                                            |v| v.to_string(),
+                                        ),
+                                    },
+                                )
+                            })
+                            .collect();
+                        hm
+                    })
+                    .collect()
+            });
+
+        self.config_strs = Some(ConfigStrs {
+            global_config_strs,
+            monitors_config_strs,
+            workspaces_config_strs,
+        });
     }
 }

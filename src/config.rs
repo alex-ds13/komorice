@@ -2,6 +2,7 @@
 use crate::apperror::{AppError, AppErrorKind};
 use crate::Message;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,6 +16,64 @@ use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 
+#[derive(Clone, Debug)]
+pub enum GlobalConfigChangeType {
+    CrossBoundaryBehaviour(komorebi::CrossBoundaryBehaviour),
+    CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
+    DefaultContainerPadding(String), // maps i32 to String on GlobalConfigStrs
+    DefaultWorkspacePadding(String), // maps i32 to String on GlobalConfigStrs
+    DisplayIndexPreferences(HashMap<usize, String>),
+    FloatOverride(bool),
+    FocusFollowsMouse(komorebi::FocusFollowsMouseImplementation),
+    GlobalWorkAreaOffset(komorebi::Rect),
+    MouseFollowsFocus(bool),
+    ResizeDelta(String), // maps i32 to String on GlobalConfigStrs
+    Transparency(bool),
+    TransparencyAlpha(String), // maps u8 to String on GlobalConfigStrs
+    UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
+    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
+    WindowHidingBehaviour(komorebi::HidingBehaviour),
+}
+
+#[derive(Clone, Debug)]
+pub enum MonitorConfigChangeType {
+    WindowBasedWorkAreaOffset(komorebi::Rect),
+    WindowBasedWorkAreaOffsetLimit(String), // maps i32 to String on MonitorConfigStrs
+    WorkAreaOffset(komorebi::Rect),
+}
+
+#[derive(Clone, Debug)]
+pub enum WorkspaceConfigChangeType {
+    ApplyWindowBasedWorkAreaOffset(bool),
+    ContainerPadding(String), // maps i32 to String on WorkspaceConfigStrs
+    FloatOverride(bool),
+    Layout(komorebi::Layout),
+    Name(String),
+    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
+    WorkspacePadding(String), // maps i32 to String on WorkspaceConfigStrs
+}
+
+pub struct ConfigStrs {
+    pub global_config_strs: GlobalConfigStrs,
+    pub monitors_config_strs: HashMap<usize, MonitorConfigStrs>,
+    pub workspaces_config_strs: HashMap<(usize, usize), WorkspaceConfigStrs>,
+}
+
+pub struct GlobalConfigStrs {
+    pub default_container_padding: String,
+    pub default_workspace_padding: String,
+    pub resize_delta: String,
+    pub transparency_alpha: String,
+}
+
+pub struct MonitorConfigStrs {
+    pub window_based_work_area_offset_limit: String,
+}
+
+pub struct WorkspaceConfigStrs {
+    pub container_padding: String,
+    pub workspace_padding: String,
+}
 enum State {
     Starting,
     Ready(Data),

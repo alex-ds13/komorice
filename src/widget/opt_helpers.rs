@@ -1,0 +1,106 @@
+#![allow(dead_code)]
+use crate::{widget, Message, BOLD_FONT};
+
+use iced::{
+    padding,
+    widget::{checkbox, column, pick_list, row, Column, Row, Text},
+    Center, Element,
+};
+
+///Creates a row with a label with `name` and a `text_input`
+///using the remainder parameters for it.
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn input<'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    placeholder: &'a str,
+    value: &'a str,
+    on_change: impl Fn(String) -> Message + 'a,
+    on_submit: Option<Message>,
+) -> Element<'a, Message> {
+    let element = row![
+        widget::label(name),
+        widget::input(placeholder, value, on_change, on_submit),
+    ]
+    .spacing(10)
+    .align_y(Center)
+    .into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
+///Creates a `checkbox` with `name` as label
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn bool<'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+) -> Element<'a, Message> {
+    let element = checkbox(name, value).on_toggle(on_toggle).into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
+///Creates a `pick_list`, if `name` is not empty it wraps the
+///`pick_list` on a row with a label with `name` in front.
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn choose<'a, T, V, L>(
+    name: &'a str,
+    description: Option<&'a str>,
+    options: L,
+    selected: Option<V>,
+    on_selected: impl Fn(T) -> Message + 'a,
+) -> Element<'a, Message>
+where
+    T: ToString + PartialEq + Clone + 'a,
+    V: std::borrow::Borrow<T> + 'a,
+    L: std::borrow::Borrow<[T]> + 'a,
+{
+    let element = Row::new()
+        .spacing(10)
+        .align_y(Center)
+        .push_maybe((!name.is_empty()).then_some(widget::label(name)))
+        .push(pick_list(options, selected, on_selected))
+        .into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
+///Creates a row of options within a section. This is a simple helper to create
+///a row with the predefined spacing. It can have more than one option on it,
+///for example if you want to have multiple checkboxes side by side, you should
+///put them all on one section_row.
+pub fn section_row<'a>(
+    contents: impl IntoIterator<Item = Element<'a, Message>>,
+) -> Element<'a, Message> {
+    Row::with_children(contents).spacing(10).into()
+}
+
+///Creates the view for a section of options with `title` and the `contents`.
+pub fn section_view<'a>(
+    title: &'a str,
+    contents: impl IntoIterator<Item = Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let section_title =
+        |title| -> Row<Message> { row![Text::new(title).size(20.0).font(*BOLD_FONT)] };
+    column![
+        section_title(title),
+        Column::with_children(contents).spacing(10),
+    ]
+    .spacing(10)
+    .padding(padding::top(10).bottom(20))
+    .into()
+}
