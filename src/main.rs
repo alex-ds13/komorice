@@ -62,7 +62,8 @@ impl Komofig {
             let mut col: Column<Message> = column![text("Monitors:").size(20)];
             let m: Element<Message> =
                 monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
-                    .on_press(Message::ConfigMonitor)
+                    .selected(self.monitor_to_config)
+                    .on_selected(Message::ConfigMonitor)
                     .into();
             // let m = m.explain(color!(0x00aaff));
             let m = container(m)

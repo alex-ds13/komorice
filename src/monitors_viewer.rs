@@ -16,7 +16,8 @@ use iced::{alignment, Length, Rectangle, Size};
 
 pub struct Monitors<'a, Message> {
     monitors: Vec<&'a komorebi_client::Monitor>,
-    on_press: Option<Box<dyn Fn(usize) -> Message + 'a>>,
+    selected: Option<usize>,
+    on_selected: Option<Box<dyn Fn(usize) -> Message + 'a>>,
 }
 
 impl<'a, Message> Monitors<'a, Message> {
@@ -32,15 +33,21 @@ impl<'a, Message> Monitors<'a, Message> {
     pub fn new(monitors: Vec<&'a komorebi_client::Monitor>) -> Self {
         Monitors {
             monitors,
-            on_press: None,
+            selected: None,
+            on_selected: None,
         }
     }
 
-    pub fn on_press<F>(mut self, on_press: F) -> Self
+    pub fn selected(mut self, selected: Option<usize>) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    pub fn on_selected<F>(mut self, on_press: F) -> Self
     where
         F: 'a + Fn(usize) -> Message,
     {
-        self.on_press = Some(Box::new(on_press));
+        self.on_selected = Some(Box::new(on_press));
         self
     }
 
@@ -186,6 +193,7 @@ where
     ) {
         println!("DRAW -> layout: {:#?}", layout);
         let background: iced::Background = iced::color!(0x333333).into();
+        let selected_background: iced::Background = iced::color!(0x555555).into();
         for (((idx, monitor), rect), child_layout) in self
             .monitors
             .iter()
@@ -194,6 +202,11 @@ where
             .zip(layout.children())
         {
             let bounds = child_layout.children().next().unwrap().bounds();
+            let background = if matches!(self.selected, Some(i) if i == idx) {
+                selected_background
+            } else {
+                background
+            };
             // println!("DRAW -> child_layout: {:#?}", _child_layout);
             renderer.fill_quad(
                 Quad {
@@ -272,7 +285,7 @@ where
                     let mouse_over = cursor.is_over(bounds);
 
                     if mouse_over {
-                        if let Some(on_pressed) = &self.on_press {
+                        if let Some(on_pressed) = &self.on_selected {
                             shell.publish((on_pressed)(idx));
                             return event::Status::Captured;
                         }
@@ -293,7 +306,7 @@ where
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        if cursor.is_over(layout.bounds()) && self.on_press.is_some() {
+        if cursor.is_over(layout.bounds()) && self.on_selected.is_some() {
             mouse::Interaction::Pointer
         } else {
             mouse::Interaction::default()
