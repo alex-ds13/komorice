@@ -1,7 +1,9 @@
-use crate::{config::GlobalConfigChangeType, widget::opt_helpers, Komofig, Message};
+use std::sync::Arc;
+
+use crate::{config::GlobalConfigChangeType, widget::opt_helpers, Komofig, Message, NONE_STR};
 
 use iced::{widget::Space, Element, Length::Shrink};
-use komorebi::{CrossBoundaryBehaviour, MoveBehaviour};
+use komorebi::{CrossBoundaryBehaviour, FocusFollowsMouseImplementation, MoveBehaviour};
 
 pub fn view(app: &Komofig) -> Element<Message> {
     view_general(app)
@@ -15,7 +17,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                 opt_helpers::choose(
                     "Cross Boundary Behaviour",
                     Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
-                    [CrossBoundaryBehaviour::Monitor.to_string(), CrossBoundaryBehaviour::Workspace.to_string()],
+                    [Arc::from(CrossBoundaryBehaviour::Monitor.to_string()), Arc::from(CrossBoundaryBehaviour::Workspace.to_string())],
                     Some(&app.config_strs.as_ref().unwrap().global_config_strs.cross_boundary_behaviour),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::CrossBoundaryBehaviour(selected)),
                 ),
@@ -39,7 +41,14 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
                     config.float_override.unwrap_or_default(),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::FloatOverride(value))
-                )
+                ),
+                opt_helpers::choose(
+                    "Focus Follows Mouse",
+                    Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
+                    [Arc::clone(&NONE_STR), Arc::from(FocusFollowsMouseImplementation::Windows.to_string()), Arc::from(FocusFollowsMouseImplementation::Komorebi.to_string())],
+                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.focus_follows_mouse),
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse(selected)),
+                ),
             ],
         )
     } else {

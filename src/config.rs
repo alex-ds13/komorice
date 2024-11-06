@@ -1,4 +1,3 @@
-// use crate::options::SavedOptions;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::Message;
 
@@ -18,13 +17,13 @@ use notify_debouncer_mini::{
 
 #[derive(Clone, Debug)]
 pub enum GlobalConfigChangeType {
-    CrossBoundaryBehaviour(String), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
+    CrossBoundaryBehaviour(Arc<str>), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
     CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
     DefaultContainerPadding(String), // maps i32 to String on GlobalConfigStrs
     DefaultWorkspacePadding(String), // maps i32 to String on GlobalConfigStrs
     DisplayIndexPreferences(HashMap<usize, String>),
     FloatOverride(bool),
-    FocusFollowsMouse(komorebi::FocusFollowsMouseImplementation),
+    FocusFollowsMouse(Arc<str>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
     GlobalWorkAreaOffset(komorebi::Rect),
     MouseFollowsFocus(bool),
     ResizeDelta(String), // maps i32 to String on GlobalConfigStrs
@@ -60,20 +59,21 @@ pub struct ConfigStrs {
 }
 
 pub struct GlobalConfigStrs {
-    pub cross_boundary_behaviour: String,
-    pub default_container_padding: String,
-    pub default_workspace_padding: String,
-    pub resize_delta: String,
-    pub transparency_alpha: String,
+    pub cross_boundary_behaviour: Arc<str>,
+    pub default_container_padding: Arc<str>,
+    pub default_workspace_padding: Arc<str>,
+    pub focus_follows_mouse: Arc<str>,
+    pub resize_delta: Arc<str>,
+    pub transparency_alpha: Arc<str>,
 }
 
 pub struct MonitorConfigStrs {
-    pub window_based_work_area_offset_limit: String,
+    pub window_based_work_area_offset_limit: Arc<str>,
 }
 
 pub struct WorkspaceConfigStrs {
-    pub container_padding: String,
-    pub workspace_padding: String,
+    pub container_padding: Arc<str>,
+    pub workspace_padding: Arc<str>,
 }
 enum State {
     Starting,

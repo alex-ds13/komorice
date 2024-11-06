@@ -30,6 +30,7 @@ lazy_static! {
         f.weight = iced::font::Weight::Bold;
         f
     };
+    static ref NONE_STR: Arc<str> = Arc::from("");
 }
 
 fn main() -> iced::Result {
@@ -102,17 +103,18 @@ impl Komofig {
             }
             Message::GlobalConfigChanged(change_type) => match change_type {
                 GlobalConfigChangeType::CrossBoundaryBehaviour(value) => {
-                    if let Some(config) = &mut self.config {
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         let behaviour = match value {
-                            ref s if s == "Monitor" => Some(komorebi::CrossBoundaryBehaviour::Monitor),
-                            ref s if s == "Workspace" => Some(komorebi::CrossBoundaryBehaviour::Workspace),
+                            ref s if **s == *komorebi::CrossBoundaryBehaviour::Monitor.to_string() => {
+                                Some(komorebi::CrossBoundaryBehaviour::Monitor)
+                            }
+                            ref s if **s == *komorebi::CrossBoundaryBehaviour::Workspace.to_string() => {
+                                Some(komorebi::CrossBoundaryBehaviour::Workspace)
+                            }
                             _ => None,
-                            
                         };
                         config.cross_boundary_behaviour = behaviour;
-                        if let Some(config_strs) = &mut self.config_strs {
-                            config_strs.global_config_strs.cross_boundary_behaviour = value;
-                        }
+                        config_strs.global_config_strs.cross_boundary_behaviour = value;
                     }
                 }
                 GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
@@ -121,19 +123,15 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::DefaultContainerPadding(value) => {
-                    if let Some(config) = &mut self.config {
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.default_container_padding = Some(value.parse().unwrap_or_default());
-                        if let Some(config_strs) = &mut self.config_strs {
-                            config_strs.global_config_strs.default_container_padding = value;
-                        }
+                        config_strs.global_config_strs.default_container_padding = value.into();
                     }
                 }
                 GlobalConfigChangeType::DefaultWorkspacePadding(value) => {
-                    if let Some(config) = &mut self.config {
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.default_workspace_padding = Some(value.parse().unwrap_or_default());
-                        if let Some(config_strs) = &mut self.config_strs {
-                            config_strs.global_config_strs.default_workspace_padding = value;
-                        }
+                        config_strs.global_config_strs.default_workspace_padding = value.into();
                     }
                 }
                 GlobalConfigChangeType::DisplayIndexPreferences(value) => {
@@ -147,8 +145,18 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::FocusFollowsMouse(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.focus_follows_mouse = Some(value);
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
+                        let implementation = match value {
+                            ref s if **s == *komorebi::FocusFollowsMouseImplementation::Windows.to_string() => {
+                                Some(komorebi::FocusFollowsMouseImplementation::Windows)
+                            }
+                            ref s if **s == *komorebi::FocusFollowsMouseImplementation::Komorebi.to_string() => {
+                                Some(komorebi::FocusFollowsMouseImplementation::Komorebi)
+                            }
+                            _ => None,
+                        };
+                        config.focus_follows_mouse = implementation;
+                        config_strs.global_config_strs.focus_follows_mouse = value;
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffset(value) => {
@@ -162,11 +170,9 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::ResizeDelta(value) => {
-                    if let Some(config) = &mut self.config {
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.resize_delta = Some(value.parse().unwrap_or_default());
-                        if let Some(config_strs) = &mut self.config_strs {
-                            config_strs.global_config_strs.resize_delta = value;
-                        }
+                        config_strs.global_config_strs.resize_delta = value.into();
                     }
                 }
                 GlobalConfigChangeType::Transparency(value) => {
@@ -175,11 +181,9 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::TransparencyAlpha(value) => {
-                    if let Some(config) = &mut self.config {
+                    if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.transparency_alpha = Some(value.parse().unwrap_or_default());
-                        if let Some(config_strs) = &mut self.config_strs {
-                            config_strs.global_config_strs.transparency_alpha = value;
-                        }
+                        config_strs.global_config_strs.transparency_alpha = value.into();
                     }
                 }
                 GlobalConfigChangeType::UnmanagedWindowBehaviour(value) => {
@@ -339,21 +343,27 @@ impl Komofig {
 
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
         let global_config_strs = GlobalConfigStrs {
-            cross_boundary_behaviour: config.cross_boundary_behaviour.unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor).to_string(),
+            cross_boundary_behaviour: config
+                .cross_boundary_behaviour
+                .unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor)
+                .to_string().into(),
             default_container_padding: config.default_container_padding.map_or(
                 komorebi::DEFAULT_CONTAINER_PADDING
                     .load(std::sync::atomic::Ordering::SeqCst)
-                    .to_string(),
-                |v| v.to_string(),
+                    .to_string().into(),
+                |v| v.to_string().into(),
             ),
             default_workspace_padding: config.default_workspace_padding.map_or(
                 komorebi::DEFAULT_WORKSPACE_PADDING
                     .load(std::sync::atomic::Ordering::SeqCst)
-                    .to_string(),
-                |v| v.to_string(),
+                    .to_string().into(),
+                |v| v.to_string().into(),
             ),
-            resize_delta: config.resize_delta.unwrap_or(50).to_string(),
-            transparency_alpha: config.transparency_alpha.unwrap_or(200).to_string(),
+            focus_follows_mouse: config
+                .focus_follows_mouse
+                .map_or(Arc::clone(&NONE_STR), |i| i.to_string().into()),
+            resize_delta: config.resize_delta.unwrap_or(50).to_string().into(),
+            transparency_alpha: config.transparency_alpha.unwrap_or(200).to_string().into(),
         };
 
         let monitors_config_strs = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
@@ -367,7 +377,8 @@ impl Komofig {
                             window_based_work_area_offset_limit: m
                                 .window_based_work_area_offset_limit
                                 .unwrap_or(1)
-                                .to_string(),
+                                .to_string()
+                                .into(),
                         },
                     )
                 })
@@ -391,14 +402,16 @@ impl Komofig {
                                         container_padding: w.container_padding.map_or(
                                             komorebi::DEFAULT_CONTAINER_PADDING
                                                 .load(std::sync::atomic::Ordering::SeqCst)
-                                                .to_string(),
-                                            |v| v.to_string(),
+                                                .to_string()
+                                                .into(),
+                                            |v| v.to_string().into(),
                                         ),
                                         workspace_padding: w.workspace_padding.map_or(
                                             komorebi::DEFAULT_WORKSPACE_PADDING
                                                 .load(std::sync::atomic::Ordering::SeqCst)
-                                                .to_string(),
-                                            |v| v.to_string(),
+                                                .to_string()
+                                                .into(),
+                                            |v| v.to_string().into(),
                                         ),
                                     },
                                 )
