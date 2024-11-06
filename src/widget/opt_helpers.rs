@@ -3,7 +3,10 @@ use crate::{widget, Message, BOLD_FONT};
 
 use iced::{
     padding,
-    widget::{checkbox, column, pick_list, row, toggler, Column, Row, Text},
+    widget::{
+        button, checkbox, column, horizontal_space, pick_list, row, text, toggler, Column, Row,
+        Text,
+    },
     Center, Element,
 };
 
@@ -89,6 +92,79 @@ where
         .align_y(Center)
         .push_maybe((!name.is_empty()).then_some(widget::label(name)))
         .push(pick_list(options, selected, on_selected))
+        .into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
+pub struct InputParameters<'a> {
+    pub name: &'a str,
+    pub placeholder: &'a str,
+    pub value: &'a str,
+    pub on_change: Box<dyn Fn(String) -> Message + 'a>,
+    pub on_submit: Option<Message>,
+}
+
+///Creates a column with a row and a label with `name` and a `text_input` per input
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn input_col<'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    inputs: impl IntoIterator<Item = InputParameters<'a>>,
+    expanded: bool,
+    on_press: Message,
+) -> Element<'a, Message> {
+    let main = column![Row::new()
+        .push(name)
+        .push(horizontal_space())
+        .push(
+            button(if expanded { text("^") } else { text("v") })
+                .on_press(on_press.clone())
+                .style(iced::widget::button::text)
+        )
+        .align_y(Center)
+        .height(30.0)]
+    .spacing(1);
+
+    let col = if expanded {
+        let inner = inputs.into_iter().fold(
+            column![]
+                .spacing(10)
+                .padding(iced::Padding::new(10.0).left(20.0)),
+            |col, input| {
+                col.push(
+                    row![
+                        widget::label(input.name),
+                        widget::input(
+                            input.placeholder,
+                            input.value,
+                            input.on_change,
+                            input.on_submit.clone()
+                        ),
+                    ]
+                    .spacing(5)
+                    .align_y(Center),
+                )
+            },
+        );
+        main.push(inner)
+    } else {
+        main
+    };
+    let element = button(col)
+        .padding(0.0)
+        .on_press(on_press)
+        .style(move |t: &iced::Theme, s: button::Status| {
+            if matches!(s, button::Status::Hovered) {
+                button::text(t, s).with_background(t.extended_palette().background.weak.color)
+            } else {
+                button::text(t, s)
+            }
+        })
         .into();
     match description {
         Some(desc) => widget::create_tooltip(element, desc),

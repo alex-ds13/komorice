@@ -1,6 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
-use crate::{config::GlobalConfigChangeType, widget::opt_helpers, Komofig, Message, NONE_STR};
+use crate::{
+    config::{ConfigHelpersAction, GlobalConfigChangeType},
+    widget::opt_helpers::{self, InputParameters},
+    Komofig, Message, NONE_STR,
+};
 
 use iced::{widget::Space, Element, Length::Shrink};
 use komorebi::{CrossBoundaryBehaviour, FocusFollowsMouseImplementation, MoveBehaviour};
@@ -74,6 +78,14 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::DefaultContainerPadding(value)),
                     None
                 ),
+                opt_helpers::input(
+                    "Default Workspace Padding",
+                    Some("Global default workspace padding (default: 10)"),
+                    "",
+                    &app.config_strs.as_ref().unwrap().global_config_strs.default_workspace_padding,
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::DefaultWorkspacePadding(value)),
+                    None
+                ),
                 opt_helpers::toggle(
                     "Float Override",
                     Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
@@ -93,6 +105,42 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1[..],
                     Some(DisplayOption(config.focus_follows_mouse)),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse1(selected.0)),
+                ),
+                opt_helpers::input_col(
+                    "Global Work Area Offset",
+                    None,
+                    [
+                        InputParameters {
+                            name: "top",
+                            placeholder: "",
+                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_top,
+                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value))),
+                            on_submit: None,
+                        },
+                        InputParameters {
+                            name: "bottom",
+                            placeholder: "",
+                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_bottom,
+                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value))),
+                            on_submit: None,
+                        },
+                        InputParameters {
+                            name: "right",
+                            placeholder: "",
+                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_right,
+                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value))),
+                            on_submit: None,
+                        },
+                        InputParameters {
+                            name: "left",
+                            placeholder: "",
+                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_left,
+                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value))),
+                            on_submit: None,
+                        },
+                    ],
+                    app.config_helpers.global_work_area_offset_expanded,
+                    Message::ConfigHelpers(ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand)
                 ),
             ],
         )

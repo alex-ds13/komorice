@@ -28,6 +28,10 @@ pub enum GlobalConfigChangeType {
     FocusFollowsMouse1(Option<komorebi::FocusFollowsMouseImplementation>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
     FocusFollowsMouse(Arc<str>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
     GlobalWorkAreaOffset(komorebi::Rect),
+    GlobalWorkAreaOffsetTop(String),
+    GlobalWorkAreaOffsetBottom(String),
+    GlobalWorkAreaOffsetRight(String),
+    GlobalWorkAreaOffsetLeft(String),
     MouseFollowsFocus(bool),
     ResizeDelta(String), // maps i32 to String on GlobalConfigStrs
     Transparency(bool),
@@ -68,6 +72,10 @@ pub struct GlobalConfigStrs {
     pub focus_follows_mouse: Arc<str>,
     pub resize_delta: Arc<str>,
     pub transparency_alpha: Arc<str>,
+    pub global_work_area_offset_top: Arc<str>,
+    pub global_work_area_offset_bottom: Arc<str>,
+    pub global_work_area_offset_right: Arc<str>,
+    pub global_work_area_offset_left: Arc<str>,
 }
 
 pub struct MonitorConfigStrs {
@@ -78,6 +86,17 @@ pub struct WorkspaceConfigStrs {
     pub container_padding: Arc<str>,
     pub workspace_padding: Arc<str>,
 }
+
+#[derive(Debug, Default)]
+pub struct ConfigHelpers {
+    pub global_work_area_offset_expanded: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum ConfigHelpersAction {
+    ToggleGlobalWorkAreaOffsetExpand
+}
+
 enum State {
     Starting,
     Ready(Data),
