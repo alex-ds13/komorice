@@ -103,7 +103,16 @@ impl Komofig {
             Message::GlobalConfigChanged(change_type) => match change_type {
                 GlobalConfigChangeType::CrossBoundaryBehaviour(value) => {
                     if let Some(config) = &mut self.config {
-                        config.cross_boundary_behaviour = Some(value);
+                        let behaviour = match value {
+                            ref s if s == "Monitor" => Some(komorebi::CrossBoundaryBehaviour::Monitor),
+                            ref s if s == "Workspace" => Some(komorebi::CrossBoundaryBehaviour::Workspace),
+                            _ => None,
+                            
+                        };
+                        config.cross_boundary_behaviour = behaviour;
+                        if let Some(config_strs) = &mut self.config_strs {
+                            config_strs.global_config_strs.cross_boundary_behaviour = value;
+                        }
                     }
                 }
                 GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
@@ -330,6 +339,7 @@ impl Komofig {
 
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
         let global_config_strs = GlobalConfigStrs {
+            cross_boundary_behaviour: config.cross_boundary_behaviour.unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor).to_string(),
             default_container_padding: config.default_container_padding.map_or(
                 komorebi::DEFAULT_CONTAINER_PADDING
                     .load(std::sync::atomic::Ordering::SeqCst)

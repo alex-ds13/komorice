@@ -12,13 +12,13 @@ fn view_general(app: &Komofig) -> Element<Message> {
         opt_helpers::section_view(
             "General:",
             [
-                // opt_helpers::choose(
-                //     "Cross Boundary Behaviour",
-                //     Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
-                //     [CrossBoundaryBehaviour::Monitor, CrossBoundaryBehaviour::Workspace],
-                //     config.cross_boundary_behaviour,
-                //     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::CrossBoundaryBehaviour(selected)),
-                // )
+                opt_helpers::choose(
+                    "Cross Boundary Behaviour",
+                    Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
+                    [CrossBoundaryBehaviour::Monitor.to_string(), CrossBoundaryBehaviour::Workspace.to_string()],
+                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.cross_boundary_behaviour),
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::CrossBoundaryBehaviour(selected)),
+                ),
                 opt_helpers::choose(
                     "Cross Monitor Move Behaviour",
                     Some("Determine what happens when a window is moved across a monitor boundary (default: Swap)"),

@@ -18,7 +18,7 @@ use notify_debouncer_mini::{
 
 #[derive(Clone, Debug)]
 pub enum GlobalConfigChangeType {
-    CrossBoundaryBehaviour(komorebi::CrossBoundaryBehaviour),
+    CrossBoundaryBehaviour(String), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
     CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
     DefaultContainerPadding(String), // maps i32 to String on GlobalConfigStrs
     DefaultWorkspacePadding(String), // maps i32 to String on GlobalConfigStrs
@@ -60,6 +60,7 @@ pub struct ConfigStrs {
 }
 
 pub struct GlobalConfigStrs {
+    pub cross_boundary_behaviour: String,
     pub default_container_padding: String,
     pub default_workspace_padding: String,
     pub resize_delta: String,
@@ -194,7 +195,9 @@ fn handle_event(
             async_std::task::block_on(async {
                 match load().await {
                     Ok(loaded_options) => {
-                        let _ = output.send(Message::LoadedConfig(Arc::new(loaded_options))).await;
+                        let _ = output
+                            .send(Message::LoadedConfig(Arc::new(loaded_options)))
+                            .await;
                     }
                     Err(e) => {
                         let _ = output.send(Message::AppError(e)).await;
@@ -278,7 +281,6 @@ pub async fn save(config: StaticConfig) -> Result<(), AppError> {
             description: Some(e.to_string()),
             kind: AppErrorKind::Error,
         })?;
-
 
     // This is a simple way to save at most once every couple seconds
     // async_std::task::sleep(std::time::Duration::from_secs(2)).await;
