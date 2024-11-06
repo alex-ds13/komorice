@@ -90,7 +90,9 @@ impl Komofig {
                 self.errors.push(apperror);
             },
             Message::ConfigMonitor(idx) => {
-                if let Some(state) = &self.komorebi_state {
+                if self.monitor_to_config == Some(idx) {
+                    self.monitor_to_config = None;
+                } else if let Some(state) = &self.komorebi_state {
                     let monitors = state.monitors.elements();
                     if let Some(monitor) = monitors.get(idx) {
                         println!(
