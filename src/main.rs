@@ -144,6 +144,11 @@ impl Komofig {
                         config.float_override = Some(value);
                     }
                 }
+                GlobalConfigChangeType::FocusFollowsMouse1(value) => {
+                    if let (Some(config), Some(_config_strs)) = (&mut self.config, &mut self.config_strs) {
+                        config.focus_follows_mouse = value;
+                    }
+                }
                 GlobalConfigChangeType::FocusFollowsMouse(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         let implementation = match value {

@@ -16,6 +16,23 @@ lazy_static! {
         Arc::from(FocusFollowsMouseImplementation::Windows.to_string()),
         Arc::from(FocusFollowsMouseImplementation::Komorebi.to_string())
     ];
+    static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
+        DisplayOption(None),
+        DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
+        DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi))
+    ];
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct DisplayOption<T>(pub Option<T>);
+
+impl<T: std::fmt::Display> std::fmt::Display for DisplayOption<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.0 {
+            Some(ref v) => write!(f, "{}", v),
+            None => write!(f, "{}", *NONE_STR),
+        }
+    }
 }
 
 pub fn view(app: &Komofig) -> Element<Message> {
@@ -61,6 +78,13 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
                     Some(&app.config_strs.as_ref().unwrap().global_config_strs.focus_follows_mouse),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse(selected)),
+                ),
+                opt_helpers::choose(
+                    "Focus Follows Mouse",
+                    Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
+                    &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1[..],
+                    Some(DisplayOption(config.focus_follows_mouse)),
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse1(selected.0)),
                 ),
             ],
         )

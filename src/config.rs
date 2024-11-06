@@ -23,6 +23,7 @@ pub enum GlobalConfigChangeType {
     DefaultWorkspacePadding(String), // maps i32 to String on GlobalConfigStrs
     DisplayIndexPreferences(HashMap<usize, String>),
     FloatOverride(bool),
+    FocusFollowsMouse1(Option<komorebi::FocusFollowsMouseImplementation>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
     FocusFollowsMouse(Arc<str>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
     GlobalWorkAreaOffset(komorebi::Rect),
     MouseFollowsFocus(bool),
