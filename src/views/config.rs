@@ -34,7 +34,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::DefaultContainerPadding(value)),
                     None
                 ),
-                opt_helpers::bool(
+                opt_helpers::toggle(
                     "Float Override",
                     Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
                     config.float_override.unwrap_or_default(),

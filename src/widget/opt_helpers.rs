@@ -3,7 +3,7 @@ use crate::{widget, Message, BOLD_FONT};
 
 use iced::{
     padding,
-    widget::{checkbox, column, pick_list, row, Column, Row, Text},
+    widget::{checkbox, column, pick_list, row, toggler, Column, Row, Text},
     Center, Element,
 };
 
@@ -44,6 +44,23 @@ pub fn bool<'a>(
     on_toggle: impl Fn(bool) -> Message + 'a,
 ) -> Element<'a, Message> {
     let element = checkbox(name, value).on_toggle(on_toggle).into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
+///Creates a `toggler` with `name` as label
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn toggle<'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+) -> Element<'a, Message> {
+    let element = toggler(value).label(name).on_toggle(on_toggle).into();
     match description {
         Some(desc) => widget::create_tooltip(element, desc),
         None => element,
