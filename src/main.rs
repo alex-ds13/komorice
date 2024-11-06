@@ -88,7 +88,7 @@ impl Komofig {
             Message::AppError(apperror) => {
                 println!("Received AppError: {apperror:#?}");
                 self.errors.push(apperror);
-            }
+            },
             Message::ConfigMonitor(idx) => {
                 if let Some(state) = &self.komorebi_state {
                     let monitors = state.monitors.elements();
@@ -100,8 +100,13 @@ impl Komofig {
                         self.monitor_to_config = Some(idx);
                     }
                 }
-            }
+            },
             Message::GlobalConfigChanged(change_type) => match change_type {
+                GlobalConfigChangeType::AppSpecificConfigurationPath(path) => {
+                    if let Some(config) = &mut self.config {
+                        config.app_specific_configuration_path = path;
+                    }
+                },
                 GlobalConfigChangeType::CrossBoundaryBehaviour(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         let behaviour = match value {
@@ -116,39 +121,39 @@ impl Komofig {
                         config.cross_boundary_behaviour = behaviour;
                         config_strs.global_config_strs.cross_boundary_behaviour = value;
                     }
-                }
+                },
                 GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
                     if let Some(config) = &mut self.config {
                         config.cross_monitor_move_behaviour = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::DefaultContainerPadding(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.default_container_padding = Some(value.parse().unwrap_or_default());
                         config_strs.global_config_strs.default_container_padding = value.into();
                     }
-                }
+                },
                 GlobalConfigChangeType::DefaultWorkspacePadding(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.default_workspace_padding = Some(value.parse().unwrap_or_default());
                         config_strs.global_config_strs.default_workspace_padding = value.into();
                     }
-                }
+                },
                 GlobalConfigChangeType::DisplayIndexPreferences(value) => {
                     if let Some(config) = &mut self.config {
                         config.display_index_preferences = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::FloatOverride(value) => {
                     if let Some(config) = &mut self.config {
                         config.float_override = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::FocusFollowsMouse1(value) => {
                     if let (Some(config), Some(_config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.focus_follows_mouse = value;
                     }
-                }
+                },
                 GlobalConfigChangeType::FocusFollowsMouse(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         let implementation = match value {
@@ -163,49 +168,49 @@ impl Komofig {
                         config.focus_follows_mouse = implementation;
                         config_strs.global_config_strs.focus_follows_mouse = value;
                     }
-                }
+                },
                 GlobalConfigChangeType::GlobalWorkAreaOffset(value) => {
                     if let Some(config) = &mut self.config {
                         config.global_work_area_offset = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::MouseFollowsFocus(value) => {
                     if let Some(config) = &mut self.config {
                         config.mouse_follows_focus = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::ResizeDelta(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.resize_delta = Some(value.parse().unwrap_or_default());
                         config_strs.global_config_strs.resize_delta = value.into();
                     }
-                }
+                },
                 GlobalConfigChangeType::Transparency(value) => {
                     if let Some(config) = &mut self.config {
                         config.transparency = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::TransparencyAlpha(value) => {
                     if let (Some(config), Some(config_strs)) = (&mut self.config, &mut self.config_strs) {
                         config.transparency_alpha = Some(value.parse().unwrap_or_default());
                         config_strs.global_config_strs.transparency_alpha = value.into();
                     }
-                }
+                },
                 GlobalConfigChangeType::UnmanagedWindowBehaviour(value) => {
                     if let Some(config) = &mut self.config {
                         config.unmanaged_window_operation_behaviour = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::WindowContainerBehaviour(value) => {
                     if let Some(config) = &mut self.config {
                         config.window_container_behaviour = Some(value);
                     }
-                }
+                },
                 GlobalConfigChangeType::WindowHidingBehaviour(value) => {
                     if let Some(config) = &mut self.config {
                         config.window_hiding_behaviour = Some(value);
                     }
-                }
+                },
             },
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
@@ -220,7 +225,7 @@ impl Komofig {
                         kind: apperror::AppErrorKind::Warning,
                     });
                 }
-            }
+            },
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
                     println!("Config Loaded: {config:#?}");
@@ -231,10 +236,10 @@ impl Komofig {
                     }
                     //TODO: show message on app to load external changes
                 }
-            }
+            },
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
-            }
+            },
             Message::ToggleWorkspaceTile(monitor_idx, workspace_idx, tile) => {
                 let _ = komorebi_client::send_message(
                     &komorebi_client::SocketMessage::WorkspaceTiling(
@@ -243,7 +248,7 @@ impl Komofig {
                         tile,
                     ),
                 );
-            }
+            },
         }
         Task::none()
     }

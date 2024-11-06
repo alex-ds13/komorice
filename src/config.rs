@@ -2,6 +2,7 @@ use crate::apperror::{AppError, AppErrorKind};
 use crate::Message;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,6 +18,7 @@ use notify_debouncer_mini::{
 
 #[derive(Clone, Debug)]
 pub enum GlobalConfigChangeType {
+    AppSpecificConfigurationPath(Option<PathBuf>),
     CrossBoundaryBehaviour(Arc<str>), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
     CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
     DefaultContainerPadding(String), // maps i32 to String on GlobalConfigStrs

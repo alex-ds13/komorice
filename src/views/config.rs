@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{config::GlobalConfigChangeType, widget::opt_helpers, Komofig, Message, NONE_STR};
 
@@ -44,6 +44,14 @@ fn view_general(app: &Komofig) -> Element<Message> {
         opt_helpers::section_view(
             "General:",
             [
+                opt_helpers::input(
+                    "App Specific Configuration Path",
+                    Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
+                    "",
+                    config.app_specific_configuration_path.as_ref().map_or("", |p| p.to_str().unwrap_or_default()),
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::AppSpecificConfigurationPath(Some(PathBuf::from(value)))),
+                    None
+                ),
                 opt_helpers::choose(
                     "Cross Boundary Behaviour",
                     Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
