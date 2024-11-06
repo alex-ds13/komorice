@@ -193,7 +193,11 @@ where
     ) {
         // println!("DRAW -> layout: {:#?}", layout);
         let background: iced::Background = iced::color!(0x333333).into();
+        let hover_background: iced::Background = iced::color!(0x888888).into();
         let selected_background: iced::Background = iced::color!(0x555555).into();
+        let border_color: iced::Color = iced::color!(0x000000);
+        let hover_border_color: iced::Color = iced::color!(0x333333);
+        let selected_border_color: iced::Color = iced::color!(0x45ccff);
         for (((idx, monitor), rect), child_layout) in self
             .monitors
             .iter()
@@ -202,10 +206,20 @@ where
             .zip(layout.children())
         {
             let bounds = child_layout.children().next().unwrap().bounds();
+            let is_hover = _cursor.position_over(bounds).is_some();
             let background = if matches!(self.selected, Some(i) if i == idx) {
                 selected_background
+            } else if is_hover {
+                hover_background
             } else {
                 background
+            };
+            let border_color = if matches!(self.selected, Some(i) if i == idx) {
+                selected_border_color
+            } else if is_hover {
+                hover_border_color
+            } else {
+                border_color
             };
             // println!("DRAW -> child_layout: {:#?}", _child_layout);
             renderer.fill_quad(
@@ -216,7 +230,7 @@ where
                         ..rect
                     },
                     border: Border {
-                        color: iced::color!(0x000000),
+                        color: border_color,
                         width: 1.0,
                         radius: Radius::default(),
                     },
