@@ -38,7 +38,7 @@ pub enum GlobalConfigChangeType {
     TransparencyAlpha(String), // maps u8 to String on GlobalConfigStrs
     UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
     WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WindowHidingBehaviour(komorebi::HidingBehaviour),
+    WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
 }
 
 #[derive(Clone, Debug)]
@@ -76,6 +76,7 @@ pub struct GlobalConfigStrs {
     pub global_work_area_offset_bottom: Arc<str>,
     pub global_work_area_offset_right: Arc<str>,
     pub global_work_area_offset_left: Arc<str>,
+    pub window_hiding_behaviour: Arc<str>,
 }
 
 pub struct MonitorConfigStrs {

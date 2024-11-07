@@ -7,23 +7,31 @@ use crate::{
 };
 
 use iced::{widget::Space, Element, Length::Shrink};
-use komorebi::{CrossBoundaryBehaviour, FocusFollowsMouseImplementation, MoveBehaviour};
+use komorebi::{
+    CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
+    WindowContainerBehaviour,
+};
 use lazy_static::lazy_static;
 
 lazy_static! {
     static ref CROSS_BOUNDARY_BEHAVIOUR_OPTIONS: [Arc<str>; 2] = [
         Arc::from(CrossBoundaryBehaviour::Monitor.to_string()),
-        Arc::from(CrossBoundaryBehaviour::Workspace.to_string())
+        Arc::from(CrossBoundaryBehaviour::Workspace.to_string()),
     ];
     static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS: [Arc<str>; 3] = [
         Arc::clone(&NONE_STR),
         Arc::from(FocusFollowsMouseImplementation::Windows.to_string()),
-        Arc::from(FocusFollowsMouseImplementation::Komorebi.to_string())
+        Arc::from(FocusFollowsMouseImplementation::Komorebi.to_string()),
     ];
     static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
         DisplayOption(None),
         DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
-        DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi))
+        DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi)),
+    ];
+    static ref HIDING_BEHAVIOUR_OPTIONS: [Arc<str>; 3] = [
+        Arc::from(HidingBehaviour::Cloak.to_string()),
+        Arc::from(HidingBehaviour::Hide.to_string()),
+        Arc::from(HidingBehaviour::Minimize.to_string()),
     ];
 }
 
@@ -141,6 +149,49 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     ],
                     app.config_helpers.global_work_area_offset_expanded,
                     Message::ConfigHelpers(ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand)
+                ),
+                opt_helpers::toggle(
+                    "Mouse Follows Focus",
+                    Some("Enable or disable mouse follows focus (default: true)"),
+                    config.mouse_follows_focus.unwrap_or(true),
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::MouseFollowsFocus(value))
+                ),
+                opt_helpers::input(
+                    "Resize Delta",
+                    Some("Delta to resize windows by (default 50)"),
+                    "",
+                    &app.config_strs.as_ref().unwrap().global_config_strs.resize_delta,
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::ResizeDelta(value)),
+                    None
+                ),
+                opt_helpers::toggle(
+                    "Transparency",
+                    Some("Add transparency to unfocused windows (default: false)"),
+                    config.transparency.unwrap_or_default(),
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::Transparency(value))
+                ),
+                opt_helpers::input(
+                    "Transparency Alpha",
+                    Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
+                                       Value must be greater or equal to 0.0"),
+                    "",
+                    &app.config_strs.as_ref().unwrap().global_config_strs.transparency_alpha,
+                    |value| Message::GlobalConfigChanged(GlobalConfigChangeType::TransparencyAlpha(value)),
+                    None
+                ),
+                opt_helpers::choose(
+                    "Window Container Behaviour",
+                    Some("Determine what happens when a new window is opened (default: Create)"),
+                    [WindowContainerBehaviour::Create, WindowContainerBehaviour::Append],
+                    config.window_container_behaviour,
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::WindowContainerBehaviour(selected)),
+                ),
+                opt_helpers::choose(
+                    "Window Hiding Behaviour",
+                    Some("Which Windows signal to use when hiding windows (default: Cloak)"),
+                    &HIDING_BEHAVIOUR_OPTIONS[..],
+                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.window_hiding_behaviour),
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::WindowHidingBehaviour(selected)),
                 ),
             ],
         )

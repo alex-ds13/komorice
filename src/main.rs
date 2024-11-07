@@ -321,8 +321,23 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::WindowHidingBehaviour(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.window_hiding_behaviour = Some(value);
+                    if let (Some(config), Some(config_strs)) =
+                        (&mut self.config, &mut self.config_strs)
+                    {
+                        let behaviour = match value {
+                            ref s if **s == *komorebi::HidingBehaviour::Cloak.to_string() => {
+                                Some(komorebi::HidingBehaviour::Cloak)
+                            }
+                            ref s if **s == *komorebi::HidingBehaviour::Hide.to_string() => {
+                                Some(komorebi::HidingBehaviour::Hide)
+                            }
+                            ref s if **s == *komorebi::HidingBehaviour::Minimize.to_string() => {
+                                Some(komorebi::HidingBehaviour::Minimize)
+                            }
+                            _ => None,
+                        };
+                        config.window_hiding_behaviour = behaviour;
+                        config_strs.global_config_strs.window_hiding_behaviour = value;
                     }
                 }
             },
@@ -509,6 +524,11 @@ impl Komofig {
             global_work_area_offset_left: config
                 .global_work_area_offset
                 .map_or("0".into(), |r| r.left.to_string().into()),
+            window_hiding_behaviour: config
+                .window_hiding_behaviour
+                .unwrap_or(komorebi::HidingBehaviour::Cloak)
+                .to_string()
+                .into(),
         };
 
         let monitors_config_strs = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
