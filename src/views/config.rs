@@ -209,76 +209,158 @@ fn view_general(app: &Komofig) -> Element<Message> {
 }
 
 pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
-    if let Some(config_strs) = &app.config_strs {
+    if let (Some(m_config_strs), Some(_m_config)) = (
+        app.config_strs
+            .as_ref()
+            .and_then(|c| c.monitors_config_strs.get(&monitor_idx)),
+        app.config
+            .as_ref()
+            .and_then(|c| c.monitors.as_ref().and_then(|m| m.get(monitor_idx))),
+    ) {
         opt_helpers::section_view(
             text!("Monitor [{}]:", monitor_idx),
-            [opt_helpers::expandable(
-                "Window Based Work Area Offset",
-                Some("Window based work area offset (default: None)"),
-                [
-                    opt_helpers::input(
-                        "left",
-                        Some(""),
-                        "",
-                        &config_strs.monitors_config_strs[&monitor_idx]
-                            .window_based_work_area_offset_left,
-                        Box::new(move |value| {
-                            Message::MonitorConfigChanged(
-                                monitor_idx,
-                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value),
-                            )
-                        }),
-                        None,
+            [
+                opt_helpers::expandable(
+                    "Window Based Work Area Offset",
+                    Some("Window based work area offset (default: None)"),
+                    [
+                        opt_helpers::input(
+                            "left",
+                            None,
+                            "",
+                            &m_config_strs.window_based_work_area_offset_left,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "top",
+                            None,
+                            "",
+                            &m_config_strs.window_based_work_area_offset_top,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "bottom",
+                            None,
+                            "",
+                            &m_config_strs.window_based_work_area_offset_bottom,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "right",
+                            None,
+                            "",
+                            &m_config_strs.window_based_work_area_offset_right,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value),
+                                )
+                            }),
+                            None,
+                        ),
+                    ],
+                    app.config_helpers
+                        .monitors_window_based_work_area_offset_expanded[&monitor_idx],
+                    Message::ConfigHelpers(
+                        ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(
+                            monitor_idx,
+                        ),
                     ),
-                    opt_helpers::input(
-                        "top",
-                        None,
-                        "",
-                        &config_strs.monitors_config_strs[&monitor_idx]
-                            .window_based_work_area_offset_top,
-                        Box::new(move |value| {
-                            Message::MonitorConfigChanged(
-                                monitor_idx,
-                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value),
-                            )
-                        }),
-                        None,
-                    ),
-                    opt_helpers::input(
-                        "bottom",
-                        None,
-                        "",
-                        &config_strs.monitors_config_strs[&monitor_idx]
-                            .window_based_work_area_offset_bottom,
-                        Box::new(move |value| {
-                            Message::MonitorConfigChanged(
-                                monitor_idx,
-                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value),
-                            )
-                        }),
-                        None,
-                    ),
-                    opt_helpers::input(
-                        "right",
-                        None,
-                        "",
-                        &config_strs.monitors_config_strs[&monitor_idx]
-                            .window_based_work_area_offset_right,
-                        Box::new(move |value| {
-                            Message::MonitorConfigChanged(
-                                monitor_idx,
-                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value),
-                            )
-                        }),
-                        None,
-                    ),
-                ],
-                app.config_helpers
-                    .monitors_window_based_work_area_offset_expanded[&monitor_idx],
-                Message::ConfigHelpers(
-                    ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(monitor_idx),
                 ),
-            )],
+                opt_helpers::input(
+                    "Window Based Work Area Offset Limit",
+                    Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
+                    "",
+                    &m_config_strs.window_based_work_area_offset_limit,
+                    move |value| {
+                        Message::MonitorConfigChanged(
+                            monitor_idx,
+                            MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(value),
+                        )
+                    },
+                    None,
+                ),
+                opt_helpers::expandable(
+                    "Work Area Offset",
+                    Some("Monitor-specific work area offset (default: None)"),
+                    [
+                        opt_helpers::input(
+                            "left",
+                            None,
+                            "",
+                            &m_config_strs.work_area_offset_left,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WorkAreaOffsetLeft(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "top",
+                            None,
+                            "",
+                            &m_config_strs.work_area_offset_top,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WorkAreaOffsetTop(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "bottom",
+                            None,
+                            "",
+                            &m_config_strs.work_area_offset_bottom,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WorkAreaOffsetBottom(value),
+                                )
+                            }),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "right",
+                            None,
+                            "",
+                            &m_config_strs.work_area_offset_right,
+                            Box::new(move |value| {
+                                Message::MonitorConfigChanged(
+                                    monitor_idx,
+                                    MonitorConfigChangeType::WorkAreaOffsetRight(value),
+                                )
+                            }),
+                            None,
+                        ),
+                    ],
+                    app.config_helpers.monitors_work_area_offset_expanded[&monitor_idx],
+                    Message::ConfigHelpers(ConfigHelpersAction::ToggleMonitorWorkAreaOffsetExpand(
+                        monitor_idx,
+                    )),
+                ),
+            ],
         )
     } else {
         Space::new(Shrink, Shrink).into()
