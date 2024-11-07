@@ -127,7 +127,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                             None,
                             "",
                             &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_left,
-                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value))),
+                            |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -135,7 +135,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                             None,
                             "",
                             &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_top,
-                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value))),
+                            |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -143,7 +143,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                             None,
                             "",
                             &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_bottom,
-                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value))),
+                            |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -151,7 +151,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                             None,
                             "",
                             &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_right,
-                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value))),
+                            |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value)),
                             None,
                         ),
                     ],
@@ -229,12 +229,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.window_based_work_area_offset_left,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -242,12 +237,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.window_based_work_area_offset_top,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -255,12 +245,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.window_based_work_area_offset_bottom,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -268,12 +253,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.window_based_work_area_offset_right,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value)),
                             None,
                         ),
                     ],
@@ -307,12 +287,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.work_area_offset_left,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WorkAreaOffsetLeft(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetLeft(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -320,12 +295,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.work_area_offset_top,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WorkAreaOffsetTop(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetTop(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -333,12 +303,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.work_area_offset_bottom,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WorkAreaOffsetBottom(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetBottom(value)),
                             None,
                         ),
                         opt_helpers::input(
@@ -346,12 +311,7 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                             None,
                             "",
                             &m_config_strs.work_area_offset_right,
-                            Box::new(move |value| {
-                                Message::MonitorConfigChanged(
-                                    monitor_idx,
-                                    MonitorConfigChangeType::WorkAreaOffsetRight(value),
-                                )
-                            }),
+                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetRight(value)),
                             None,
                         ),
                     ],
