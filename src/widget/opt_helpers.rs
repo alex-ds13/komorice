@@ -184,13 +184,12 @@ pub fn section_row<'a>(
 
 ///Creates the view for a section of options with `title` and the `contents`.
 pub fn section_view<'a>(
-    title: &'a str,
+    title: impl Into<Text<'a>>,
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
-    let section_title =
-        |title| -> Row<Message> { row![Text::new(title).size(20.0).font(*BOLD_FONT)] };
+    let section_title = row![title.into().size(20.0).font(*BOLD_FONT)];
     column![
-        section_title(title),
+        section_title,
         Column::with_children(contents).spacing(10),
     ]
     .spacing(10)

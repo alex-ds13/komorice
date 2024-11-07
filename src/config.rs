@@ -44,8 +44,16 @@ pub enum GlobalConfigChangeType {
 #[derive(Clone, Debug)]
 pub enum MonitorConfigChangeType {
     WindowBasedWorkAreaOffset(komorebi::Rect),
+    WindowBasedWorkAreaOffsetTop(String),
+    WindowBasedWorkAreaOffsetBottom(String),
+    WindowBasedWorkAreaOffsetRight(String),
+    WindowBasedWorkAreaOffsetLeft(String),
     WindowBasedWorkAreaOffsetLimit(String), // maps i32 to String on MonitorConfigStrs
     WorkAreaOffset(komorebi::Rect),
+    WorkAreaOffsetTop(String),
+    WorkAreaOffsetBottom(String),
+    WorkAreaOffsetRight(String),
+    WorkAreaOffsetLeft(String),
 }
 
 #[derive(Clone, Debug)]
@@ -80,7 +88,15 @@ pub struct GlobalConfigStrs {
 }
 
 pub struct MonitorConfigStrs {
+    pub window_based_work_area_offset_top: Arc<str>,
+    pub window_based_work_area_offset_bottom: Arc<str>,
+    pub window_based_work_area_offset_right: Arc<str>,
+    pub window_based_work_area_offset_left: Arc<str>,
     pub window_based_work_area_offset_limit: Arc<str>,
+    pub work_area_offset_top: Arc<str>,
+    pub work_area_offset_bottom: Arc<str>,
+    pub work_area_offset_right: Arc<str>,
+    pub work_area_offset_left: Arc<str>,
 }
 
 pub struct WorkspaceConfigStrs {
@@ -91,11 +107,15 @@ pub struct WorkspaceConfigStrs {
 #[derive(Debug, Default)]
 pub struct ConfigHelpers {
     pub global_work_area_offset_expanded: bool,
+    pub monitors_window_based_work_area_offset_expanded: HashMap<usize, bool>,
+    pub monitors_work_area_offset_expanded: HashMap<usize, bool>,
 }
 
 #[derive(Clone, Debug)]
 pub enum ConfigHelpersAction {
-    ToggleGlobalWorkAreaOffsetExpand
+    ToggleGlobalWorkAreaOffsetExpand,
+    ToggleMonitorWindowBasedWorkAreaOffsetExpand(usize),
+    ToggleMonitorWorkAreaOffsetExpand(usize),
 }
 
 enum State {
