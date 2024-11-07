@@ -2,11 +2,15 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     config::{ConfigHelpersAction, GlobalConfigChangeType, MonitorConfigChangeType},
-    widget::opt_helpers::{self, InputParameters},
+    widget::opt_helpers,
     Komofig, Message, NONE_STR,
 };
 
-use iced::{widget::{text, Space}, Element, Length::Shrink};
+use iced::{
+    widget::{text, Space},
+    Element,
+    Length::Shrink,
+};
 use komorebi::{
     CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
     WindowContainerBehaviour,
@@ -114,38 +118,42 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     Some(DisplayOption(config.focus_follows_mouse)),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse1(selected.0)),
                 ),
-                opt_helpers::input_col(
+                opt_helpers::expandable(
                     "Global Work Area Offset",
                     None,
                     [
-                        InputParameters {
-                            name: "left",
-                            placeholder: "",
-                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_left,
-                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "top",
-                            placeholder: "",
-                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_top,
-                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "bottom",
-                            placeholder: "",
-                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_bottom,
-                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "right",
-                            placeholder: "",
-                            value: &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_right,
-                            on_change: Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value))),
-                            on_submit: None,
-                        },
+                        opt_helpers::input(
+                            "left",
+                            None,
+                            "",
+                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_left,
+                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value))),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "top",
+                            None,
+                            "",
+                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_top,
+                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value))),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "bottom",
+                            None,
+                            "",
+                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_bottom,
+                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value))),
+                            None,
+                        ),
+                        opt_helpers::input(
+                            "right",
+                            None,
+                            "",
+                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_right,
+                            Box::new(|value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value))),
+                            None,
+                        ),
                     ],
                     app.config_helpers.global_work_area_offset_expanded,
                     Message::ConfigHelpers(ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand)
@@ -204,44 +212,73 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
     if let Some(config_strs) = &app.config_strs {
         opt_helpers::section_view(
             text!("Monitor [{}]:", monitor_idx),
-            [
-                opt_helpers::input_col(
-                    "Window Based Work Area Offset",
-                    Some("Window based work area offset (default: None)"),
-                    [
-                        InputParameters {
-                            name: "left",
-                            placeholder: "",
-                            value: &config_strs.monitors_config_strs[&monitor_idx].window_based_work_area_offset_left,
-                            on_change: Box::new(move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "top",
-                            placeholder: "",
-                            value: &config_strs.monitors_config_strs[&monitor_idx].window_based_work_area_offset_top,
-                            on_change: Box::new(move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "bottom",
-                            placeholder: "",
-                            value: &config_strs.monitors_config_strs[&monitor_idx].window_based_work_area_offset_bottom,
-                            on_change: Box::new(move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value))),
-                            on_submit: None,
-                        },
-                        InputParameters {
-                            name: "right",
-                            placeholder: "",
-                            value: &config_strs.monitors_config_strs[&monitor_idx].window_based_work_area_offset_right,
-                            on_change: Box::new(move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value))),
-                            on_submit: None,
-                        },
-                    ],
-                    app.config_helpers.monitors_window_based_work_area_offset_expanded[&monitor_idx],
-                    Message::ConfigHelpers(ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(monitor_idx))
+            [opt_helpers::expandable(
+                "Window Based Work Area Offset",
+                Some("Window based work area offset (default: None)"),
+                [
+                    opt_helpers::input(
+                        "left",
+                        Some(""),
+                        "",
+                        &config_strs.monitors_config_strs[&monitor_idx]
+                            .window_based_work_area_offset_left,
+                        Box::new(move |value| {
+                            Message::MonitorConfigChanged(
+                                monitor_idx,
+                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value),
+                            )
+                        }),
+                        None,
+                    ),
+                    opt_helpers::input(
+                        "top",
+                        None,
+                        "",
+                        &config_strs.monitors_config_strs[&monitor_idx]
+                            .window_based_work_area_offset_top,
+                        Box::new(move |value| {
+                            Message::MonitorConfigChanged(
+                                monitor_idx,
+                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value),
+                            )
+                        }),
+                        None,
+                    ),
+                    opt_helpers::input(
+                        "bottom",
+                        None,
+                        "",
+                        &config_strs.monitors_config_strs[&monitor_idx]
+                            .window_based_work_area_offset_bottom,
+                        Box::new(move |value| {
+                            Message::MonitorConfigChanged(
+                                monitor_idx,
+                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value),
+                            )
+                        }),
+                        None,
+                    ),
+                    opt_helpers::input(
+                        "right",
+                        None,
+                        "",
+                        &config_strs.monitors_config_strs[&monitor_idx]
+                            .window_based_work_area_offset_right,
+                        Box::new(move |value| {
+                            Message::MonitorConfigChanged(
+                                monitor_idx,
+                                MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value),
+                            )
+                        }),
+                        None,
+                    ),
+                ],
+                app.config_helpers
+                    .monitors_window_based_work_area_offset_expanded[&monitor_idx],
+                Message::ConfigHelpers(
+                    ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(monitor_idx),
                 ),
-            ],
+            )],
         )
     } else {
         Space::new(Shrink, Shrink).into()

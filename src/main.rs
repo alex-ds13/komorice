@@ -13,14 +13,10 @@ use config::{
     MonitorConfigChangeType, MonitorConfigStrs, WorkspaceConfigStrs,
 };
 use iced::{
-    widget::{
+    padding, widget::{
         checkbox, column, container, horizontal_rule, row, scrollable, text, vertical_rule, Column,
         Space,
-    },
-    Alignment::Center,
-    Element, Font,
-    Length::{Fill, Shrink},
-    Subscription, Task, Theme,
+    }, Alignment::Center, Element, Font, Length::{Fill, Shrink}, Subscription, Task, Theme
 };
 use lazy_static::lazy_static;
 
@@ -657,7 +653,9 @@ impl Komofig {
 
     pub fn view(&self) -> Element<Message> {
         let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
-            let mut col: Column<Message> = column![text("Monitors:").size(20)];
+            let mut col: Column<Message> =
+                column![text("Monitors:").size(20)].padding(padding::all(5).right(20));
+
             let m: Element<Message> =
                 monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
                     .selected(self.monitor_to_config)
@@ -736,9 +734,13 @@ impl Komofig {
             horizontal_rule(8.0),
             text("Notifications:").size(20),
         ];
-        let notifications = self.notifications.iter().fold(col, |col, notification| {
-            col.push(text(format!("{:?}", notification)))
-        });
+        let notifications = self
+            .notifications
+            .iter()
+            .fold(col, |col, notification| {
+                col.push(text(format!("{:?}", notification)))
+            })
+            .padding(padding::all(5).right(20));
         let scrollable = scrollable(notifications).width(Fill);
         row![monitors, vertical_rule(2.0), scrollable,]
             .spacing(10)

@@ -99,58 +99,30 @@ where
     }
 }
 
-pub struct InputParameters<'a> {
-    pub name: &'a str,
-    pub placeholder: &'a str,
-    pub value: &'a str,
-    pub on_change: Box<dyn Fn(String) -> Message + 'a>,
-    pub on_submit: Option<Message>,
-}
-
-///Creates a column with a row and a label with `name` and a `text_input` per input
+///Creates an expandable option with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn input_col<'a>(
+pub fn expandable<'a>(
     name: &'a str,
     description: Option<&'a str>,
-    inputs: impl IntoIterator<Item = InputParameters<'a>>,
+    children: impl IntoIterator<Item = Element<'a, Message>>,
     expanded: bool,
     on_press: Message,
 ) -> Element<'a, Message> {
     let main = column![Row::new()
         .push(name)
         .push(horizontal_space())
-        .push(
-            button(if expanded { text("^") } else { text("v") })
-                .on_press(on_press.clone())
-                .style(iced::widget::button::text)
-        )
+        .push(button(if expanded { text("^") } else { text("v") }).style(button::secondary))
         .align_y(Center)
+        .padding(padding::right(10))
         .height(30.0)]
     .spacing(1);
 
     let col = if expanded {
-        let inner = inputs.into_iter().fold(
-            column![]
-                .spacing(10)
-                .padding(iced::Padding::new(10.0).left(20.0)),
-            |col, input| {
-                col.push(
-                    row![
-                        widget::label(input.name),
-                        widget::input(
-                            input.placeholder,
-                            input.value,
-                            input.on_change,
-                            input.on_submit.clone()
-                        ),
-                    ]
-                    .spacing(5)
-                    .align_y(Center),
-                )
-            },
-        );
+        let inner = Column::with_children(children)
+            .spacing(10)
+            .padding(padding::all(10).left(20));
         main.push(inner)
     } else {
         main
@@ -188,11 +160,8 @@ pub fn section_view<'a>(
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
     let section_title = row![title.into().size(20.0).font(*BOLD_FONT)];
-    column![
-        section_title,
-        Column::with_children(contents).spacing(10),
-    ]
-    .spacing(10)
-    .padding(padding::top(10).bottom(20))
-    .into()
+    column![section_title, Column::with_children(contents).spacing(10),]
+        .spacing(10)
+        .padding(padding::top(10).bottom(20))
+        .into()
 }
