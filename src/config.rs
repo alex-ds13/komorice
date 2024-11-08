@@ -9,6 +9,7 @@ use std::time::Duration;
 use async_std::channel::{self, Receiver};
 use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
+use komorebi::MonitorConfig;
 use komorebi_client::StaticConfig;
 use notify_debouncer_mini::{
     new_debouncer,
@@ -83,6 +84,37 @@ pub enum ConfigHelpersAction {
     ToggleGlobalWorkAreaOffsetExpand,
     ToggleMonitorWindowBasedWorkAreaOffsetExpand(usize),
     ToggleMonitorWorkAreaOffsetExpand(usize),
+}
+
+pub fn change_monitor_config(config: &mut StaticConfig, idx: usize, f: impl Fn(&mut MonitorConfig)) {
+    if let Some(monitors) = &mut config.monitors {
+        if let Some(monitor) = monitors.get_mut(idx) {
+            f(monitor);
+        } else {
+            monitors.reserve(idx + 1 - monitors.len());
+            for _ in monitors.len()..(idx + 1) {
+                monitors.push(komorebi::MonitorConfig {
+                    workspaces: Vec::new(),
+                    work_area_offset: None,
+                    window_based_work_area_offset: None,
+                    window_based_work_area_offset_limit: None,
+                });
+            }
+            f(&mut monitors[idx]);
+        }
+    } else {
+        let mut monitors = vec![
+            komorebi::MonitorConfig {
+                workspaces: Vec::new(),
+                work_area_offset: None,
+                window_based_work_area_offset: None,
+                window_based_work_area_offset_limit: None,
+            };
+        idx + 1
+        ];
+        f(&mut monitors[idx]);
+        config.monitors = Some(monitors);
+    }
 }
 
 enum State {
