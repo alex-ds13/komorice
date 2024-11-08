@@ -1,22 +1,28 @@
 mod apperror;
 mod config;
 mod komorebi_connect;
-mod monitors_viewer;
 mod views;
 mod widget;
 
-use std::{collections::HashMap, sync::Arc};
-
-use apperror::AppError;
-use config::{
+use crate::apperror::AppError;
+use crate::config::{
     ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType, GlobalConfigStrs,
     MonitorConfigChangeType, MonitorConfigStrs, WorkspaceConfigStrs,
 };
+use crate::widget::monitors_viewer;
+
+use std::{collections::HashMap, sync::Arc};
+
 use iced::{
-    padding, widget::{
+    padding,
+    widget::{
         checkbox, column, container, horizontal_rule, row, scrollable, text, vertical_rule, Column,
         Space,
-    }, Alignment::Center, Element, Font, Length::{Fill, Shrink}, Subscription, Task, Theme
+    },
+    Alignment::Center,
+    Element, Font,
+    Length::{Fill, Shrink},
+    Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
 
