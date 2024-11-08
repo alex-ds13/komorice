@@ -113,7 +113,21 @@ pub fn expandable<'a>(
     let main = column![Row::new()
         .push(name)
         .push(horizontal_space())
-        .push(button(if expanded { text("^") } else { text("v") }).style(button::secondary))
+        .push(
+            button(if expanded {
+                text("▲").size(10)
+            } else {
+                text("▼").size(10)
+            })
+            .on_press(on_press.clone())
+            .style(|t, s| {
+                if matches!(s, button::Status::Hovered) {
+                    button::secondary(t, s)
+                } else {
+                    button::text(t, s)
+                }
+            })
+        )
         .align_y(Center)
         .padding(padding::right(10))
         .height(30.0)]
