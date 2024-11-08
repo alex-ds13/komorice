@@ -21,21 +21,20 @@ pub enum GlobalConfigChangeType {
     AppSpecificConfigurationPath(Option<PathBuf>),
     CrossBoundaryBehaviour(Arc<str>), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
     CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
-    DefaultContainerPadding(String), // maps i32 to String on GlobalConfigStrs
-    DefaultWorkspacePadding(String), // maps i32 to String on GlobalConfigStrs
+    DefaultContainerPadding(i32),
+    DefaultWorkspacePadding(i32),
     DisplayIndexPreferences(HashMap<usize, String>),
     FloatOverride(bool),
-    FocusFollowsMouse1(Option<komorebi::FocusFollowsMouseImplementation>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
-    FocusFollowsMouse(Arc<str>), // maps komorebi::FocusFollowsMouseImplementation to String on GlobalConfigStrs
+    FocusFollowsMouse(Option<komorebi::FocusFollowsMouseImplementation>),
     GlobalWorkAreaOffset(komorebi::Rect),
-    GlobalWorkAreaOffsetTop(String),
-    GlobalWorkAreaOffsetBottom(String),
-    GlobalWorkAreaOffsetRight(String),
-    GlobalWorkAreaOffsetLeft(String),
+    GlobalWorkAreaOffsetTop(i32),
+    GlobalWorkAreaOffsetBottom(i32),
+    GlobalWorkAreaOffsetRight(i32),
+    GlobalWorkAreaOffsetLeft(i32),
     MouseFollowsFocus(bool),
-    ResizeDelta(String), // maps i32 to String on GlobalConfigStrs
+    ResizeDelta(i32),
     Transparency(bool),
-    TransparencyAlpha(String), // maps u8 to String on GlobalConfigStrs
+    TransparencyAlpha(i32),
     UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
     WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
     WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
@@ -44,64 +43,32 @@ pub enum GlobalConfigChangeType {
 #[derive(Clone, Debug)]
 pub enum MonitorConfigChangeType {
     WindowBasedWorkAreaOffset(komorebi::Rect),
-    WindowBasedWorkAreaOffsetTop(String),
-    WindowBasedWorkAreaOffsetBottom(String),
-    WindowBasedWorkAreaOffsetRight(String),
-    WindowBasedWorkAreaOffsetLeft(String),
-    WindowBasedWorkAreaOffsetLimit(String), // maps i32 to String on MonitorConfigStrs
+    WindowBasedWorkAreaOffsetTop(i32),
+    WindowBasedWorkAreaOffsetBottom(i32),
+    WindowBasedWorkAreaOffsetRight(i32),
+    WindowBasedWorkAreaOffsetLeft(i32),
+    WindowBasedWorkAreaOffsetLimit(i32),
     WorkAreaOffset(komorebi::Rect),
-    WorkAreaOffsetTop(String),
-    WorkAreaOffsetBottom(String),
-    WorkAreaOffsetRight(String),
-    WorkAreaOffsetLeft(String),
+    WorkAreaOffsetTop(i32),
+    WorkAreaOffsetBottom(i32),
+    WorkAreaOffsetRight(i32),
+    WorkAreaOffsetLeft(i32),
 }
 
 #[derive(Clone, Debug)]
 pub enum WorkspaceConfigChangeType {
     ApplyWindowBasedWorkAreaOffset(bool),
-    ContainerPadding(String), // maps i32 to String on WorkspaceConfigStrs
+    ContainerPadding(i32),
     FloatOverride(bool),
     Layout(komorebi::Layout),
     Name(String),
     WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WorkspacePadding(String), // maps i32 to String on WorkspaceConfigStrs
+    WorkspacePadding(i32),
 }
 
 pub struct ConfigStrs {
-    pub global_config_strs: GlobalConfigStrs,
-    pub monitors_config_strs: HashMap<usize, MonitorConfigStrs>,
-    pub workspaces_config_strs: HashMap<(usize, usize), WorkspaceConfigStrs>,
-}
-
-pub struct GlobalConfigStrs {
     pub cross_boundary_behaviour: Arc<str>,
-    pub default_container_padding: Arc<str>,
-    pub default_workspace_padding: Arc<str>,
-    pub focus_follows_mouse: Arc<str>,
-    pub resize_delta: Arc<str>,
-    pub transparency_alpha: Arc<str>,
-    pub global_work_area_offset_top: Arc<str>,
-    pub global_work_area_offset_bottom: Arc<str>,
-    pub global_work_area_offset_right: Arc<str>,
-    pub global_work_area_offset_left: Arc<str>,
     pub window_hiding_behaviour: Arc<str>,
-}
-
-pub struct MonitorConfigStrs {
-    pub window_based_work_area_offset_top: Arc<str>,
-    pub window_based_work_area_offset_bottom: Arc<str>,
-    pub window_based_work_area_offset_right: Arc<str>,
-    pub window_based_work_area_offset_left: Arc<str>,
-    pub window_based_work_area_offset_limit: Arc<str>,
-    pub work_area_offset_top: Arc<str>,
-    pub work_area_offset_bottom: Arc<str>,
-    pub work_area_offset_right: Arc<str>,
-    pub work_area_offset_left: Arc<str>,
-}
-
-pub struct WorkspaceConfigStrs {
-    pub container_padding: Arc<str>,
-    pub workspace_padding: Arc<str>,
 }
 
 #[derive(Debug, Default)]

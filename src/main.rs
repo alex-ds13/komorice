@@ -6,8 +6,7 @@ mod widget;
 
 use crate::apperror::AppError;
 use crate::config::{
-    ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType, GlobalConfigStrs,
-    MonitorConfigChangeType, MonitorConfigStrs, WorkspaceConfigStrs,
+    ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType, MonitorConfigChangeType,
 };
 use crate::widget::monitors_viewer;
 
@@ -40,6 +39,8 @@ fn main() -> iced::Result {
     iced::application("Komofig", Komofig::update, Komofig::view)
         .subscription(Komofig::subscription)
         .theme(Komofig::theme)
+        .default_font(*DEFAULT_FONT)
+        .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
         .run_with(Komofig::initialize)
 }
 
@@ -135,7 +136,7 @@ impl Komofig {
                             _ => None,
                         };
                         config.cross_boundary_behaviour = behaviour;
-                        config_strs.global_config_strs.cross_boundary_behaviour = value;
+                        config_strs.cross_boundary_behaviour = value;
                     }
                 }
                 GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
@@ -144,19 +145,13 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::DefaultContainerPadding(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        config.default_container_padding = Some(value.parse().unwrap_or_default());
-                        config_strs.global_config_strs.default_container_padding = value.into();
+                    if let Some(config) = &mut self.config {
+                        config.default_container_padding = Some(value);
                     }
                 }
                 GlobalConfigChangeType::DefaultWorkspacePadding(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        config.default_workspace_padding = Some(value.parse().unwrap_or_default());
-                        config_strs.global_config_strs.default_workspace_padding = value.into();
+                    if let Some(config) = &mut self.config {
+                        config.default_workspace_padding = Some(value);
                     }
                 }
                 GlobalConfigChangeType::DisplayIndexPreferences(value) => {
@@ -169,36 +164,9 @@ impl Komofig {
                         config.float_override = Some(value);
                     }
                 }
-                GlobalConfigChangeType::FocusFollowsMouse1(value) => {
-                    if let (Some(config), Some(_config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        config.focus_follows_mouse = value;
-                    }
-                }
                 GlobalConfigChangeType::FocusFollowsMouse(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        let implementation = match value {
-                            ref s
-                                if **s
-                                    == *komorebi::FocusFollowsMouseImplementation::Windows
-                                        .to_string() =>
-                            {
-                                Some(komorebi::FocusFollowsMouseImplementation::Windows)
-                            }
-                            ref s
-                                if **s
-                                    == *komorebi::FocusFollowsMouseImplementation::Komorebi
-                                        .to_string() =>
-                            {
-                                Some(komorebi::FocusFollowsMouseImplementation::Komorebi)
-                            }
-                            _ => None,
-                        };
-                        config.focus_follows_mouse = implementation;
-                        config_strs.global_config_strs.focus_follows_mouse = value;
+                    if let Some(config) = &mut self.config {
+                        config.focus_follows_mouse = value;
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffset(value) => {
@@ -207,83 +175,58 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value) => {
-                    if let Ok(top) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
-                            if let Some(offset) = &mut config.global_work_area_offset {
-                                offset.top = top;
-                            } else {
-                                config.global_work_area_offset = Some(komorebi::Rect {
-                                    left: 0,
-                                    top,
-                                    right: 0,
-                                    bottom: 0,
-                                });
-                            }
-                            config_strs.global_config_strs.global_work_area_offset_top =
-                                value.into();
+                    if let Some(config) = &mut self.config {
+                        if let Some(offset) = &mut config.global_work_area_offset {
+                            offset.top = value;
+                        } else {
+                            config.global_work_area_offset = Some(komorebi::Rect {
+                                left: 0,
+                                top: value,
+                                right: 0,
+                                bottom: 0,
+                            });
                         }
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value) => {
-                    if let Ok(bottom) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
-                            if let Some(offset) = &mut config.global_work_area_offset {
-                                offset.bottom = bottom;
-                            } else {
-                                config.global_work_area_offset = Some(komorebi::Rect {
-                                    left: 0,
-                                    top: 0,
-                                    right: 0,
-                                    bottom,
-                                });
-                            }
-                            config_strs
-                                .global_config_strs
-                                .global_work_area_offset_bottom = value.into();
+                    if let Some(config) = &mut self.config {
+                        if let Some(offset) = &mut config.global_work_area_offset {
+                            offset.bottom = value;
+                        } else {
+                            config.global_work_area_offset = Some(komorebi::Rect {
+                                left: 0,
+                                top: 0,
+                                right: 0,
+                                bottom: value,
+                            });
                         }
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value) => {
-                    if let Ok(right) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
-                            if let Some(offset) = &mut config.global_work_area_offset {
-                                offset.right = right;
-                            } else {
-                                config.global_work_area_offset = Some(komorebi::Rect {
-                                    left: 0,
-                                    top: 0,
-                                    right,
-                                    bottom: 0,
-                                });
-                            }
-                            config_strs.global_config_strs.global_work_area_offset_right =
-                                value.into();
+                    if let Some(config) = &mut self.config {
+                        if let Some(offset) = &mut config.global_work_area_offset {
+                            offset.right = value;
+                        } else {
+                            config.global_work_area_offset = Some(komorebi::Rect {
+                                left: 0,
+                                top: 0,
+                                right: value,
+                                bottom: 0,
+                            });
                         }
                     }
                 }
                 GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value) => {
-                    if let Ok(left) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
-                            if let Some(offset) = &mut config.global_work_area_offset {
-                                offset.left = left;
-                            } else {
-                                config.global_work_area_offset = Some(komorebi::Rect {
-                                    left,
-                                    top: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                });
-                            }
-                            config_strs.global_config_strs.global_work_area_offset_left =
-                                value.into();
+                    if let Some(config) = &mut self.config {
+                        if let Some(offset) = &mut config.global_work_area_offset {
+                            offset.left = value;
+                        } else {
+                            config.global_work_area_offset = Some(komorebi::Rect {
+                                left: value,
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                            });
                         }
                     }
                 }
@@ -293,11 +236,8 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::ResizeDelta(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        config.resize_delta = Some(value.parse().unwrap_or_default());
-                        config_strs.global_config_strs.resize_delta = value.into();
+                    if let Some(config) = &mut self.config {
+                        config.resize_delta = Some(value);
                     }
                 }
                 GlobalConfigChangeType::Transparency(value) => {
@@ -306,11 +246,8 @@ impl Komofig {
                     }
                 }
                 GlobalConfigChangeType::TransparencyAlpha(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        config.transparency_alpha = Some(value.parse().unwrap_or_default());
-                        config_strs.global_config_strs.transparency_alpha = value.into();
+                    if let Some(config) = &mut self.config {
+                        config.transparency_alpha = Some(value.try_into().unwrap_or(0));
                     }
                 }
                 GlobalConfigChangeType::UnmanagedWindowBehaviour(value) => {
@@ -340,68 +277,42 @@ impl Komofig {
                             _ => None,
                         };
                         config.window_hiding_behaviour = behaviour;
-                        config_strs.global_config_strs.window_hiding_behaviour = value;
+                        config_strs.window_hiding_behaviour = value;
                     }
                 }
             },
-            Message::MonitorConfigChanged(idx, change_type) => match change_type {
-                MonitorConfigChangeType::WindowBasedWorkAreaOffset(_) => todo!(),
-                MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value) => {
-                    if let Ok(top) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
+            Message::MonitorConfigChanged(idx, change_type) => {
+                match change_type {
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffset(_) => todo!(),
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value) => {
+                        if let Some(config) = &mut self.config {
                             if let Some(offset) = &mut config
                                 .monitors
                                 .as_mut()
                                 .and_then(|monitors| monitors[idx].window_based_work_area_offset)
                             {
-                                offset.top = top;
+                                offset.top = value;
                             } else {
                                 let offset = &mut config.monitors.as_mut().and_then(|monitors| {
                                     monitors[idx].window_based_work_area_offset
                                 });
                                 *offset = Some(komorebi::Rect {
                                     left: 0,
-                                    top,
+                                    top: value,
                                     right: 0,
                                     bottom: 0,
                                 });
                             }
-                            if let Some(monitor_config_str) =
-                                config_strs.monitors_config_strs.get_mut(&idx)
-                            {
-                                monitor_config_str.window_based_work_area_offset_top = value.into();
-                            } else {
-                                config_strs.monitors_config_strs.insert(
-                                    idx,
-                                    MonitorConfigStrs {
-                                        window_based_work_area_offset_top: value.into(),
-                                        window_based_work_area_offset_bottom: "".into(),
-                                        window_based_work_area_offset_right: "".into(),
-                                        window_based_work_area_offset_left: "".into(),
-                                        window_based_work_area_offset_limit: "".into(),
-                                        work_area_offset_top: "".into(),
-                                        work_area_offset_bottom: "".into(),
-                                        work_area_offset_right: "".into(),
-                                        work_area_offset_left: "".into(),
-                                    },
-                                );
-                            }
                         }
                     }
-                }
-                MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value) => {
-                    if let Ok(bottom) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value) => {
+                        if let Some(config) = &mut self.config {
                             if let Some(offset) = &mut config
                                 .monitors
                                 .as_mut()
                                 .and_then(|monitors| monitors[idx].window_based_work_area_offset)
                             {
-                                offset.bottom = bottom;
+                                offset.bottom = value;
                             } else {
                                 let offset = &mut config.monitors.as_mut().and_then(|monitors| {
                                     monitors[idx].window_based_work_area_offset
@@ -410,44 +321,19 @@ impl Komofig {
                                     left: 0,
                                     top: 0,
                                     right: 0,
-                                    bottom,
+                                    bottom: value,
                                 });
-                            }
-                            if let Some(monitor_config_str) =
-                                config_strs.monitors_config_strs.get_mut(&idx)
-                            {
-                                monitor_config_str.window_based_work_area_offset_bottom =
-                                    value.into();
-                            } else {
-                                config_strs.monitors_config_strs.insert(
-                                    idx,
-                                    MonitorConfigStrs {
-                                        window_based_work_area_offset_top: "".into(),
-                                        window_based_work_area_offset_bottom: value.into(),
-                                        window_based_work_area_offset_right: "".into(),
-                                        window_based_work_area_offset_left: "".into(),
-                                        window_based_work_area_offset_limit: "".into(),
-                                        work_area_offset_top: "".into(),
-                                        work_area_offset_bottom: "".into(),
-                                        work_area_offset_right: "".into(),
-                                        work_area_offset_left: "".into(),
-                                    },
-                                );
                             }
                         }
                     }
-                }
-                MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value) => {
-                    if let Ok(right) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value) => {
+                        if let Some(config) = &mut self.config {
                             if let Some(offset) = &mut config
                                 .monitors
                                 .as_mut()
                                 .and_then(|monitors| monitors[idx].window_based_work_area_offset)
                             {
-                                offset.right = right;
+                                offset.right = value;
                             } else {
                                 let offset = &mut config.monitors.as_mut().and_then(|monitors| {
                                     monitors[idx].window_based_work_area_offset
@@ -455,146 +341,81 @@ impl Komofig {
                                 *offset = Some(komorebi::Rect {
                                     left: 0,
                                     top: 0,
-                                    right,
+                                    right: value,
                                     bottom: 0,
                                 });
                             }
-                            if let Some(monitor_config_str) =
-                                config_strs.monitors_config_strs.get_mut(&idx)
-                            {
-                                monitor_config_str.window_based_work_area_offset_right =
-                                    value.into();
-                            } else {
-                                config_strs.monitors_config_strs.insert(
-                                    idx,
-                                    MonitorConfigStrs {
-                                        window_based_work_area_offset_top: "".into(),
-                                        window_based_work_area_offset_bottom: "".into(),
-                                        window_based_work_area_offset_right: value.into(),
-                                        window_based_work_area_offset_left: "".into(),
-                                        window_based_work_area_offset_limit: "".into(),
-                                        work_area_offset_top: "".into(),
-                                        work_area_offset_bottom: "".into(),
-                                        work_area_offset_right: "".into(),
-                                        work_area_offset_left: "".into(),
-                                    },
-                                );
-                            }
                         }
                     }
-                }
-                MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value) => {
-                    if let Ok(left) = value.parse() {
-                        if let (Some(config), Some(config_strs)) =
-                            (&mut self.config, &mut self.config_strs)
-                        {
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value) => {
+                        if let Some(config) = &mut self.config {
                             if let Some(offset) = &mut config
                                 .monitors
                                 .as_mut()
                                 .and_then(|monitors| monitors[idx].window_based_work_area_offset)
                             {
-                                offset.left = left;
+                                offset.left = value;
                             } else {
                                 let offset = &mut config.monitors.as_mut().and_then(|monitors| {
                                     monitors[idx].window_based_work_area_offset
                                 });
                                 *offset = Some(komorebi::Rect {
-                                    left,
+                                    left: value,
                                     top: 0,
                                     right: 0,
                                     bottom: 0,
                                 });
                             }
-                            if let Some(monitor_config_str) =
-                                config_strs.monitors_config_strs.get_mut(&idx)
-                            {
-                                monitor_config_str.window_based_work_area_offset_left =
-                                    value.into();
-                            } else {
-                                config_strs.monitors_config_strs.insert(
-                                    idx,
-                                    MonitorConfigStrs {
-                                        window_based_work_area_offset_top: "".into(),
-                                        window_based_work_area_offset_bottom: "".into(),
-                                        window_based_work_area_offset_right: "".into(),
-                                        window_based_work_area_offset_left: value.into(),
-                                        window_based_work_area_offset_limit: "".into(),
-                                        work_area_offset_top: "".into(),
-                                        work_area_offset_bottom: "".into(),
-                                        work_area_offset_right: "".into(),
-                                        work_area_offset_left: "".into(),
-                                    },
-                                );
-                            }
                         }
                     }
-                }
-                MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        let limit = value.parse().unwrap_or(1);
-                        if let Some(monitors) = &mut config.monitors {
-                            if let Some(monitor) = monitors.get_mut(idx) {
-                                monitor.window_based_work_area_offset_limit = Some(limit);
-                            } else {
-                                monitors.reserve(idx + 1 - monitors.len());
-                                for _ in monitors.len()..idx {
+                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(limit) => {
+                        if let Some(config) = &mut self.config {
+                            if let Some(monitors) = &mut config.monitors {
+                                if let Some(monitor) = monitors.get_mut(idx) {
+                                    monitor.window_based_work_area_offset_limit =
+                                        Some(limit.try_into().unwrap_or_default());
+                                } else {
+                                    monitors.reserve(idx + 1 - monitors.len());
+                                    for _ in monitors.len()..idx {
+                                        monitors.push(komorebi::MonitorConfig {
+                                            workspaces: Vec::new(),
+                                            work_area_offset: None,
+                                            window_based_work_area_offset: None,
+                                            window_based_work_area_offset_limit: None,
+                                        });
+                                    }
                                     monitors.push(komorebi::MonitorConfig {
                                         workspaces: Vec::new(),
                                         work_area_offset: None,
                                         window_based_work_area_offset: None,
-                                        window_based_work_area_offset_limit: None,
+                                        window_based_work_area_offset_limit: Some(
+                                            limit.try_into().unwrap_or_default(),
+                                        ),
                                     });
                                 }
-                                monitors.push(komorebi::MonitorConfig {
-                                    workspaces: Vec::new(),
-                                    work_area_offset: None,
-                                    window_based_work_area_offset: None,
-                                    window_based_work_area_offset_limit: Some(limit),
-                                });
+                            } else {
+                                let mut monitors = vec![
+                                    komorebi::MonitorConfig {
+                                        workspaces: Vec::new(),
+                                        work_area_offset: None,
+                                        window_based_work_area_offset: None,
+                                        window_based_work_area_offset_limit: None,
+                                    };
+                                    idx + 1
+                                ];
+                                monitors[idx].window_based_work_area_offset_limit =
+                                    Some(limit.try_into().unwrap_or_default());
+                                config.monitors = Some(monitors);
                             }
-                        } else {
-                            let mut monitors = vec![
-                                komorebi::MonitorConfig {
-                                    workspaces: Vec::new(),
-                                    work_area_offset: None,
-                                    window_based_work_area_offset: None,
-                                    window_based_work_area_offset_limit: None,
-                                };
-                                idx + 1
-                            ];
-                            monitors[idx].window_based_work_area_offset_limit = Some(limit);
-                            config.monitors = Some(monitors);
-                        }
-                        if let Some(monitor_config_str) =
-                            config_strs.monitors_config_strs.get_mut(&idx)
-                        {
-                            monitor_config_str.window_based_work_area_offset_limit = value.into();
-                        } else {
-                            config_strs.monitors_config_strs.insert(
-                                idx,
-                                MonitorConfigStrs {
-                                    window_based_work_area_offset_top: "".into(),
-                                    window_based_work_area_offset_bottom: "".into(),
-                                    window_based_work_area_offset_right: "".into(),
-                                    window_based_work_area_offset_left: "".into(),
-                                    window_based_work_area_offset_limit: value.into(),
-                                    work_area_offset_top: "".into(),
-                                    work_area_offset_bottom: "".into(),
-                                    work_area_offset_right: "".into(),
-                                    work_area_offset_left: "".into(),
-                                },
-                            );
                         }
                     }
+                    MonitorConfigChangeType::WorkAreaOffset(_) => todo!(),
+                    MonitorConfigChangeType::WorkAreaOffsetTop(_) => todo!(),
+                    MonitorConfigChangeType::WorkAreaOffsetBottom(_) => todo!(),
+                    MonitorConfigChangeType::WorkAreaOffsetRight(_) => todo!(),
+                    MonitorConfigChangeType::WorkAreaOffsetLeft(_) => todo!(),
                 }
-                MonitorConfigChangeType::WorkAreaOffset(_) => todo!(),
-                MonitorConfigChangeType::WorkAreaOffsetTop(_) => todo!(),
-                MonitorConfigChangeType::WorkAreaOffsetBottom(_) => todo!(),
-                MonitorConfigChangeType::WorkAreaOffsetRight(_) => todo!(),
-                MonitorConfigChangeType::WorkAreaOffsetLeft(_) => todo!(),
-            },
+            }
             Message::ConfigHelpers(action) => match action {
                 ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand => {
                     self.config_helpers.global_work_area_offset_expanded =
@@ -763,43 +584,12 @@ impl Komofig {
     }
 
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
-        let global_config_strs = GlobalConfigStrs {
+        let config_strs = ConfigStrs {
             cross_boundary_behaviour: config
                 .cross_boundary_behaviour
                 .unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor)
                 .to_string()
                 .into(),
-            default_container_padding: config.default_container_padding.map_or(
-                komorebi::DEFAULT_CONTAINER_PADDING
-                    .load(std::sync::atomic::Ordering::SeqCst)
-                    .to_string()
-                    .into(),
-                |v| v.to_string().into(),
-            ),
-            default_workspace_padding: config.default_workspace_padding.map_or(
-                komorebi::DEFAULT_WORKSPACE_PADDING
-                    .load(std::sync::atomic::Ordering::SeqCst)
-                    .to_string()
-                    .into(),
-                |v| v.to_string().into(),
-            ),
-            focus_follows_mouse: config
-                .focus_follows_mouse
-                .map_or(Arc::clone(&NONE_STR), |i| i.to_string().into()),
-            resize_delta: config.resize_delta.unwrap_or(50).to_string().into(),
-            transparency_alpha: config.transparency_alpha.unwrap_or(200).to_string().into(),
-            global_work_area_offset_top: config
-                .global_work_area_offset
-                .map_or("0".into(), |r| r.top.to_string().into()),
-            global_work_area_offset_bottom: config
-                .global_work_area_offset
-                .map_or("0".into(), |r| r.bottom.to_string().into()),
-            global_work_area_offset_right: config
-                .global_work_area_offset
-                .map_or("0".into(), |r| r.right.to_string().into()),
-            global_work_area_offset_left: config
-                .global_work_area_offset
-                .map_or("0".into(), |r| r.left.to_string().into()),
             window_hiding_behaviour: config
                 .window_hiding_behaviour
                 .unwrap_or(komorebi::HidingBehaviour::Cloak)
@@ -807,91 +597,7 @@ impl Komofig {
                 .into(),
         };
 
-        let monitors_config_strs = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
-            monitors
-                .iter()
-                .enumerate()
-                .map(|(idx, m)| {
-                    (
-                        idx,
-                        MonitorConfigStrs {
-                            window_based_work_area_offset_top: m
-                                .window_based_work_area_offset
-                                .map_or("0".into(), |r| r.top.to_string().into()),
-                            window_based_work_area_offset_bottom: m
-                                .window_based_work_area_offset
-                                .map_or("0".into(), |r| r.bottom.to_string().into()),
-                            window_based_work_area_offset_right: m
-                                .window_based_work_area_offset
-                                .map_or("0".into(), |r| r.right.to_string().into()),
-                            window_based_work_area_offset_left: m
-                                .window_based_work_area_offset
-                                .map_or("0".into(), |r| r.left.to_string().into()),
-                            window_based_work_area_offset_limit: m
-                                .window_based_work_area_offset_limit
-                                .unwrap_or(1)
-                                .to_string()
-                                .into(),
-                            work_area_offset_top: m
-                                .work_area_offset
-                                .map_or("0".into(), |r| r.top.to_string().into()),
-                            work_area_offset_bottom: m
-                                .work_area_offset
-                                .map_or("0".into(), |r| r.bottom.to_string().into()),
-                            work_area_offset_right: m
-                                .work_area_offset
-                                .map_or("0".into(), |r| r.right.to_string().into()),
-                            work_area_offset_left: m
-                                .work_area_offset
-                                .map_or("0".into(), |r| r.left.to_string().into()),
-                        },
-                    )
-                })
-                .collect()
-        });
-
-        let workspaces_config_strs: HashMap<(usize, usize), WorkspaceConfigStrs> =
-            config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
-                monitors
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(idx, m)| {
-                        let hm: HashMap<_, _> = m
-                            .workspaces
-                            .iter()
-                            .enumerate()
-                            .map(|(w_idx, w)| {
-                                (
-                                    (idx, w_idx),
-                                    WorkspaceConfigStrs {
-                                        container_padding: w.container_padding.map_or(
-                                            komorebi::DEFAULT_CONTAINER_PADDING
-                                                .load(std::sync::atomic::Ordering::SeqCst)
-                                                .to_string()
-                                                .into(),
-                                            |v| v.to_string().into(),
-                                        ),
-                                        workspace_padding: w.workspace_padding.map_or(
-                                            komorebi::DEFAULT_WORKSPACE_PADDING
-                                                .load(std::sync::atomic::Ordering::SeqCst)
-                                                .to_string()
-                                                .into(),
-                                            |v| v.to_string().into(),
-                                        ),
-                                    },
-                                )
-                            })
-                            .collect();
-                        hm
-                    })
-                    .collect()
-            });
-
-        self.config_strs = Some(ConfigStrs {
-            global_config_strs,
-            monitors_config_strs,
-            workspaces_config_strs,
-        });
+        self.config_strs = Some(config_strs);
     }
 
     fn populate_config_helpers(&mut self, config: &komorebi::StaticConfig) {

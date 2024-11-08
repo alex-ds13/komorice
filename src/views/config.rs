@@ -22,12 +22,7 @@ lazy_static! {
         Arc::from(CrossBoundaryBehaviour::Monitor.to_string()),
         Arc::from(CrossBoundaryBehaviour::Workspace.to_string()),
     ];
-    static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS: [Arc<str>; 3] = [
-        Arc::clone(&NONE_STR),
-        Arc::from(FocusFollowsMouseImplementation::Windows.to_string()),
-        Arc::from(FocusFollowsMouseImplementation::Komorebi.to_string()),
-    ];
-    static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
+    static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
         DisplayOption(None),
         DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
         DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi)),
@@ -56,7 +51,7 @@ pub fn view(app: &Komofig) -> Element<Message> {
 }
 
 fn view_general(app: &Komofig) -> Element<Message> {
-    if let Some(config) = &app.config {
+    if let (Some(config), Some(config_strs)) = (&app.config, &app.config_strs) {
         opt_helpers::section_view(
             "General:",
             [
@@ -72,7 +67,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     "Cross Boundary Behaviour",
                     Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
                     &CROSS_BOUNDARY_BEHAVIOUR_OPTIONS[..],
-                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.cross_boundary_behaviour),
+                    Some(&config_strs.cross_boundary_behaviour),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::CrossBoundaryBehaviour(selected)),
                 ),
                 opt_helpers::choose(
@@ -82,21 +77,20 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     config.cross_monitor_move_behaviour,
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::CrossMonitorMoveBehaviour(selected)),
                 ),
-                opt_helpers::input(
+                opt_helpers::number(
                     "Default Container Padding",
                     Some("Global default container padding (default: 10)"),
-                    "",
-                    &app.config_strs.as_ref().unwrap().global_config_strs.default_container_padding,
+                    // "",
+                    // &app.config_strs.as_ref().unwrap().global_config_strs.default_container_padding,
+                    config.default_container_padding.unwrap_or(10),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::DefaultContainerPadding(value)),
-                    None
+                    // None
                 ),
-                opt_helpers::input(
+                opt_helpers::number(
                     "Default Workspace Padding",
                     Some("Global default workspace padding (default: 10)"),
-                    "",
-                    &app.config_strs.as_ref().unwrap().global_config_strs.default_workspace_padding,
+                    config.default_workspace_padding.unwrap_or(10),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::DefaultWorkspacePadding(value)),
-                    None
                 ),
                 opt_helpers::toggle(
                     "Float Override",
@@ -108,51 +102,36 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     "Focus Follows Mouse",
                     Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
                     &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
-                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.focus_follows_mouse),
-                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse(selected)),
-                ),
-                opt_helpers::choose(
-                    "Focus Follows Mouse",
-                    Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
-                    &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS1[..],
                     Some(DisplayOption(config.focus_follows_mouse)),
-                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse1(selected.0)),
+                    |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::FocusFollowsMouse(selected.0)),
                 ),
                 opt_helpers::expandable(
                     "Global Work Area Offset",
                     None,
                     [
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "left",
                             None,
-                            "",
-                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_left,
+                            config.global_work_area_offset.map_or(0, |r| r.left),
                             |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "top",
                             None,
-                            "",
-                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_top,
+                            config.global_work_area_offset.map_or(0, |r| r.top),
                             |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "bottom",
                             None,
-                            "",
-                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_bottom,
+                            config.global_work_area_offset.map_or(0, |r| r.bottom),
                             |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "right",
                             None,
-                            "",
-                            &app.config_strs.as_ref().unwrap().global_config_strs.global_work_area_offset_right,
+                            config.global_work_area_offset.map_or(0, |r| r.right),
                             |value| Message::GlobalConfigChanged(GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value)),
-                            None,
                         ),
                     ],
                     app.config_helpers.global_work_area_offset_expanded,
@@ -164,13 +143,11 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     config.mouse_follows_focus.unwrap_or(true),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::MouseFollowsFocus(value))
                 ),
-                opt_helpers::input(
+                opt_helpers::number(
                     "Resize Delta",
                     Some("Delta to resize windows by (default 50)"),
-                    "",
-                    &app.config_strs.as_ref().unwrap().global_config_strs.resize_delta,
+                    config.resize_delta.unwrap_or(50),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::ResizeDelta(value)),
-                    None
                 ),
                 opt_helpers::toggle(
                     "Transparency",
@@ -178,14 +155,12 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     config.transparency.unwrap_or_default(),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::Transparency(value))
                 ),
-                opt_helpers::input(
+                opt_helpers::number(
                     "Transparency Alpha",
                     Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
                                        Value must be greater or equal to 0.0"),
-                    "",
-                    &app.config_strs.as_ref().unwrap().global_config_strs.transparency_alpha,
+                    config.transparency_alpha.unwrap_or(200).into(),
                     |value| Message::GlobalConfigChanged(GlobalConfigChangeType::TransparencyAlpha(value)),
-                    None
                 ),
                 opt_helpers::choose(
                     "Window Container Behaviour",
@@ -198,7 +173,7 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     "Window Hiding Behaviour",
                     Some("Which Windows signal to use when hiding windows (default: Cloak)"),
                     &HIDING_BEHAVIOUR_OPTIONS[..],
-                    Some(&app.config_strs.as_ref().unwrap().global_config_strs.window_hiding_behaviour),
+                    Some(&config_strs.window_hiding_behaviour),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::WindowHidingBehaviour(selected)),
                 ),
             ],
@@ -209,14 +184,11 @@ fn view_general(app: &Komofig) -> Element<Message> {
 }
 
 pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
-    if let (Some(m_config_strs), Some(_m_config)) = (
-        app.config_strs
-            .as_ref()
-            .and_then(|c| c.monitors_config_strs.get(&monitor_idx)),
-        app.config
-            .as_ref()
-            .and_then(|c| c.monitors.as_ref().and_then(|m| m.get(monitor_idx))),
-    ) {
+    if let Some(m_config) = app
+        .config
+        .as_ref()
+        .and_then(|c| c.monitors.as_ref().and_then(|m| m.get(monitor_idx)))
+    {
         opt_helpers::section_view(
             text!("Monitor [{}]:", monitor_idx),
             [
@@ -224,37 +196,29 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                     "Window Based Work Area Offset",
                     Some("Window based work area offset (default: None)"),
                     [
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "left",
                             None,
-                            "",
-                            &m_config_strs.window_based_work_area_offset_left,
+                            m_config.window_based_work_area_offset.map_or(0, |r| r.left),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "top",
                             None,
-                            "",
-                            &m_config_strs.window_based_work_area_offset_top,
+                            m_config.window_based_work_area_offset.map_or(0, |r| r.top),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "bottom",
                             None,
-                            "",
-                            &m_config_strs.window_based_work_area_offset_bottom,
+                            m_config.window_based_work_area_offset.map_or(0, |r| r.bottom),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "right",
                             None,
-                            "",
-                            &m_config_strs.window_based_work_area_offset_right,
+                            m_config.window_based_work_area_offset.map_or(0, |r| r.right),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value)),
-                            None,
                         ),
                     ],
                     app.config_helpers
@@ -265,54 +229,44 @@ pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
                         ),
                     ),
                 ),
-                opt_helpers::input(
+                opt_helpers::number(
                     "Window Based Work Area Offset Limit",
                     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
-                    "",
-                    &m_config_strs.window_based_work_area_offset_limit,
+                    m_config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
                     move |value| {
                         Message::MonitorConfigChanged(
                             monitor_idx,
                             MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(value),
                         )
                     },
-                    None,
                 ),
                 opt_helpers::expandable(
                     "Work Area Offset",
                     Some("Monitor-specific work area offset (default: None)"),
                     [
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "left",
                             None,
-                            "",
-                            &m_config_strs.work_area_offset_left,
+                            m_config.work_area_offset.map_or(0, |r| r.left),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetLeft(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "top",
                             None,
-                            "",
-                            &m_config_strs.work_area_offset_top,
+                            m_config.work_area_offset.map_or(0, |r| r.top),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetTop(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "bottom",
                             None,
-                            "",
-                            &m_config_strs.work_area_offset_bottom,
+                            m_config.work_area_offset.map_or(0, |r| r.bottom),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetBottom(value)),
-                            None,
                         ),
-                        opt_helpers::input(
+                        opt_helpers::number(
                             "right",
                             None,
-                            "",
-                            &m_config_strs.work_area_offset_right,
+                            m_config.work_area_offset.map_or(0, |r| r.right),
                             move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetRight(value)),
-                            None,
                         ),
                     ],
                     app.config_helpers.monitors_work_area_offset_expanded[&monitor_idx],

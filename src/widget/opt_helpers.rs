@@ -36,6 +36,36 @@ pub fn input<'a>(
     }
 }
 
+///Creates a row with a label with `name` and a `number_input`
+///using the remainder parameters for it.
+///
+///If `Some(description)` is given, it will wrap the resulting
+///widget on a tooltip with the given `description`.
+pub fn number<'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: i32,
+    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+) -> Element<'a, Message> {
+    let element = row![
+        widget::label(name),
+        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change)
+            .style(|t: &iced::Theme, _| {
+                iced_aw::number_input::number_input::Style {
+                    button_background: Some(t.extended_palette().background.weak.color.into()),
+                    icon_color: t.extended_palette().background.weak.text,
+                }
+            }),
+    ]
+    .spacing(10)
+    .align_y(Center)
+    .into();
+    match description {
+        Some(desc) => widget::create_tooltip(element, desc),
+        None => element,
+    }
+}
+
 ///Creates a `checkbox` with `name` as label
 ///
 ///If `Some(description)` is given, it will wrap the resulting
