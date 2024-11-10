@@ -1,16 +1,12 @@
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
-    config::{ConfigHelpersAction, GlobalConfigChangeType, MonitorConfigChangeType},
+    config::{ConfigHelpersAction, GlobalConfigChangeType},
     widget::opt_helpers,
     Komofig, Message, NONE_STR,
 };
 
-use iced::{
-    widget::{text, Space},
-    Element,
-    Length::Shrink,
-};
+use iced::{widget::Space, Element, Length::Shrink};
 use komorebi::{
     CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
     WindowContainerBehaviour,
@@ -175,104 +171,6 @@ fn view_general(app: &Komofig) -> Element<Message> {
                     &HIDING_BEHAVIOUR_OPTIONS[..],
                     Some(&config_strs.window_hiding_behaviour),
                     |selected| Message::GlobalConfigChanged(GlobalConfigChangeType::WindowHidingBehaviour(selected)),
-                ),
-            ],
-        )
-    } else {
-        Space::new(Shrink, Shrink).into()
-    }
-}
-
-pub fn view_monitor(app: &Komofig, monitor_idx: usize) -> Element<Message> {
-    if let Some(m_config) = app
-        .config
-        .as_ref()
-        .and_then(|c| c.monitors.as_ref().and_then(|m| m.get(monitor_idx)))
-    {
-        opt_helpers::section_view(
-            text!("Monitor [{}]:", monitor_idx),
-            [
-                opt_helpers::expandable(
-                    "Window Based Work Area Offset",
-                    Some("Window based work area offset (default: None)"),
-                    [
-                        opt_helpers::number(
-                            "left",
-                            None,
-                            m_config.window_based_work_area_offset.map_or(0, |r| r.left),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value)),
-                        ),
-                        opt_helpers::number(
-                            "top",
-                            None,
-                            m_config.window_based_work_area_offset.map_or(0, |r| r.top),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value)),
-                        ),
-                        opt_helpers::number(
-                            "bottom",
-                            None,
-                            m_config.window_based_work_area_offset.map_or(0, |r| r.bottom),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value)),
-                        ),
-                        opt_helpers::number(
-                            "right",
-                            None,
-                            m_config.window_based_work_area_offset.map_or(0, |r| r.right),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value)),
-                        ),
-                    ],
-                    app.config_helpers
-                        .monitors_window_based_work_area_offset_expanded[&monitor_idx],
-                    Message::ConfigHelpers(
-                        ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(
-                            monitor_idx,
-                        ),
-                    ),
-                ),
-                opt_helpers::number(
-                    "Window Based Work Area Offset Limit",
-                    Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
-                    m_config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                    move |value| {
-                        Message::MonitorConfigChanged(
-                            monitor_idx,
-                            MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(value),
-                        )
-                    },
-                ),
-                opt_helpers::expandable(
-                    "Work Area Offset",
-                    Some("Monitor-specific work area offset (default: None)"),
-                    [
-                        opt_helpers::number(
-                            "left",
-                            None,
-                            m_config.work_area_offset.map_or(0, |r| r.left),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetLeft(value)),
-                        ),
-                        opt_helpers::number(
-                            "top",
-                            None,
-                            m_config.work_area_offset.map_or(0, |r| r.top),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetTop(value)),
-                        ),
-                        opt_helpers::number(
-                            "bottom",
-                            None,
-                            m_config.work_area_offset.map_or(0, |r| r.bottom),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetBottom(value)),
-                        ),
-                        opt_helpers::number(
-                            "right",
-                            None,
-                            m_config.work_area_offset.map_or(0, |r| r.right),
-                            move |value| Message::MonitorConfigChanged(monitor_idx, MonitorConfigChangeType::WorkAreaOffsetRight(value)),
-                        ),
-                    ],
-                    app.config_helpers.monitors_work_area_offset_expanded[&monitor_idx],
-                    Message::ConfigHelpers(ConfigHelpersAction::ToggleMonitorWorkAreaOffsetExpand(
-                        monitor_idx,
-                    )),
                 ),
             ],
         )

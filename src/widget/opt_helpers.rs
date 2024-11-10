@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::{widget, Message, BOLD_FONT};
+use crate::{widget, BOLD_FONT};
 
 use iced::{
     padding,
@@ -15,7 +15,7 @@ use iced::{
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn input<'a>(
+pub fn input<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     placeholder: &'a str,
@@ -41,7 +41,7 @@ pub fn input<'a>(
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn number<'a>(
+pub fn number<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     value: i32,
@@ -49,13 +49,12 @@ pub fn number<'a>(
 ) -> Element<'a, Message> {
     let element = row![
         widget::label(name),
-        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change)
-            .style(|t: &iced::Theme, _| {
-                iced_aw::number_input::number_input::Style {
-                    button_background: Some(t.extended_palette().background.weak.color.into()),
-                    icon_color: t.extended_palette().background.weak.text,
-                }
-            }),
+        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(|t: &iced::Theme, _| {
+            iced_aw::number_input::number_input::Style {
+                button_background: Some(t.extended_palette().background.weak.color.into()),
+                icon_color: t.extended_palette().background.weak.text,
+            }
+        }),
     ]
     .spacing(10)
     .align_y(Center)
@@ -70,7 +69,7 @@ pub fn number<'a>(
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn bool<'a>(
+pub fn bool<'a, Message: 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -87,7 +86,7 @@ pub fn bool<'a>(
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn toggle<'a>(
+pub fn toggle<'a, Message: 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -105,7 +104,7 @@ pub fn toggle<'a>(
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn choose<'a, T, V, L>(
+pub fn choose<'a, T, V, L, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     options: L,
@@ -133,7 +132,7 @@ where
 ///
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
-pub fn expandable<'a>(
+pub fn expandable<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     children: impl IntoIterator<Item = Element<'a, Message>>,
@@ -192,14 +191,14 @@ pub fn expandable<'a>(
 ///a row with the predefined spacing. It can have more than one option on it,
 ///for example if you want to have multiple checkboxes side by side, you should
 ///put them all on one section_row.
-pub fn section_row<'a>(
+pub fn section_row<'a, Message: 'a>(
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
     Row::with_children(contents).spacing(10).into()
 }
 
 ///Creates the view for a section of options with `title` and the `contents`.
-pub fn section_view<'a>(
+pub fn section_view<'a, Message: 'a>(
     title: impl Into<Text<'a>>,
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {

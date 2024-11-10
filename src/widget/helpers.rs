@@ -1,20 +1,18 @@
 #![allow(dead_code)]
-use crate::Message;
-
 use iced::{Center, Element, Theme};
 use iced::widget::{
     button, container, row, Button, Row, rule, Rule, tooltip, Text,
     TextInput, vertical_rule,
 };
 
-pub fn label(text: &str) -> Row<'_, Message> {
+pub fn label<Message>(text: &str) -> Row<'_, Message> {
     Row::new()
         .push(Text::new(text))
         .align_y(Center)
         .height(30.0)
 }
 
-pub fn input<'a>(
+pub fn input<'a, Message: Clone>(
     placeholder: &'a str,
     value: &'a str,
     on_input: impl Fn(String) -> Message + 'a,
@@ -30,7 +28,7 @@ pub fn input<'a>(
     .on_submit_maybe(on_submit)
 }
 
-pub fn button_with_icon<'a>(icon: Text<'a>, text: impl Into<Text<'a>>) -> Button<'a, Message> {
+pub fn button_with_icon<'a, Message: 'a>(icon: Text<'a>, text: impl Into<Text<'a>>) -> Button<'a, Message> {
     button(
         row![
             icon,
@@ -51,7 +49,7 @@ pub fn button_separator<'a>() -> Rule<'a> {
 }
 
 ///Wraps the `element` on a tooltip widget with `description`.
-pub fn create_tooltip<'a>(
+pub fn create_tooltip<'a, Message: 'a>(
     element: Element<'a, Message>,
     description: &'a str,
 ) -> Element<'a, Message>

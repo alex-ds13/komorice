@@ -1,13 +1,13 @@
 mod apperror;
 mod config;
 mod komorebi_connect;
+mod screen;
 mod views;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::config::{
-    ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType, MonitorConfigChangeType,
-};
+use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
+use crate::screen::monitor;
 use crate::widget::monitors_viewer;
 
 use std::{collections::HashMap, sync::Arc};
@@ -54,7 +54,7 @@ enum Message {
 
     // Global Editing config related Messages
     GlobalConfigChanged(GlobalConfigChangeType),
-    MonitorConfigChanged(usize, MonitorConfigChangeType),
+    MonitorConfigChanged(usize, monitor::Message),
     ConfigHelpers(ConfigHelpersAction),
 
     // Komorebi related Messages
@@ -71,6 +71,7 @@ struct Komofig {
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitor_to_config: Option<usize>,
+    monitors: HashMap<usize, monitor::Monitor>,
     config: Option<komorebi_client::StaticConfig>,
     config_helpers: ConfigHelpers,
     config_strs: Option<ConfigStrs>,
@@ -281,151 +282,9 @@ impl Komofig {
                     }
                 }
             },
-            Message::MonitorConfigChanged(idx, change_type) => {
-                match change_type {
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffset(_) => todo!(),
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetTop(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.window_based_work_area_offset {
-                                    offset.top = value;
-                                } else {
-                                    m.window_based_work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: value,
-                                        right: 0,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetBottom(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.window_based_work_area_offset {
-                                    offset.bottom = value;
-                                } else {
-                                    m.window_based_work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: 0,
-                                        right: 0,
-                                        bottom: value,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetRight(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.window_based_work_area_offset {
-                                    offset.right = value;
-                                } else {
-                                    m.window_based_work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: 0,
-                                        right: value,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLeft(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.window_based_work_area_offset {
-                                    offset.left = value;
-                                } else {
-                                    m.window_based_work_area_offset = Some(komorebi::Rect {
-                                        left: value,
-                                        top: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WindowBasedWorkAreaOffsetLimit(limit) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                m.window_based_work_area_offset_limit = Some(limit.try_into().unwrap_or_default());
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WorkAreaOffset(rect) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                m.work_area_offset = Some(rect);
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WorkAreaOffsetTop(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.work_area_offset {
-                                    offset.top = value;
-                                } else {
-                                    m.work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: value,
-                                        right: 0,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WorkAreaOffsetBottom(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.work_area_offset {
-                                    offset.bottom = value;
-                                } else {
-                                    m.work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: 0,
-                                        right: 0,
-                                        bottom: value,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WorkAreaOffsetRight(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.work_area_offset {
-                                    offset.right = value;
-                                } else {
-                                    m.work_area_offset = Some(komorebi::Rect {
-                                        left: 0,
-                                        top: 0,
-                                        right: value,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    MonitorConfigChangeType::WorkAreaOffsetLeft(value) => {
-                        if let Some(config) = &mut self.config {
-                            config::change_monitor_config(config, idx, |m| {
-                                if let Some(offset) = &mut m.work_area_offset {
-                                    offset.left = value;
-                                } else {
-                                    m.work_area_offset = Some(komorebi::Rect {
-                                        left: value,
-                                        top: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                    });
-                                }
-                            });
-                        }
-                    }
+            Message::MonitorConfigChanged(idx, message) => {
+                if let Some(m) = self.monitors.get_mut(&idx) {
+                    return m.update(message).map(move |message| Message::MonitorConfigChanged(idx, message));
                 }
             }
             Message::ConfigHelpers(action) => match action {
@@ -469,6 +328,7 @@ impl Komofig {
                     if self.config.is_none() {
                         self.populate_config_strs(&config);
                         self.populate_config_helpers(&config);
+                        self.populate_monitors(&config);
                         self.config = Some(config);
                     }
                     //TODO: show message on app to load external changes
@@ -512,7 +372,8 @@ impl Komofig {
                 .and_then(|idx| state.monitors.elements().get(idx))
             {
                 let monitor_idx = self.monitor_to_config.expect("unreachable");
-                col = col.push(views::config::view_monitor(self, monitor_idx));
+                let m = &self.monitors[&monitor_idx];
+                col = col.push(m.view().map(move |message| Message::MonitorConfigChanged(monitor_idx, message)));
                 col = col.push(column![
                     text!("Monitor {}:", monitor_idx).size(16),
                     text!("    -> Id: {}", monitor.id()),
@@ -636,5 +497,25 @@ impl Komofig {
                 },
             ),
         };
+    }
+
+    fn populate_monitors(&mut self, config: &komorebi::StaticConfig) {
+        self.monitors = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
+            monitors
+                .iter()
+                .enumerate()
+                .map(|(index, m)| {
+                    (
+                        index,
+                        monitor::Monitor {
+                            index,
+                            config: m.clone(),
+                            window_based_work_area_offset_expanded: false,
+                            work_area_offset_expanded: false,
+                        },
+                    )
+                })
+                .collect()
+        });
     }
 }

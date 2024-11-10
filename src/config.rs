@@ -42,21 +42,6 @@ pub enum GlobalConfigChangeType {
 }
 
 #[derive(Clone, Debug)]
-pub enum MonitorConfigChangeType {
-    WindowBasedWorkAreaOffset(komorebi::Rect),
-    WindowBasedWorkAreaOffsetTop(i32),
-    WindowBasedWorkAreaOffsetBottom(i32),
-    WindowBasedWorkAreaOffsetRight(i32),
-    WindowBasedWorkAreaOffsetLeft(i32),
-    WindowBasedWorkAreaOffsetLimit(i32),
-    WorkAreaOffset(komorebi::Rect),
-    WorkAreaOffsetTop(i32),
-    WorkAreaOffsetBottom(i32),
-    WorkAreaOffsetRight(i32),
-    WorkAreaOffsetLeft(i32),
-}
-
-#[derive(Clone, Debug)]
 pub enum WorkspaceConfigChangeType {
     ApplyWindowBasedWorkAreaOffset(bool),
     ContainerPadding(i32),
