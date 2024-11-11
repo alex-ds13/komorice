@@ -2,6 +2,7 @@ mod apperror;
 mod config;
 mod komorebi_connect;
 mod screen;
+mod utils;
 mod views;
 mod widget;
 
@@ -284,7 +285,9 @@ impl Komofig {
             },
             Message::MonitorConfigChanged(idx, message) => {
                 if let Some(m) = self.monitors.get_mut(&idx) {
-                    return m.update(message).map(move |message| Message::MonitorConfigChanged(idx, message));
+                    return m
+                        .update(message)
+                        .map(move |message| Message::MonitorConfigChanged(idx, message));
                 }
             }
             Message::ConfigHelpers(action) => match action {
@@ -373,7 +376,10 @@ impl Komofig {
             {
                 let monitor_idx = self.monitor_to_config.expect("unreachable");
                 let m = &self.monitors[&monitor_idx];
-                col = col.push(m.view().map(move |message| Message::MonitorConfigChanged(monitor_idx, message)));
+                col = col.push(
+                    m.view()
+                        .map(move |message| Message::MonitorConfigChanged(monitor_idx, message)),
+                );
                 col = col.push(column![
                     text!("Monitor {}:", monitor_idx).size(16),
                     text!("    -> Id: {}", monitor.id()),
@@ -512,6 +518,13 @@ impl Komofig {
                             config: m.clone(),
                             window_based_work_area_offset_expanded: false,
                             work_area_offset_expanded: false,
+                            show_workspaces: false,
+                            expanded_workspaces: m
+                                .workspaces
+                                .iter()
+                                .enumerate()
+                                .map(|(i, _)| (i, false))
+                                .collect(),
                         },
                     )
                 })

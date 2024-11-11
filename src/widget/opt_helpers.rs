@@ -133,14 +133,14 @@ where
 ///If `Some(description)` is given, it will wrap the resulting
 ///widget on a tooltip with the given `description`.
 pub fn expandable<'a, Message: 'a + Clone>(
-    name: &'a str,
+    name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     children: impl IntoIterator<Item = Element<'a, Message>>,
     expanded: bool,
     on_press: Message,
 ) -> Element<'a, Message> {
     let main = column![Row::new()
-        .push(name)
+        .push(name.into())
         .push(horizontal_space())
         .push(
             button(if expanded {

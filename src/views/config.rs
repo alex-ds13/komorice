@@ -2,8 +2,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     config::{ConfigHelpersAction, GlobalConfigChangeType},
+    utils::DisplayOption,
     widget::opt_helpers,
-    Komofig, Message, NONE_STR,
+    Komofig, Message,
 };
 
 use iced::{widget::Space, Element, Length::Shrink};
@@ -28,18 +29,6 @@ lazy_static! {
         Arc::from(HidingBehaviour::Hide.to_string()),
         Arc::from(HidingBehaviour::Minimize.to_string()),
     ];
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct DisplayOption<T>(pub Option<T>);
-
-impl<T: std::fmt::Display> std::fmt::Display for DisplayOption<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.0 {
-            Some(ref v) => write!(f, "{}", v),
-            None => write!(f, "{}", *NONE_STR),
-        }
-    }
 }
 
 pub fn view(app: &Komofig) -> Element<Message> {

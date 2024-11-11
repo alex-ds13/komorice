@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use super::workspace::{self, WorkspaceScreen};
 use crate::widget::opt_helpers;
 
 use iced::{widget::text, Element, Task};
@@ -8,6 +11,9 @@ pub enum Message {
     ConfigChange(ConfigChange),
     ToggleWindowBasedWorkAreaOffsetExpand,
     ToggleWorkAreaOffsetExpand,
+    Workspace(usize, workspace::Message),
+    ToggleWorkspacesExpand,
+    ToggleWorkspaceExpanded(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -30,6 +36,8 @@ pub struct Monitor {
     pub config: MonitorConfig,
     pub window_based_work_area_offset_expanded: bool,
     pub work_area_offset_expanded: bool,
+    pub show_workspaces: bool,
+    pub expanded_workspaces: HashMap<usize, bool>,
 }
 
 impl Monitor {
@@ -147,6 +155,23 @@ impl Monitor {
             Message::ToggleWorkAreaOffsetExpand => {
                 self.work_area_offset_expanded = !self.work_area_offset_expanded
             },
+            Message::Workspace(idx, message) => {
+                if let Some(workspace) = self.config.workspaces.get_mut(idx) {
+                    let action = workspace.update(message);
+                    match action {
+                        workspace::Action::None => {},
+                        workspace::Action::ToggleExpanded(idx) => {
+                            self.expanded_workspaces.entry(idx).and_modify(|expanded| *expanded = !*expanded).or_insert(true);
+                        },
+                    }
+                }
+            },
+            Message::ToggleWorkspacesExpand => {
+                self.show_workspaces = !self.show_workspaces;
+            },
+            Message::ToggleWorkspaceExpanded(idx) => {
+                self.expanded_workspaces.entry(idx).and_modify(|expanded| *expanded = !*expanded).or_insert(true);
+            },
         }
         Task::none()
     }
@@ -229,6 +254,25 @@ impl Monitor {
                     ],
                     self.work_area_offset_expanded,
                     Message::ToggleWorkAreaOffsetExpand,
+                ),
+                opt_helpers::expandable(
+                    "Workspaces:",
+                    None,
+                    self.config.workspaces
+                        .iter()
+                        .enumerate().
+                        map(|(i, w)| {
+                            let title = text!("Workspace [{}] - \"{}\":", i, w.name).size(20);
+                            opt_helpers::expandable(
+                                title,
+                                None,
+                                [w.view(i, self.expanded_workspaces[&i]).map(move |m| Message::Workspace(i, m))],
+                                self.expanded_workspaces[&i],
+                                Message::ToggleWorkspaceExpanded(i),
+                            )
+                        }),
+                    self.show_workspaces,
+                    Message::ToggleWorkspacesExpand,
                 ),
             ],
         )

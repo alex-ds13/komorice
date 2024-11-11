@@ -41,17 +41,6 @@ pub enum GlobalConfigChangeType {
     WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
 }
 
-#[derive(Clone, Debug)]
-pub enum WorkspaceConfigChangeType {
-    ApplyWindowBasedWorkAreaOffset(bool),
-    ContainerPadding(i32),
-    FloatOverride(bool),
-    Layout(komorebi::Layout),
-    Name(String),
-    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WorkspacePadding(i32),
-}
-
 pub struct ConfigStrs {
     pub cross_boundary_behaviour: Arc<str>,
     pub window_hiding_behaviour: Arc<str>,
