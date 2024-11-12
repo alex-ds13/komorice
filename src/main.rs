@@ -532,7 +532,7 @@ impl Komofig {
     pub fn theme(&self) -> Theme {
         match &self.theme {
             Some(theme) => theme.clone(),
-            None => Theme::CatppuccinMocha,
+            None => Theme::TokyoNightStorm,
         }
     }
 
