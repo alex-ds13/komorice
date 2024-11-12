@@ -1,4 +1,5 @@
 pub mod monitor;
+pub mod monitors;
 pub mod sidebar;
 pub mod workspace;
 

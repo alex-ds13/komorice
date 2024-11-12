@@ -8,24 +8,21 @@ mod widget;
 
 use crate::apperror::AppError;
 use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
-use crate::screen::{monitor, sidebar, Screen};
-use crate::widget::monitors_viewer;
+use crate::screen::{sidebar, Screen};
 
 use std::{collections::HashMap, sync::Arc};
 
 use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
 use iced::{
     padding,
-    widget::{
-        checkbox, column, container, horizontal_rule, row, scrollable, text, vertical_rule, Column,
-        Space,
-    },
+    widget::{column, container, horizontal_rule, row, scrollable, text, vertical_rule},
     Alignment::Center,
     Element, Font,
-    Length::{Fill, Shrink},
+    Length::Fill,
     Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
+use screen::monitors;
 
 lazy_static! {
     static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI Emoji");
@@ -58,21 +55,17 @@ enum Message {
     ThemeChanged(Theme),
 
     // View/Screen related Messages
-    ConfigMonitor(usize),
+    Monitors(monitors::Message),
     Sidebar(sidebar::Message),
 
     // Global Editing config related Messages
     GlobalConfigChanged(GlobalConfigChangeType),
-    MonitorConfigChanged(usize, monitor::Message),
     ConfigHelpers(ConfigHelpersAction),
 
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
-
-    // Komorebi Command Messages
-    ToggleWorkspaceTile(usize, usize, bool),
 }
 
 #[derive(Default)]
@@ -81,8 +74,7 @@ struct Komofig {
     main_screen: Screen,
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
-    monitor_to_config: Option<usize>,
-    monitors: HashMap<usize, monitor::Monitor>,
+    monitors: monitors::Monitors,
     config: Option<komorebi_client::StaticConfig>,
     config_helpers: ConfigHelpers,
     config_strs: Option<ConfigStrs>,
@@ -112,19 +104,12 @@ impl Komofig {
             Message::ThemeChanged(theme) => {
                 self.theme = Some(theme);
             }
-            Message::ConfigMonitor(idx) => {
-                if self.monitor_to_config == Some(idx) {
-                    self.monitor_to_config = None;
-                } else if let Some(state) = &self.komorebi_state {
-                    let monitors = state.monitors.elements();
-                    if let Some(monitor) = monitors.get(idx) {
-                        println!(
-                            "Go to ConfigMonitor screen for monitor {idx} with id: {}",
-                            monitor.device_id()
-                        );
-                        self.monitor_to_config = Some(idx);
-                    }
-                }
+            Message::Monitors(message) => {
+                let (action, task) = self.monitors.update(message, &self.komorebi_state);
+                let action_task = match action {
+                    monitors::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Monitors), action_task]);
             }
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
@@ -308,13 +293,6 @@ impl Komofig {
                     }
                 }
             },
-            Message::MonitorConfigChanged(idx, message) => {
-                if let Some(m) = self.monitors.get_mut(&idx) {
-                    return m
-                        .update(message)
-                        .map(move |message| Message::MonitorConfigChanged(idx, message));
-                }
-            }
             Message::ConfigHelpers(action) => match action {
                 ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand => {
                     self.config_helpers.global_work_area_offset_expanded =
@@ -365,15 +343,6 @@ impl Komofig {
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }
-            Message::ToggleWorkspaceTile(monitor_idx, workspace_idx, tile) => {
-                let _ = komorebi_client::send_message(
-                    &komorebi_client::SocketMessage::WorkspaceTiling(
-                        monitor_idx,
-                        workspace_idx,
-                        tile,
-                    ),
-                );
-            }
         }
         Task::none()
     }
@@ -413,78 +382,10 @@ impl Komofig {
                 .into()
             }
             Screen::General => scrollable(views::config::view(self)).into(),
-            Screen::Monitors => {
-                let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
-                    let mut col: Column<Message> =
-                        column![text("Monitors:").size(20)].padding(padding::all(5).right(20));
-
-                    let m: Element<Message> =
-                        monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
-                            .selected(self.monitor_to_config)
-                            .on_selected(Message::ConfigMonitor)
-                            .into();
-                    // let m = m.explain(color!(0x00aaff));
-                    let m = container(m)
-                        .padding(10)
-                        .width(Fill)
-                        .align_x(Center)
-                        .style(container::rounded_box);
-                    col = col.push(m);
-                    if let Some(monitor) = self
-                        .monitor_to_config
-                        .and_then(|idx| state.monitors.elements().get(idx))
-                    {
-                        let monitor_idx = self.monitor_to_config.expect("unreachable");
-                        let m = &self.monitors[&monitor_idx];
-                        col = col.push(m.view().map(move |message| {
-                            Message::MonitorConfigChanged(monitor_idx, message)
-                        }));
-                        col = col.push(column![
-                            text!("Monitor {}:", monitor_idx).size(16),
-                            text!("    -> Id: {}", monitor.id()),
-                            text!("    -> DeviceId: {}", monitor.device_id()),
-                            text!("    -> Device: {}", monitor.device()),
-                            text!("    -> Size: {:#?}", monitor.size()),
-                        ]);
-                        col = col.push(horizontal_rule(2.0));
-                        col = col.push(text("Workspaces:"));
-                        col = monitor.workspaces().iter().enumerate().fold(
-                            col,
-                            |col, (idx, workspace)| {
-                                col.push(column![
-                                    row![
-                                        text("Name: "),
-                                        text!("{}", workspace.name().as_ref().map_or("", |v| v))
-                                    ],
-                                    row![
-                                        text("Tile: "),
-                                        checkbox("Tile", *workspace.tile()).on_toggle(move |c| {
-                                            Message::ToggleWorkspaceTile(monitor_idx, idx, c)
-                                        })
-                                    ],
-                                ])
-                            },
-                        );
-                    }
-                    // let monitors = state.monitors.elements()
-                    //     .iter()
-                    //     .enumerate()
-                    //     .fold(col, |col, (idx, monitor)| {
-                    //         col.push(column![
-                    //             text!("Monitor {idx}:").size(16),
-                    //             text!("    -> Id: {}", monitor.id()),
-                    //             text!("    -> DeviceId: {}", monitor.device_id()),
-                    //             text!("    -> Device: {}", monitor.device()),
-                    //             text!("    -> Size: {:#?}", monitor.size()),
-                    //         ])
-                    //     });
-                    // monitors.into()
-                    scrollable(col).into()
-                } else {
-                    Space::new(Shrink, Shrink).into()
-                };
-                monitors
-            }
+            Screen::Monitors => self
+                .monitors
+                .view(&self.komorebi_state)
+                .map(Message::Monitors),
             Screen::Monitor(_) => todo!(),
             Screen::Workspaces(_) => todo!(),
             Screen::Workspace(_, _) => todo!(),
@@ -603,29 +504,6 @@ impl Komofig {
     }
 
     fn populate_monitors(&mut self, config: &komorebi::StaticConfig) {
-        self.monitors = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
-            monitors
-                .iter()
-                .enumerate()
-                .map(|(index, m)| {
-                    (
-                        index,
-                        monitor::Monitor {
-                            index,
-                            config: m.clone(),
-                            window_based_work_area_offset_expanded: false,
-                            work_area_offset_expanded: false,
-                            show_workspaces: false,
-                            expanded_workspaces: m
-                                .workspaces
-                                .iter()
-                                .enumerate()
-                                .map(|(i, _)| (i, false))
-                                .collect(),
-                        },
-                    )
-                })
-                .collect()
-        });
+        self.monitors = monitors::Monitors::new(config);
     }
 }
