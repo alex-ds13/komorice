@@ -13,7 +13,7 @@ use crate::widget::monitors_viewer;
 
 use std::{collections::HashMap, sync::Arc};
 
-use iced::widget::{center, horizontal_space, pick_list};
+use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
 use iced::{
     padding,
     widget::{
@@ -29,6 +29,11 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI Emoji");
+    static ref ITALIC_FONT: Font = {
+        let mut f = Font::with_name("Segoe UI");
+        f.style = iced::font::Style::Italic;
+        f
+    };
     static ref BOLD_FONT: Font = {
         let mut f = Font::with_name("Segoe UI");
         f.weight = iced::font::Weight::Bold;
@@ -382,22 +387,32 @@ impl Komofig {
                     .width(Fill)
                     .align_x(Center);
                 let col = column![title, subtitle].spacing(20);
-                center(col).padding(20).into()
+                stack([
+                    center(col).padding(20).into(),
+                    column![
+                        vertical_space(),
+                        container(
+                            text!(
+                                "Config was {} loaded from \"{}\"!",
+                                if self.config.is_some() {
+                                    "successfully"
+                                } else {
+                                    "not"
+                                },
+                                config::config_path().display()
+                            )
+                            .font(*ITALIC_FONT)
+                            .size(12)
+                        )
+                        .width(Fill)
+                        .align_x(Center)
+                        .align_y(iced::Bottom)
+                    ]
+                    .into(),
+                ])
+                .into()
             }
-            Screen::General => scrollable(column![
-                text("Config:").size(20),
-                text!(
-                    "Config was {} loaded!",
-                    if self.config.is_some() {
-                        "successfully"
-                    } else {
-                        "not"
-                    }
-                ),
-                horizontal_rule(8.0),
-                views::config::view(self),
-            ])
-            .into(),
+            Screen::General => scrollable(views::config::view(self)).into(),
             Screen::Monitors => {
                 let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
                     let mut col: Column<Message> =
@@ -505,21 +520,29 @@ impl Komofig {
                     pick_list(Theme::ALL, self.theme.as_ref(), Message::ThemeChanged),
                 ]
                 .spacing(10);
-                column![
-                    title,
-                    horizontal_rule(2.0),
-                    theme
-                ]
-                .spacing(10)
-                .padding(20)
-                .width(Fill)
-                .height(Fill)
-                .into()
+                column![title, horizontal_rule(2.0), theme]
+                    .spacing(10)
+                    .padding(20)
+                    .width(Fill)
+                    .height(Fill)
+                    .into()
             }
         };
 
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
-        row![sidebar, vertical_rule(2.0), main_screen]
+        let save_buttons = row![
+            horizontal_space(),
+            button("Save"),
+            button("Discard Changes"),
+        ]
+        .spacing(10)
+        .width(Fill);
+        let right_col = column![
+            container(main_screen).height(Fill),
+            container(horizontal_rule(2.0)).padding(padding::top(5).bottom(5)),
+            save_buttons,
+        ];
+        row![sidebar, vertical_rule(2.0), right_col]
             .spacing(10)
             .padding(10)
             .into()
