@@ -10,15 +10,15 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref DEFAULT_LAYOUT_OPTIONS: [DisplayOption<DefaultLayout>; 9] = [
-        DisplayOption(None, "Floating"),
-        DisplayOption(Some(DefaultLayout::BSP), "Floating"),
-        DisplayOption(Some(DefaultLayout::VerticalStack), "Floating"),
-        DisplayOption(Some(DefaultLayout::RightMainVerticalStack), "Floating"),
-        DisplayOption(Some(DefaultLayout::UltrawideVerticalStack), "Floating"),
-        DisplayOption(Some(DefaultLayout::HorizontalStack), "Floating"),
-        DisplayOption(Some(DefaultLayout::Rows), "Floating"),
-        DisplayOption(Some(DefaultLayout::Columns), "Floating"),
-        DisplayOption(Some(DefaultLayout::Grid), "Floating"),
+        DisplayOption(None, "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::VerticalStack), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::RightMainVerticalStack), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::UltrawideVerticalStack), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::HorizontalStack), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::Rows), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::Columns), "[None] (Floating)"),
+        DisplayOption(Some(DefaultLayout::Grid), "[None] (Floating)"),
     ];
 }
 
@@ -88,7 +88,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             "Layout:",
             Some("Layout (default: BSP)"),
             &DEFAULT_LAYOUT_OPTIONS[..],
-            Some(DisplayOption(self.layout, "Floating")),
+            Some(DisplayOption(self.layout, "[None] (Floating)")),
             |s| Message::ConfigChange(ConfigChange::Layout(s.0)),
         );
         // opt_helpers::expandable(
