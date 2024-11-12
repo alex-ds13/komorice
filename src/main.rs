@@ -8,11 +8,12 @@ mod widget;
 
 use crate::apperror::AppError;
 use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
-use crate::screen::monitor;
+use crate::screen::{monitor, sidebar};
 use crate::widget::monitors_viewer;
 
 use std::{collections::HashMap, sync::Arc};
 
+use iced::widget::center;
 use iced::{
     padding,
     widget::{
@@ -50,8 +51,9 @@ enum Message {
     // General App Messages
     AppError(AppError),
 
-    // View related Messages
+    // View/Screen related Messages
     ConfigMonitor(usize),
+    Sidebar(sidebar::Message),
 
     // Global Editing config related Messages
     GlobalConfigChanged(GlobalConfigChangeType),
@@ -67,8 +69,25 @@ enum Message {
     ToggleWorkspaceTile(usize, usize, bool),
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Screen {
+    #[default]
+    Home,
+    General,
+    Monitors,
+    Monitor(usize),
+    Workspaces(usize),
+    Workspace(usize, usize),
+    Border,
+    Stackbar,
+    Transparency,
+    Rules,
+}
+
 #[derive(Default)]
 struct Komofig {
+    sidebar: sidebar::Sidebar,
+    main_screen: Screen,
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitor_to_config: Option<usize>,
@@ -111,6 +130,17 @@ impl Komofig {
                         self.monitor_to_config = Some(idx);
                     }
                 }
+            }
+            Message::Sidebar(message) => {
+                let (action, task) = self.sidebar.update(message);
+                let action_task = match action {
+                    sidebar::Action::None => Task::none(),
+                    sidebar::Action::UpdateMainScreen(screen) => {
+                        self.main_screen = screen;
+                        Task::none()
+                    }
+                };
+                return Task::batch([task.map(Message::Sidebar), action_task]);
             }
             Message::GlobalConfigChanged(change_type) => match change_type {
                 GlobalConfigChangeType::AppSpecificConfigurationPath(path) => {
@@ -354,101 +384,124 @@ impl Komofig {
     }
 
     pub fn view(&self) -> Element<Message> {
-        let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
-            let mut col: Column<Message> =
-                column![text("Monitors:").size(20)].padding(padding::all(5).right(20));
-
-            let m: Element<Message> =
-                monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
-                    .selected(self.monitor_to_config)
-                    .on_selected(Message::ConfigMonitor)
-                    .into();
-            // let m = m.explain(color!(0x00aaff));
-            let m = container(m)
-                .padding(10)
-                .width(Fill)
-                .align_x(Center)
-                .style(container::rounded_box);
-            col = col.push(m);
-            if let Some(monitor) = self
-                .monitor_to_config
-                .and_then(|idx| state.monitors.elements().get(idx))
-            {
-                let monitor_idx = self.monitor_to_config.expect("unreachable");
-                let m = &self.monitors[&monitor_idx];
-                col = col.push(
-                    m.view()
-                        .map(move |message| Message::MonitorConfigChanged(monitor_idx, message)),
-                );
-                col = col.push(column![
-                    text!("Monitor {}:", monitor_idx).size(16),
-                    text!("    -> Id: {}", monitor.id()),
-                    text!("    -> DeviceId: {}", monitor.device_id()),
-                    text!("    -> Device: {}", monitor.device()),
-                    text!("    -> Size: {:#?}", monitor.size()),
-                ]);
-                col = col.push(horizontal_rule(2.0));
-                col = col.push(text("Workspaces:"));
-                col = monitor
-                    .workspaces()
-                    .iter()
-                    .enumerate()
-                    .fold(col, |col, (idx, workspace)| {
-                        col.push(column![
-                            row![
-                                text("Name: "),
-                                text!("{}", workspace.name().as_ref().map_or("", |v| v))
-                            ],
-                            row![
-                                text("Tile: "),
-                                checkbox("Tile", *workspace.tile()).on_toggle(move |c| {
-                                    Message::ToggleWorkspaceTile(monitor_idx, idx, c)
-                                })
-                            ],
-                        ])
-                    });
+        let main_screen: Element<Message> = match self.main_screen {
+            Screen::Home => {
+                let title = text("🍉Komorice🍚").size(75).width(Fill).align_x(Center);
+                let subtitle = text("A komorebi GUI ricing configurator!")
+                    .size(20)
+                    .width(Fill)
+                    .align_x(Center);
+                let col = column![title, subtitle].spacing(20);
+                center(col).padding(20).into()
             }
-            // let monitors = state.monitors.elements()
-            //     .iter()
-            //     .enumerate()
-            //     .fold(col, |col, (idx, monitor)| {
-            //         col.push(column![
-            //             text!("Monitor {idx}:").size(16),
-            //             text!("    -> Id: {}", monitor.id()),
-            //             text!("    -> DeviceId: {}", monitor.device_id()),
-            //             text!("    -> Device: {}", monitor.device()),
-            //             text!("    -> Size: {:#?}", monitor.size()),
-            //         ])
-            //     });
-            // monitors.into()
-            scrollable(col).into()
-        } else {
-            Space::new(Shrink, Shrink).into()
-        };
-        let col = column![
-            text("Config:").size(20),
-            text!(
-                "Config was {} loaded!",
-                if self.config.is_some() {
-                    "successfully"
+            Screen::General => {
+                let col = column![
+                    text("Config:").size(20),
+                    text!(
+                        "Config was {} loaded!",
+                        if self.config.is_some() {
+                            "successfully"
+                        } else {
+                            "not"
+                        }
+                    ),
+                    horizontal_rule(8.0),
+                    views::config::view(self),
+                    horizontal_rule(8.0),
+                    text("Notifications:").size(20),
+                ];
+                let notifications = self
+                    .notifications
+                    .iter()
+                    .fold(col, |col, notification| {
+                        col.push(text(format!("{:?}", notification)))
+                    })
+                    .padding(padding::all(5).right(20));
+                let scrollable = scrollable(notifications).width(Fill);
+                scrollable.into()
+            }
+            Screen::Monitors => {
+                let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
+                    let mut col: Column<Message> =
+                        column![text("Monitors:").size(20)].padding(padding::all(5).right(20));
+
+                    let m: Element<Message> =
+                        monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
+                            .selected(self.monitor_to_config)
+                            .on_selected(Message::ConfigMonitor)
+                            .into();
+                    // let m = m.explain(color!(0x00aaff));
+                    let m = container(m)
+                        .padding(10)
+                        .width(Fill)
+                        .align_x(Center)
+                        .style(container::rounded_box);
+                    col = col.push(m);
+                    if let Some(monitor) = self
+                        .monitor_to_config
+                        .and_then(|idx| state.monitors.elements().get(idx))
+                    {
+                        let monitor_idx = self.monitor_to_config.expect("unreachable");
+                        let m = &self.monitors[&monitor_idx];
+                        col = col.push(m.view().map(move |message| {
+                            Message::MonitorConfigChanged(monitor_idx, message)
+                        }));
+                        col = col.push(column![
+                            text!("Monitor {}:", monitor_idx).size(16),
+                            text!("    -> Id: {}", monitor.id()),
+                            text!("    -> DeviceId: {}", monitor.device_id()),
+                            text!("    -> Device: {}", monitor.device()),
+                            text!("    -> Size: {:#?}", monitor.size()),
+                        ]);
+                        col = col.push(horizontal_rule(2.0));
+                        col = col.push(text("Workspaces:"));
+                        col = monitor.workspaces().iter().enumerate().fold(
+                            col,
+                            |col, (idx, workspace)| {
+                                col.push(column![
+                                    row![
+                                        text("Name: "),
+                                        text!("{}", workspace.name().as_ref().map_or("", |v| v))
+                                    ],
+                                    row![
+                                        text("Tile: "),
+                                        checkbox("Tile", *workspace.tile()).on_toggle(move |c| {
+                                            Message::ToggleWorkspaceTile(monitor_idx, idx, c)
+                                        })
+                                    ],
+                                ])
+                            },
+                        );
+                    }
+                    // let monitors = state.monitors.elements()
+                    //     .iter()
+                    //     .enumerate()
+                    //     .fold(col, |col, (idx, monitor)| {
+                    //         col.push(column![
+                    //             text!("Monitor {idx}:").size(16),
+                    //             text!("    -> Id: {}", monitor.id()),
+                    //             text!("    -> DeviceId: {}", monitor.device_id()),
+                    //             text!("    -> Device: {}", monitor.device()),
+                    //             text!("    -> Size: {:#?}", monitor.size()),
+                    //         ])
+                    //     });
+                    // monitors.into()
+                    scrollable(col).into()
                 } else {
-                    "not"
-                }
-            ),
-            horizontal_rule(8.0),
-            views::config::view(self),
-            horizontal_rule(8.0),
-            text("Notifications:").size(20),
-        ];
-        let notifications = self
-            .notifications
-            .iter()
-            .fold(col, |col, notification| {
-                col.push(text(format!("{:?}", notification)))
-            })
-            .padding(padding::all(5).right(20));
-        let scrollable = scrollable(notifications).width(Fill);
-        row![monitors, vertical_rule(2.0), scrollable,]
+                    Space::new(Shrink, Shrink).into()
+                };
+                monitors
+            }
+            Screen::Monitor(_) => todo!(),
+            Screen::Workspaces(_) => todo!(),
+            Screen::Workspace(_, _) => todo!(),
+            Screen::Border => center(text("Border").size(50)).into(),
+            Screen::Stackbar => center(text("Stackbar").size(50)).into(),
+            Screen::Transparency => center(text("Transparency").size(50)).into(),
+            Screen::Rules => center(text("Rules").size(50)).into(),
+        };
+        let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
+        row![sidebar, vertical_rule(2.0), main_screen]
             .spacing(10)
             .padding(10)
             .into()
