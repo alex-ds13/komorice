@@ -8,12 +8,12 @@ mod widget;
 
 use crate::apperror::AppError;
 use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
-use crate::screen::{monitor, sidebar};
+use crate::screen::{monitor, sidebar, Screen};
 use crate::widget::monitors_viewer;
 
 use std::{collections::HashMap, sync::Arc};
 
-use iced::widget::center;
+use iced::widget::{center, horizontal_space, pick_list};
 use iced::{
     padding,
     widget::{
@@ -50,6 +50,7 @@ fn main() -> iced::Result {
 enum Message {
     // General App Messages
     AppError(AppError),
+    ThemeChanged(Theme),
 
     // View/Screen related Messages
     ConfigMonitor(usize),
@@ -69,21 +70,6 @@ enum Message {
     ToggleWorkspaceTile(usize, usize, bool),
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub enum Screen {
-    #[default]
-    Home,
-    General,
-    Monitors,
-    Monitor(usize),
-    Workspaces(usize),
-    Workspace(usize, usize),
-    Border,
-    Stackbar,
-    Transparency,
-    Rules,
-}
-
 #[derive(Default)]
 struct Komofig {
     sidebar: sidebar::Sidebar,
@@ -98,6 +84,7 @@ struct Komofig {
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
+    theme: Option<Theme>,
 }
 
 impl Komofig {
@@ -116,6 +103,9 @@ impl Komofig {
             Message::AppError(apperror) => {
                 println!("Received AppError: {apperror:#?}");
                 self.errors.push(apperror);
+            }
+            Message::ThemeChanged(theme) => {
+                self.theme = Some(theme);
             }
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
@@ -394,32 +384,20 @@ impl Komofig {
                 let col = column![title, subtitle].spacing(20);
                 center(col).padding(20).into()
             }
-            Screen::General => {
-                let col = column![
-                    text("Config:").size(20),
-                    text!(
-                        "Config was {} loaded!",
-                        if self.config.is_some() {
-                            "successfully"
-                        } else {
-                            "not"
-                        }
-                    ),
-                    horizontal_rule(8.0),
-                    views::config::view(self),
-                    horizontal_rule(8.0),
-                    text("Notifications:").size(20),
-                ];
-                let notifications = self
-                    .notifications
-                    .iter()
-                    .fold(col, |col, notification| {
-                        col.push(text(format!("{:?}", notification)))
-                    })
-                    .padding(padding::all(5).right(20));
-                let scrollable = scrollable(notifications).width(Fill);
-                scrollable.into()
-            }
+            Screen::General => scrollable(column![
+                text("Config:").size(20),
+                text!(
+                    "Config was {} loaded!",
+                    if self.config.is_some() {
+                        "successfully"
+                    } else {
+                        "not"
+                    }
+                ),
+                horizontal_rule(8.0),
+                views::config::view(self),
+            ])
+            .into(),
             Screen::Monitors => {
                 let monitors: Element<Message> = if let Some(state) = &self.komorebi_state {
                     let mut col: Column<Message> =
@@ -499,7 +477,47 @@ impl Komofig {
             Screen::Stackbar => center(text("Stackbar").size(50)).into(),
             Screen::Transparency => center(text("Transparency").size(50)).into(),
             Screen::Rules => center(text("Rules").size(50)).into(),
+            Screen::Debug => {
+                let notifications = scrollable(
+                    self.notifications
+                        .iter()
+                        .fold(column![], |col, notification| {
+                            col.push(text(format!("-> {:?}", notification)))
+                        })
+                        .spacing(10)
+                        .width(Fill)
+                        .padding(padding::all(5).right(20)),
+                );
+                column![
+                    text("Notifications:").font(*BOLD_FONT).size(30),
+                    horizontal_rule(2.0),
+                    notifications,
+                ]
+                .spacing(10)
+                .padding(20)
+                .into()
+            }
+            Screen::Settings => {
+                let title = text("Settings:").size(20).font(*BOLD_FONT);
+                let theme = row![
+                    "Theme:",
+                    horizontal_space(),
+                    pick_list(Theme::ALL, self.theme.as_ref(), Message::ThemeChanged),
+                ]
+                .spacing(10);
+                column![
+                    title,
+                    horizontal_rule(2.0),
+                    theme
+                ]
+                .spacing(10)
+                .padding(20)
+                .width(Fill)
+                .height(Fill)
+                .into()
+            }
         };
+
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
         row![sidebar, vertical_rule(2.0), main_screen]
             .spacing(10)
@@ -512,7 +530,10 @@ impl Komofig {
     }
 
     pub fn theme(&self) -> Theme {
-        Theme::TokyoNightStorm
+        match &self.theme {
+            Some(theme) => theme.clone(),
+            None => Theme::CatppuccinMocha,
+        }
     }
 
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {

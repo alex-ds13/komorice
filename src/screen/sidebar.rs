@@ -37,13 +37,15 @@ impl Sidebar {
     }
 
     pub fn view(&self) -> Element<Message> {
-        let home = screen_button("Home", Screen::Home);
-        let general = screen_button("General", Screen::General);
-        let monitors = screen_button("Monitors", Screen::Monitors);
-        let border = screen_button("Border", Screen::Border);
-        let stackbar = screen_button("Stackbar", Screen::Stackbar);
-        let transparency = screen_button("Transparency", Screen::Transparency);
-        let rules = screen_button("Rules", Screen::Rules);
+        let home = screen_button(Screen::Home, &self.selected_screen);
+        let general = screen_button(Screen::General, &self.selected_screen);
+        let monitors = screen_button(Screen::Monitors, &self.selected_screen);
+        let border = screen_button(Screen::Border, &self.selected_screen);
+        let stackbar = screen_button(Screen::Stackbar, &self.selected_screen);
+        let transparency = screen_button(Screen::Transparency, &self.selected_screen);
+        let rules = screen_button(Screen::Rules, &self.selected_screen);
+        let debug = screen_button(Screen::Debug, &self.selected_screen);
+        let settings = screen_button(Screen::Settings, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
         column![
             fixed_width,
@@ -54,6 +56,8 @@ impl Sidebar {
             stackbar,
             transparency,
             rules,
+            debug,
+            settings,
         ]
         .spacing(10)
         .width(Shrink)
@@ -61,10 +65,18 @@ impl Sidebar {
     }
 }
 
-fn screen_button(name: &str, screen: Screen) -> Container<Message> {
+fn screen_button(screen: Screen, selected: &Screen) -> Container<Message> {
+    let is_selected = &screen == selected;
     container(
-        button(name)
+        button(&screen)
             .on_press(Message::SelectScreen(screen))
+            .style(move |t, s| {
+                if is_selected {
+                    button::primary(t, s)
+                } else {
+                    button::secondary(t, s)
+                }
+            })
             .width(Fill),
     )
     .width(Fill)
