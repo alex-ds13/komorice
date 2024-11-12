@@ -350,7 +350,16 @@ impl Komofig {
     pub fn view(&self) -> Element<Message> {
         let main_screen: Element<Message> = match self.main_screen {
             Screen::Home => {
-                let title = text("🍉Komorice🍚").size(75).width(Fill).align_x(Center);
+                let title = container(
+                    row![
+                        text("🍉").size(70),
+                        text("Komorice").size(75),
+                        text("🍚").size(70)
+                    ]
+                    .align_y(Center),
+                )
+                .width(Fill)
+                .align_x(Center);
                 let subtitle = text("A komorebi GUI ricing configurator!")
                     .size(20)
                     .width(Fill)
