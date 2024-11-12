@@ -49,15 +49,11 @@ pub struct ConfigStrs {
 #[derive(Debug, Default)]
 pub struct ConfigHelpers {
     pub global_work_area_offset_expanded: bool,
-    pub monitors_window_based_work_area_offset_expanded: HashMap<usize, bool>,
-    pub monitors_work_area_offset_expanded: HashMap<usize, bool>,
 }
 
 #[derive(Clone, Debug)]
 pub enum ConfigHelpersAction {
     ToggleGlobalWorkAreaOffsetExpand,
-    ToggleMonitorWindowBasedWorkAreaOffsetExpand(usize),
-    ToggleMonitorWorkAreaOffsetExpand(usize),
 }
 
 pub fn change_monitor_config(config: &mut StaticConfig, idx: usize, f: impl Fn(&mut MonitorConfig)) {

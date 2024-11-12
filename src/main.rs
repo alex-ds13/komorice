@@ -10,7 +10,7 @@ use crate::apperror::AppError;
 use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
 use crate::screen::{sidebar, Screen};
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
 use iced::{
@@ -298,20 +298,6 @@ impl Komofig {
                     self.config_helpers.global_work_area_offset_expanded =
                         !self.config_helpers.global_work_area_offset_expanded;
                 }
-                ConfigHelpersAction::ToggleMonitorWindowBasedWorkAreaOffsetExpand(monitor_idx) => {
-                    self.config_helpers
-                        .monitors_window_based_work_area_offset_expanded
-                        .entry(monitor_idx)
-                        .and_modify(|v| *v = !*v)
-                        .or_insert(true);
-                }
-                ConfigHelpersAction::ToggleMonitorWorkAreaOffsetExpand(monitor_idx) => {
-                    self.config_helpers
-                        .monitors_work_area_offset_expanded
-                        .entry(monitor_idx)
-                        .and_modify(|v| *v = !*v)
-                        .or_insert(true);
-                }
             },
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
@@ -333,7 +319,7 @@ impl Komofig {
                     // self.loaded_config = Some(Arc::new(config));
                     if self.config.is_none() {
                         self.populate_config_strs(&config);
-                        self.populate_config_helpers(&config);
+                        self.populate_config_helpers();
                         self.populate_monitors(&config);
                         self.config = Some(config);
                     }
@@ -486,29 +472,9 @@ impl Komofig {
         self.config_strs = Some(config_strs);
     }
 
-    fn populate_config_helpers(&mut self, config: &komorebi::StaticConfig) {
+    fn populate_config_helpers(&mut self) {
         self.config_helpers = ConfigHelpers {
             global_work_area_offset_expanded: false,
-            monitors_window_based_work_area_offset_expanded: config.monitors.as_ref().map_or(
-                HashMap::new(),
-                |monitors| {
-                    monitors
-                        .iter()
-                        .enumerate()
-                        .map(|(i, _)| (i, false))
-                        .collect()
-                },
-            ),
-            monitors_work_area_offset_expanded: config.monitors.as_ref().map_or(
-                HashMap::new(),
-                |monitors| {
-                    monitors
-                        .iter()
-                        .enumerate()
-                        .map(|(i, _)| (i, false))
-                        .collect()
-                },
-            ),
         };
     }
 
