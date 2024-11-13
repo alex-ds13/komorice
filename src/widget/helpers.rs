@@ -5,9 +5,9 @@ use iced::widget::{
     TextInput, vertical_rule,
 };
 
-pub fn label<Message>(text: &str) -> Row<'_, Message> {
+pub fn label<'a, Message>(text: impl Into<Text<'a>>) -> Row<'a, Message> {
     Row::new()
-        .push(Text::new(text))
+        .push(text.into())
         .align_y(Center)
         .height(30.0)
 }
