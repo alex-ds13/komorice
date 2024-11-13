@@ -46,8 +46,11 @@ impl Monitors {
                             index,
                             config: m.clone(),
                             window_based_work_area_offset_expanded: false,
+                            window_based_work_area_offset_hovered: false,
                             work_area_offset_expanded: false,
+                            work_area_offset_hovered: false,
                             show_workspaces: false,
+                            show_workspaces_hovered: false,
                             expanded_workspaces: m
                                 .workspaces
                                 .iter()

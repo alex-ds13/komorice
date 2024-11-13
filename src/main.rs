@@ -283,6 +283,7 @@ impl Komofig {
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
         let general = general::General {
             global_work_area_offset_expanded: false,
+            global_work_area_offset_hovered: false,
             cross_boundary_behaviour: config
                 .cross_boundary_behaviour
                 .unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor)

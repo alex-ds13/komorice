@@ -184,7 +184,9 @@ pub fn expandable<'a, Message: 'a + Clone>(
     description: Option<&'a str>,
     children: impl IntoIterator<Item = Element<'a, Message>>,
     expanded: bool,
+    hovered: bool,
     on_press: Message,
+    on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
     let main = column![Row::new()
         .push(label_with_description(name, description))
@@ -195,9 +197,15 @@ pub fn expandable<'a, Message: 'a + Clone>(
                 text("▼").size(10)
             })
             .on_press(on_press.clone())
-            .style(|t, s| {
-                if matches!(s, button::Status::Hovered) {
-                    button::secondary(t, s)
+            .padding(padding::Padding {
+                top: 10.0,
+                right: 10.0,
+                bottom: 5.0,
+                left: 10.0,
+            })
+            .style(move |t, s| {
+                if hovered {
+                    button::secondary(t, button::Status::Active)
                 } else {
                     button::text(t, s)
                 }
@@ -216,6 +224,8 @@ pub fn expandable<'a, Message: 'a + Clone>(
         });
         let wrapped_top = mouse_area(top)
             .on_press(on_press)
+            .on_enter(on_hover(true))
+            .on_exit(on_hover(false))
             .interaction(iced::mouse::Interaction::Pointer);
         let inner = Column::with_children(children)
             .spacing(10)
@@ -231,6 +241,8 @@ pub fn expandable<'a, Message: 'a + Clone>(
     } else {
         mouse_area(opt_box(main))
             .on_press(on_press)
+            .on_enter(on_hover(true))
+            .on_exit(on_hover(false))
             .interaction(iced::mouse::Interaction::Pointer)
             .into()
     };

@@ -2,7 +2,7 @@ use crate::{utils::DisplayOption, widget::opt_helpers};
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use iced::{widget::{scrollable, Space}, Element, Length::Shrink, Task};
+use iced::{widget::Space, Element, Length::Shrink, Task};
 use komorebi::{
     CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
     WindowContainerBehaviour,
@@ -31,6 +31,7 @@ lazy_static! {
 pub enum Message {
     ConfigChange(ConfigChange),
     ToggleGlobalWorkAreaOffsetExpand,
+    ToggleGlobalWorkAreaOffsetHover(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -65,6 +66,7 @@ pub enum Action {
 #[derive(Debug, Default)]
 pub struct General {
     pub global_work_area_offset_expanded: bool,
+    pub global_work_area_offset_hovered: bool,
     pub cross_boundary_behaviour: Arc<str>,
     pub window_hiding_behaviour: Arc<str>,
 }
@@ -201,7 +203,10 @@ impl General {
             },
             Message::ToggleGlobalWorkAreaOffsetExpand => {
                 self.global_work_area_offset_expanded = !self.global_work_area_offset_expanded;
-            }
+            },
+            Message::ToggleGlobalWorkAreaOffsetHover(hover) => {
+                self.global_work_area_offset_hovered = hover;
+            },
         }
         (Action::None, Task::none())
     }
@@ -288,7 +293,9 @@ impl General {
                             ),
                         ],
                         self.global_work_area_offset_expanded,
+                        self.global_work_area_offset_hovered,
                         Message::ToggleGlobalWorkAreaOffsetExpand,
+                        Message::ToggleGlobalWorkAreaOffsetHover,
                     ),
                     opt_helpers::toggle(
                         "Mouse Follows Focus",

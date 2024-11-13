@@ -10,10 +10,14 @@ use komorebi::MonitorConfig;
 pub enum Message {
     ConfigChange(ConfigChange),
     ToggleWindowBasedWorkAreaOffsetExpand,
+    ToggleWindowBasedWorkAreaOffsetHover(bool),
     ToggleWorkAreaOffsetExpand,
+    ToggleWorkAreaOffsetHover(bool),
     Workspace(usize, workspace::Message),
     ToggleWorkspacesExpand,
+    ToggleWorkspacesHover(bool),
     ToggleWorkspaceExpanded(usize),
+    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -35,8 +39,11 @@ pub struct Monitor {
     pub index: usize,
     pub config: MonitorConfig,
     pub window_based_work_area_offset_expanded: bool,
+    pub window_based_work_area_offset_hovered: bool,
     pub work_area_offset_expanded: bool,
+    pub work_area_offset_hovered: bool,
     pub show_workspaces: bool,
+    pub show_workspaces_hovered: bool,
     pub expanded_workspaces: HashMap<usize, bool>,
 }
 
@@ -150,10 +157,16 @@ impl Monitor {
                 }
             },
             Message::ToggleWindowBasedWorkAreaOffsetExpand => {
-                self.window_based_work_area_offset_expanded = !self.window_based_work_area_offset_expanded
+                self.window_based_work_area_offset_expanded = !self.window_based_work_area_offset_expanded;
+            },
+            Message::ToggleWindowBasedWorkAreaOffsetHover(hover) => {
+                self.window_based_work_area_offset_hovered = hover;
             },
             Message::ToggleWorkAreaOffsetExpand => {
-                self.work_area_offset_expanded = !self.work_area_offset_expanded
+                self.work_area_offset_expanded = !self.work_area_offset_expanded;
+            },
+            Message::ToggleWorkAreaOffsetHover(hover) => {
+                self.work_area_offset_hovered = hover;
             },
             Message::Workspace(idx, message) => {
                 if let Some(workspace) = self.config.workspaces.get_mut(idx) {
@@ -169,9 +182,13 @@ impl Monitor {
             Message::ToggleWorkspacesExpand => {
                 self.show_workspaces = !self.show_workspaces;
             },
+            Message::ToggleWorkspacesHover(hover) => {
+                self.show_workspaces_hovered = hover;
+            },
             Message::ToggleWorkspaceExpanded(idx) => {
                 self.expanded_workspaces.entry(idx).and_modify(|expanded| *expanded = !*expanded).or_insert(true);
             },
+            Message::Nothing => {}
         }
         Task::none()
     }
@@ -184,34 +201,36 @@ impl Monitor {
                 "Window Based Work Area Offset",
                 Some("Window based work area offset (default: None)"),
                 [
-                opt_helpers::number(
-                    "left",
-                    None,
-                    self.config.window_based_work_area_offset.map_or(0, |r| r.left),
-                    move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
-                ),
-                opt_helpers::number(
-                    "top",
-                    None,
-                    self.config.window_based_work_area_offset.map_or(0, |r| r.top),
-                    move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
-                ),
-                opt_helpers::number(
-                    "bottom",
-                    None,
-                    self.config.window_based_work_area_offset.map_or(0, |r| r.bottom),
-                    move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
-                ),
-                opt_helpers::number(
-                    "right",
-                    None,
-                    self.config.window_based_work_area_offset.map_or(0, |r| r.right),
-                    move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
-                ),
+                    opt_helpers::number(
+                        "left",
+                        None,
+                        self.config.window_based_work_area_offset.map_or(0, |r| r.left),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
+                    ),
+                    opt_helpers::number(
+                        "top",
+                        None,
+                        self.config.window_based_work_area_offset.map_or(0, |r| r.top),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
+                    ),
+                    opt_helpers::number(
+                        "bottom",
+                        None,
+                        self.config.window_based_work_area_offset.map_or(0, |r| r.bottom),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
+                    ),
+                    opt_helpers::number(
+                        "right",
+                        None,
+                        self.config.window_based_work_area_offset.map_or(0, |r| r.right),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
+                    ),
                 ],
                 self.window_based_work_area_offset_expanded,
-                    Message::ToggleWindowBasedWorkAreaOffsetExpand,
-                    ),
+                self.window_based_work_area_offset_hovered,
+                Message::ToggleWindowBasedWorkAreaOffsetExpand,
+                Message::ToggleWindowBasedWorkAreaOffsetHover,
+                ),
                 opt_helpers::number(
                     "Window Based Work Area Offset Limit",
                     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
@@ -253,7 +272,9 @@ impl Monitor {
                         ),
                     ],
                     self.work_area_offset_expanded,
+                    self.work_area_offset_hovered,
                     Message::ToggleWorkAreaOffsetExpand,
+                    Message::ToggleWorkAreaOffsetHover,
                 ),
                 opt_helpers::expandable(
                     "Workspaces",
@@ -268,11 +289,15 @@ impl Monitor {
                                 None,
                                 [w.view(i, self.expanded_workspaces[&i]).map(move |m| Message::Workspace(i, m))],
                                 self.expanded_workspaces[&i],
+                                false,
                                 Message::ToggleWorkspaceExpanded(i),
+                                |_| Message::Nothing,
                             )
                         }),
                     self.show_workspaces,
+                    self.show_workspaces_hovered,
                     Message::ToggleWorkspacesExpand,
+                    Message::ToggleWorkspacesHover,
                 ),
             ],
         )
