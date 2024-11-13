@@ -1,3 +1,4 @@
+pub mod general;
 pub mod monitor;
 pub mod monitors;
 pub mod sidebar;

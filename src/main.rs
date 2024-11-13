@@ -3,12 +3,10 @@ mod config;
 mod komorebi_connect;
 mod screen;
 mod utils;
-mod views;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::config::{ConfigHelpers, ConfigHelpersAction, ConfigStrs, GlobalConfigChangeType};
-use crate::screen::{sidebar, Screen};
+use crate::screen::{general, monitors, sidebar, Screen};
 
 use std::sync::Arc;
 
@@ -22,7 +20,6 @@ use iced::{
     Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
-use screen::monitors;
 
 lazy_static! {
     static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI Emoji");
@@ -55,12 +52,9 @@ enum Message {
     ThemeChanged(Theme),
 
     // View/Screen related Messages
+    General(general::Message),
     Monitors(monitors::Message),
     Sidebar(sidebar::Message),
-
-    // Global Editing config related Messages
-    GlobalConfigChanged(GlobalConfigChangeType),
-    ConfigHelpers(ConfigHelpersAction),
 
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
@@ -75,9 +69,8 @@ struct Komofig {
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
+    general: general::General,
     config: Option<komorebi_client::StaticConfig>,
-    config_helpers: ConfigHelpers,
-    config_strs: Option<ConfigStrs>,
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
@@ -104,6 +97,15 @@ impl Komofig {
             Message::ThemeChanged(theme) => {
                 self.theme = Some(theme);
             }
+            Message::General(message) => {
+                if let Some(config) = &mut self.config {
+                    let (action, task) = self.general.update(message, config);
+                    let action_task = match action {
+                        general::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::General), action_task]);
+                }
+            }
             Message::Monitors(message) => {
                 let (action, task) = self.monitors.update(message, &self.komorebi_state);
                 let action_task = match action {
@@ -122,183 +124,6 @@ impl Komofig {
                 };
                 return Task::batch([task.map(Message::Sidebar), action_task]);
             }
-            Message::GlobalConfigChanged(change_type) => match change_type {
-                GlobalConfigChangeType::AppSpecificConfigurationPath(path) => {
-                    if let Some(config) = &mut self.config {
-                        config.app_specific_configuration_path = path;
-                    }
-                }
-                GlobalConfigChangeType::CrossBoundaryBehaviour(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        let behaviour = match value {
-                            ref s
-                                if **s
-                                    == *komorebi::CrossBoundaryBehaviour::Monitor.to_string() =>
-                            {
-                                Some(komorebi::CrossBoundaryBehaviour::Monitor)
-                            }
-                            ref s
-                                if **s
-                                    == *komorebi::CrossBoundaryBehaviour::Workspace.to_string() =>
-                            {
-                                Some(komorebi::CrossBoundaryBehaviour::Workspace)
-                            }
-                            _ => None,
-                        };
-                        config.cross_boundary_behaviour = behaviour;
-                        config_strs.cross_boundary_behaviour = value;
-                    }
-                }
-                GlobalConfigChangeType::CrossMonitorMoveBehaviour(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.cross_monitor_move_behaviour = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::DefaultContainerPadding(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.default_container_padding = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::DefaultWorkspacePadding(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.default_workspace_padding = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::DisplayIndexPreferences(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.display_index_preferences = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::FloatOverride(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.float_override = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::FocusFollowsMouse(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.focus_follows_mouse = value;
-                    }
-                }
-                GlobalConfigChangeType::GlobalWorkAreaOffset(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.global_work_area_offset = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::GlobalWorkAreaOffsetTop(value) => {
-                    if let Some(config) = &mut self.config {
-                        if let Some(offset) = &mut config.global_work_area_offset {
-                            offset.top = value;
-                        } else {
-                            config.global_work_area_offset = Some(komorebi::Rect {
-                                left: 0,
-                                top: value,
-                                right: 0,
-                                bottom: 0,
-                            });
-                        }
-                    }
-                }
-                GlobalConfigChangeType::GlobalWorkAreaOffsetBottom(value) => {
-                    if let Some(config) = &mut self.config {
-                        if let Some(offset) = &mut config.global_work_area_offset {
-                            offset.bottom = value;
-                        } else {
-                            config.global_work_area_offset = Some(komorebi::Rect {
-                                left: 0,
-                                top: 0,
-                                right: 0,
-                                bottom: value,
-                            });
-                        }
-                    }
-                }
-                GlobalConfigChangeType::GlobalWorkAreaOffsetRight(value) => {
-                    if let Some(config) = &mut self.config {
-                        if let Some(offset) = &mut config.global_work_area_offset {
-                            offset.right = value;
-                        } else {
-                            config.global_work_area_offset = Some(komorebi::Rect {
-                                left: 0,
-                                top: 0,
-                                right: value,
-                                bottom: 0,
-                            });
-                        }
-                    }
-                }
-                GlobalConfigChangeType::GlobalWorkAreaOffsetLeft(value) => {
-                    if let Some(config) = &mut self.config {
-                        if let Some(offset) = &mut config.global_work_area_offset {
-                            offset.left = value;
-                        } else {
-                            config.global_work_area_offset = Some(komorebi::Rect {
-                                left: value,
-                                top: 0,
-                                right: 0,
-                                bottom: 0,
-                            });
-                        }
-                    }
-                }
-                GlobalConfigChangeType::MouseFollowsFocus(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.mouse_follows_focus = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::ResizeDelta(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.resize_delta = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::Transparency(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.transparency = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::TransparencyAlpha(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.transparency_alpha = Some(value.try_into().unwrap_or(0));
-                    }
-                }
-                GlobalConfigChangeType::UnmanagedWindowBehaviour(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.unmanaged_window_operation_behaviour = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::WindowContainerBehaviour(value) => {
-                    if let Some(config) = &mut self.config {
-                        config.window_container_behaviour = Some(value);
-                    }
-                }
-                GlobalConfigChangeType::WindowHidingBehaviour(value) => {
-                    if let (Some(config), Some(config_strs)) =
-                        (&mut self.config, &mut self.config_strs)
-                    {
-                        let behaviour = match value {
-                            ref s if **s == *komorebi::HidingBehaviour::Cloak.to_string() => {
-                                Some(komorebi::HidingBehaviour::Cloak)
-                            }
-                            ref s if **s == *komorebi::HidingBehaviour::Hide.to_string() => {
-                                Some(komorebi::HidingBehaviour::Hide)
-                            }
-                            ref s if **s == *komorebi::HidingBehaviour::Minimize.to_string() => {
-                                Some(komorebi::HidingBehaviour::Minimize)
-                            }
-                            _ => None,
-                        };
-                        config.window_hiding_behaviour = behaviour;
-                        config_strs.window_hiding_behaviour = value;
-                    }
-                }
-            },
-            Message::ConfigHelpers(action) => match action {
-                ConfigHelpersAction::ToggleGlobalWorkAreaOffsetExpand => {
-                    self.config_helpers.global_work_area_offset_expanded =
-                        !self.config_helpers.global_work_area_offset_expanded;
-                }
-            },
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
                     self.notifications.push(Arc::from(notification.event));
@@ -319,7 +144,6 @@ impl Komofig {
                     // self.loaded_config = Some(Arc::new(config));
                     if self.config.is_none() {
                         self.populate_config_strs(&config);
-                        self.populate_config_helpers();
                         self.populate_monitors(&config);
                         self.config = Some(config);
                     }
@@ -376,7 +200,7 @@ impl Komofig {
                 ])
                 .into()
             }
-            Screen::General => scrollable(views::config::view(self)).into(),
+            Screen::General => self.general.view(&self.config).map(Message::General),
             Screen::Monitors => self
                 .monitors
                 .view(&self.komorebi_state)
@@ -435,7 +259,7 @@ impl Komofig {
         .width(Fill);
         let right_col = column![
             container(main_screen).height(Fill),
-            container(horizontal_rule(2.0)).padding(padding::top(5).bottom(5)),
+            container(horizontal_rule(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];
         row![sidebar, vertical_rule(2.0), right_col]
@@ -456,7 +280,8 @@ impl Komofig {
     }
 
     fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
-        let config_strs = ConfigStrs {
+        let general = general::General {
+            global_work_area_offset_expanded: false,
             cross_boundary_behaviour: config
                 .cross_boundary_behaviour
                 .unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor)
@@ -468,14 +293,7 @@ impl Komofig {
                 .to_string()
                 .into(),
         };
-
-        self.config_strs = Some(config_strs);
-    }
-
-    fn populate_config_helpers(&mut self) {
-        self.config_helpers = ConfigHelpers {
-            global_work_area_offset_expanded: false,
-        };
+        self.general = general;
     }
 
     fn populate_monitors(&mut self, config: &komorebi::StaticConfig) {

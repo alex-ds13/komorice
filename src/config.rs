@@ -17,45 +17,6 @@ use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 
-#[derive(Clone, Debug)]
-pub enum GlobalConfigChangeType {
-    AppSpecificConfigurationPath(Option<PathBuf>),
-    CrossBoundaryBehaviour(Arc<str>), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
-    CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
-    DefaultContainerPadding(i32),
-    DefaultWorkspacePadding(i32),
-    DisplayIndexPreferences(HashMap<usize, String>),
-    FloatOverride(bool),
-    FocusFollowsMouse(Option<komorebi::FocusFollowsMouseImplementation>),
-    GlobalWorkAreaOffset(komorebi::Rect),
-    GlobalWorkAreaOffsetTop(i32),
-    GlobalWorkAreaOffsetBottom(i32),
-    GlobalWorkAreaOffsetRight(i32),
-    GlobalWorkAreaOffsetLeft(i32),
-    MouseFollowsFocus(bool),
-    ResizeDelta(i32),
-    Transparency(bool),
-    TransparencyAlpha(i32),
-    UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
-    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
-}
-
-pub struct ConfigStrs {
-    pub cross_boundary_behaviour: Arc<str>,
-    pub window_hiding_behaviour: Arc<str>,
-}
-
-#[derive(Debug, Default)]
-pub struct ConfigHelpers {
-    pub global_work_area_offset_expanded: bool,
-}
-
-#[derive(Clone, Debug)]
-pub enum ConfigHelpersAction {
-    ToggleGlobalWorkAreaOffsetExpand,
-}
-
 pub fn change_monitor_config(config: &mut StaticConfig, idx: usize, f: impl Fn(&mut MonitorConfig)) {
     if let Some(monitors) = &mut config.monitors {
         if let Some(monitor) = monitors.get_mut(idx) {
