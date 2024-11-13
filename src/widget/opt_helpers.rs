@@ -31,6 +31,26 @@ fn opt_box_style(theme: &iced::Theme) -> container::Style {
     }
 }
 
+fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
+    container::Style {
+        border: iced::Border {
+            radius: iced::border::top(5),
+            ..opt_box_style(theme).border
+        },
+        ..opt_box_style(theme)
+    }
+}
+
+fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
+    container::Style {
+        border: iced::Border {
+            radius: iced::border::bottom(5),
+            ..opt_box_style(theme).border
+        },
+        ..opt_box_style(theme)
+    }
+}
+
 fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Container<'a, Message> {
     container(element).padding(10).style(opt_box_style)
 }
@@ -188,63 +208,48 @@ pub fn expandable<'a, Message: 'a + Clone>(
     on_press: Message,
     on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
-    let main = column![Row::new()
-        .push(label_with_description(name, description))
-        .push(
-            button(if expanded {
-                text("▲").size(10)
-            } else {
-                text("▼").size(10)
-            })
-            .on_press(on_press.clone())
-            .padding(padding::Padding {
-                top: 10.0,
-                right: 10.0,
-                bottom: 5.0,
-                left: 10.0,
-            })
-            .style(move |t, s| {
-                if hovered {
-                    button::secondary(t, button::Status::Active)
-                } else {
-                    button::text(t, s)
-                }
-            })
-        )
-        .align_y(Center)
-        .padding(padding::right(10))];
-
-    let element = if expanded {
-        let top = opt_box(main).style(|t: &iced::Theme| container::Style {
-            border: iced::Border {
-                radius: iced::border::top(5),
-                ..opt_box_style(t).border
-            },
-            ..opt_box_style(t)
-        });
-        let wrapped_top = mouse_area(top)
-            .on_press(on_press)
-            .on_enter(on_hover(true))
-            .on_exit(on_hover(false))
-            .interaction(iced::mouse::Interaction::Pointer);
-        let inner = Column::with_children(children)
-            .spacing(10)
-            .padding(padding::all(10).left(20));
-        let wrapped_inner = opt_box(inner).style(|t: &iced::Theme| container::Style {
-            border: iced::Border {
-                radius: iced::border::bottom(5),
-                ..opt_box_style(t).border
-            },
-            ..opt_box_style(t)
-        });
-        column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
+    let right_button = button(if expanded {
+        text("▲").size(10)
     } else {
-        mouse_area(opt_box(main))
+        text("▼").size(10)
+    })
+    .on_press(on_press.clone())
+    .padding(padding::Padding {
+        top: 10.0,
+        right: 10.0,
+        bottom: 5.0,
+        left: 10.0,
+    })
+    .style(move |t, s| {
+        if hovered {
+            button::secondary(t, button::Status::Active)
+        } else {
+            button::text(t, s)
+        }
+    });
+
+    let main = row![label_with_description(name, description), right_button]
+        .align_y(Center)
+        .padding(padding::right(10));
+
+    let area = |el| {
+        mouse_area(el)
             .on_press(on_press)
             .on_enter(on_hover(true))
             .on_exit(on_hover(false))
             .interaction(iced::mouse::Interaction::Pointer)
-            .into()
+    };
+
+    let element = if expanded {
+        let top = opt_box(main).style(opt_box_style_top);
+        let wrapped_top = area(top);
+        let inner = Column::with_children(children)
+            .spacing(10)
+            .padding(padding::all(10).left(20));
+        let wrapped_inner = opt_box(inner).style(opt_box_style_bottom);
+        column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
+    } else {
+        area(opt_box(main)).into()
     };
     element
 }
