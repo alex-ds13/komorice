@@ -2,38 +2,37 @@
 use crate::{widget, BOLD_FONT};
 
 use iced::{
-    color, padding,
+    padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, pick_list, row, scrollable, text,
-        toggler, Column, Row, Text,
+        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
+        scrollable, text, toggler, Column, Container, Row, Text,
     },
     Center, Element, Fill,
 };
 
-fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
-    container(element)
-        .padding(10)
-        .style(|t| {
-            let palette = t.extended_palette();
-            let background = if palette.is_dark {
-                Some(palette.background.weak.color.scale_alpha(0.35).into())
-            } else {
-                Some(iced::Color::BLACK.scale_alpha(0.01).into())
-            };
-            let border = if palette.is_dark {
-                iced::border::rounded(5)
-            } else {
-                iced::border::rounded(5)
-                    .width(1)
-                    .color(palette.background.weak.color)
-            };
-            container::Style {
-                background,
-                border,
-                ..container::Style::default()
-            }
-        })
-        .into()
+fn opt_box_style(theme: &iced::Theme) -> container::Style {
+    let palette = theme.extended_palette();
+    let background = if palette.is_dark {
+        Some(palette.background.weak.color.scale_alpha(0.35).into())
+    } else {
+        Some(iced::Color::BLACK.scale_alpha(0.01).into())
+    };
+    let border = if palette.is_dark {
+        iced::border::rounded(5)
+    } else {
+        iced::border::rounded(5)
+            .width(1)
+            .color(palette.background.weak.color)
+    };
+    container::Style {
+        background,
+        border,
+        ..container::Style::default()
+    }
+}
+
+fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Container<'a, Message> {
+    container(element).padding(10).style(opt_box_style)
 }
 
 ///Creates a column with a label and a description
@@ -53,9 +52,7 @@ pub fn label_with_description<'a, Message: 'a>(
                     } else {
                         Some(palette.background.base.text.scale_alpha(0.75))
                     };
-                    text::Style {
-                        color,
-                    }
+                    text::Style { color }
                 })
                 .size(13)
                 .width(Fill)
@@ -84,13 +81,8 @@ pub fn input<'a, Message: 'a + Clone>(
         widget::input(placeholder, value, on_change, on_submit),
     ]
     .spacing(10)
-    .align_y(Center)
-    .into();
-    element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
+    .align_y(Center);
+    opt_box(element).into()
 }
 
 ///Creates a row with a label with `name` and a `number_input`
@@ -114,13 +106,8 @@ pub fn number<'a, Message: 'a + Clone>(
         }),
     ]
     .spacing(10)
-    .align_y(Center)
-    .into();
-    element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
+    .align_y(Center);
+    opt_box(element).into()
 }
 
 ///Creates a `checkbox` with `name` as label
@@ -138,13 +125,8 @@ pub fn bool<'a, Message: 'a>(
         checkbox(if value { "On" } else { "Off" }, value).on_toggle(on_toggle),
     ]
     .spacing(10)
-    .align_y(Center)
-    .into();
-    element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
+    .align_y(Center);
+    opt_box(element).into()
 }
 
 ///Creates a `toggler` with `name` as label
@@ -164,13 +146,8 @@ pub fn toggle<'a, Message: 'a>(
             .on_toggle(on_toggle),
     ]
     .spacing(10)
-    .align_y(Center)
-    .into();
-    element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
+    .align_y(Center);
+    opt_box(element).into()
 }
 
 ///Creates a `pick_list`, if `name` is not empty it wraps the
@@ -193,15 +170,9 @@ where
     let element = Row::new()
         .spacing(10)
         .align_y(Center)
-        // .push_maybe((!name.is_empty()).then_some(widget::label(name)))
         .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
-        .push(pick_list(options, selected, on_selected))
-        .into();
-    element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
+        .push(pick_list(options, selected, on_selected));
+    opt_box(element).into()
 }
 
 ///Creates an expandable option with children options to be shown when expanded.
@@ -233,34 +204,37 @@ pub fn expandable<'a, Message: 'a + Clone>(
             })
         )
         .align_y(Center)
-        .padding(padding::right(10))
-        .height(30.0)]
-    .spacing(1);
+        .padding(padding::right(10))];
 
-    let col = if expanded {
+    let element = if expanded {
+        let top = opt_box(main).style(|t: &iced::Theme| container::Style {
+            border: iced::Border {
+                radius: iced::border::top(5),
+                ..opt_box_style(t).border
+            },
+            ..opt_box_style(t)
+        });
+        let wrapped_top = mouse_area(top)
+            .on_press(on_press)
+            .interaction(iced::mouse::Interaction::Pointer);
         let inner = Column::with_children(children)
             .spacing(10)
             .padding(padding::all(10).left(20));
-        main.push(inner)
+        let wrapped_inner = opt_box(inner).style(|t: &iced::Theme| container::Style {
+            border: iced::Border {
+                radius: iced::border::bottom(5),
+                ..opt_box_style(t).border
+            },
+            ..opt_box_style(t)
+        });
+        column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
     } else {
-        main
+        mouse_area(opt_box(main))
+            .on_press(on_press)
+            .interaction(iced::mouse::Interaction::Pointer)
+            .into()
     };
-    let element = button(col)
-        .padding(0.0)
-        .on_press(on_press)
-        .style(move |t: &iced::Theme, s: button::Status| {
-            if matches!(s, button::Status::Hovered) {
-                button::text(t, s).with_background(t.extended_palette().background.weak.color)
-            } else {
-                button::text(t, s)
-            }
-        })
-        .into();
     element
-    // match description {
-    //     Some(desc) => widget::create_tooltip(element, desc),
-    //     None => element,
-    // }
 }
 
 ///Creates a row of options within a section. This is a simple helper to create
@@ -283,7 +257,7 @@ pub fn section_view<'a, Message: 'a>(
         section_title,
         horizontal_rule(2.0),
         scrollable(
-            Column::with_children(contents.into_iter().map(opt_box))
+            Column::with_children(contents)
                 .padding(padding::top(10).bottom(10).right(20))
                 .spacing(10)
         )
