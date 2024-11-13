@@ -256,7 +256,7 @@ impl Monitor {
                     Message::ToggleWorkAreaOffsetExpand,
                 ),
                 opt_helpers::expandable(
-                    "Workspaces:",
+                    "Workspaces",
                     None,
                     self.config.workspaces
                         .iter()

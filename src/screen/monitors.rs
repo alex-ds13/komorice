@@ -113,7 +113,7 @@ impl Monitors {
     ) -> Element<'a, Message> {
         let title = text("Monitors:").size(20).font(*BOLD_FONT);
         let monitors: Element<Message> = if let Some(state) = &komorebi_state {
-            let mut col = column![].padding(padding::top(10).bottom(10).right(20));
+            let mut col = column![].spacing(10).padding(padding::top(10).bottom(10).right(20));
 
             let m = monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
                 .selected(self.monitor_to_config)
@@ -135,6 +135,7 @@ impl Monitors {
                     m.view()
                         .map(move |message| Message::MonitorConfigChanged(monitor_idx, message)),
                 );
+                col = col.push(horizontal_rule(2.0));
                 col = col.push(column![
                     text!("Monitor {}:", monitor_idx).size(16),
                     text!("    -> Id: {}", monitor.id()),
