@@ -4,8 +4,8 @@ use crate::{widget, BOLD_FONT};
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, horizontal_space, pick_list, row, text, toggler, Column, Row,
-        Text,
+        button, checkbox, column, horizontal_rule, horizontal_space, pick_list, row, scrollable,
+        text, toggler, Column, Row, Text,
     },
     Center, Element,
 };
@@ -203,8 +203,15 @@ pub fn section_view<'a, Message: 'a>(
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
     let section_title = row![title.into().size(20.0).font(*BOLD_FONT)];
-    column![section_title, Column::with_children(contents).spacing(10),]
-        .spacing(10)
-        .padding(padding::top(10).bottom(20))
-        .into()
+    column![
+        section_title,
+        horizontal_rule(2.0),
+        scrollable(
+            Column::with_children(contents)
+                .padding(padding::top(10).bottom(10).right(20))
+                .spacing(10)
+        )
+    ]
+    .spacing(10)
+    .into()
 }

@@ -1,12 +1,12 @@
 use super::monitor::{self, Monitor};
 
-use crate::widget::monitors_viewer;
+use crate::{widget::monitors_viewer, BOLD_FONT};
 
 use std::{collections::HashMap, sync::Arc};
 
 use iced::{
     padding,
-    widget::{checkbox, column, container, horizontal_rule, row, scrollable, text, Column, Space},
+    widget::{checkbox, column, container, horizontal_rule, row, scrollable, text, Space},
     Alignment::Center,
     Element,
     Length::{Fill, Shrink},
@@ -111,15 +111,13 @@ impl Monitors {
         &'a self,
         komorebi_state: &'a Option<Arc<komorebi_client::State>>,
     ) -> Element<'a, Message> {
+        let title = text("Monitors:").size(20).font(*BOLD_FONT);
         let monitors: Element<Message> = if let Some(state) = &komorebi_state {
-            let mut col: Column<Message> =
-                column![text("Monitors:").size(20)].padding(padding::all(5).right(20));
+            let mut col = column![].padding(padding::top(10).bottom(10).right(20));
 
-            let m: Element<Message> =
-                monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
-                    .selected(self.monitor_to_config)
-                    .on_selected(Message::ConfigMonitor)
-                    .into();
+            let m = monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
+                .selected(self.monitor_to_config)
+                .on_selected(Message::ConfigMonitor);
             // let m = m.explain(color!(0x00aaff));
             let m = container(m)
                 .padding(10)
@@ -169,6 +167,8 @@ impl Monitors {
         } else {
             Space::new(Shrink, Shrink).into()
         };
-        monitors
+        column![title, horizontal_rule(2.0), monitors,]
+            .spacing(10)
+            .into()
     }
 }

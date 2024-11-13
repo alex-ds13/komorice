@@ -207,7 +207,7 @@ impl General {
     }
 
     pub fn view<'a>(&'a self, config: &'a Option<StaticConfig>) -> Element<'a, Message> {
-        let section = if let Some(config) = config {
+        if let Some(config) = config {
             opt_helpers::section_view(
                 "General:",
                 [
@@ -333,7 +333,6 @@ impl General {
             )
         } else {
             Space::new(Shrink, Shrink).into()
-        };
-        scrollable(section).into()
+        }
     }
 }

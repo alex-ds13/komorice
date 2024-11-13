@@ -239,10 +239,11 @@ impl Komofig {
                     horizontal_space(),
                     pick_list(Theme::ALL, self.theme.as_ref(), Message::ThemeChanged),
                 ]
+                .align_y(Center)
                 .spacing(10);
-                column![title, horizontal_rule(2.0), theme]
+                let col = column![theme].padding(padding::top(10).bottom(10).right(20));
+                column![title, horizontal_rule(2.0), col]
                     .spacing(10)
-                    .padding(20)
                     .width(Fill)
                     .height(Fill)
                     .into()
@@ -258,7 +259,7 @@ impl Komofig {
         .spacing(10)
         .width(Fill);
         let right_col = column![
-            container(main_screen).height(Fill),
+            container(main_screen).height(Fill).padding(padding::all(20).bottom(0)),
             container(horizontal_rule(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];
