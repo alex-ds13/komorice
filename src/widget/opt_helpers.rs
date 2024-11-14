@@ -10,6 +10,15 @@ use iced::{
     Center, Element, Fill,
 };
 
+pub struct DisableArgs<'a, Message, F>
+where
+    F: Fn(bool) -> Message + 'a,
+{
+    pub disable: bool,
+    pub label: Option<&'a str>,
+    pub on_toggle: F,
+}
+
 fn opt_box_style(theme: &iced::Theme) -> container::Style {
     let palette = theme.extended_palette();
     let background = if palette.is_dark {
@@ -145,6 +154,29 @@ pub fn input<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
+///Creates a row with a label with `name`, a `text_input` and a disable checkbox which allows
+///toggling the input on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn input_with_disable<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    placeholder: &'a str,
+    value: &'a str,
+    on_change: impl Fn(String) -> Message + 'a,
+    on_submit: Option<Message>,
+    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+) -> Element<'a, Message> {
+    let element = row![label_with_description(name, description),]
+        .push_maybe(disable_args.map(|args| {
+            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+        }))
+        .push(widget::input(placeholder, value, on_change, on_submit))
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a row with a label with `name` and a `number_input`
 ///using the remainder parameters for it.
 ///
@@ -169,6 +201,47 @@ pub fn number<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
+///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+///toggling the number input on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn number_with_disable<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: i32,
+    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+) -> Element<'a, Message> {
+    let should_disable = disable_args.is_some();
+    let on_change = move |v| {
+        if should_disable {
+            on_change(value)
+        } else {
+            on_change(v)
+        }
+    };
+    let bounds = if disable_args.is_some() {
+        0..=0
+    } else {
+        i32::MIN..=i32::MAX
+    };
+    let element = row![label_with_description(name, description),]
+        .push_maybe(disable_args.map(|args| {
+            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+        }))
+        .push(
+            iced_aw::number_input(value, bounds, on_change).style(
+                |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
+                    button_background: Some(t.extended_palette().background.weak.color.into()),
+                    icon_color: t.extended_palette().background.weak.text,
+                },
+            ),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a `checkbox` with `name` as label
 ///
 ///If `Some(description)` is given, it adds the description below the label.
@@ -184,6 +257,28 @@ pub fn bool<'a, Message: 'a>(
     ]
     .spacing(10)
     .align_y(Center);
+    opt_box(element).into()
+}
+
+///Creates a `checkbox` with `name` as label and a disable checkbox which allows
+///toggling the bool on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn bool_with_disable<'a, Message: 'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+) -> Element<'a, Message> {
+    let on_toggle_maybe = disable_args.as_ref().map(|_| on_toggle);
+    let element = row![label_with_description(name, description)]
+        .push_maybe(disable_args.map(|args| {
+            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+        }))
+        .push(checkbox(if value { "On" } else { "Off" }, value).on_toggle_maybe(on_toggle_maybe))
+        .spacing(10)
+        .align_y(Center);
     opt_box(element).into()
 }
 
@@ -207,6 +302,32 @@ pub fn toggle<'a, Message: 'a>(
     opt_box(element).into()
 }
 
+///Creates a `toggler` with `name` as label and a disable checkbox which allows
+///toggling the toggler on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn toggle_with_disable<'a, Message: 'a>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+) -> Element<'a, Message> {
+    let on_toggle_maybe = disable_args.as_ref().map(|_| on_toggle);
+    let element = row![label_with_description(name, description)]
+        .push_maybe(disable_args.map(|args| {
+            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+        }))
+        .push(
+            toggler(value)
+                .label(if value { "On" } else { "Off" })
+                .on_toggle_maybe(on_toggle_maybe),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a `pick_list`, if `name` is not empty it wraps the
 ///`pick_list` on a row with a label with `name`.
 ///
@@ -227,6 +348,35 @@ where
         .spacing(10)
         .align_y(Center)
         .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
+        .push(pick_list(options, selected, on_selected));
+    opt_box(element).into()
+}
+
+///Creates a `pick_list`, if `name` is not empty it wraps the
+///`pick_list` on a row with a label with `name`. And adds a disable
+///checkbox which allows toggling the choose on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn choose_with_disable<'a, T, V, L, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    options: L,
+    selected: Option<V>,
+    on_selected: impl Fn(T) -> Message + 'a,
+    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+) -> Element<'a, Message>
+where
+    T: ToString + PartialEq + Clone + 'a,
+    V: std::borrow::Borrow<T> + 'a,
+    L: std::borrow::Borrow<[T]> + 'a,
+{
+    let element = Row::new()
+        .spacing(10)
+        .align_y(Center)
+        .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
+        .push_maybe(disable_args.map(|args| {
+            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+        }))
         .push(pick_list(options, selected, on_selected));
     opt_box(element).into()
 }
