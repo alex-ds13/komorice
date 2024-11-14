@@ -102,7 +102,7 @@ pub fn opt_button<'a, Message: 'a + Clone>(
     on_press: Message,
     on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
-    let right_button = button(text("›").size(20))
+    let right_button = button(text("›").shaping(text::Shaping::Advanced))
         .on_press(on_press.clone())
         // .padding(padding::Padding {
         //     top: 10.0,
@@ -227,7 +227,13 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
     };
     let element = row![label_with_description(name, description),]
         .push_maybe(disable_args.map(|args| {
-            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
+            row![
+                text(args.label.unwrap_or_default()),
+                checkbox("", args.disable)
+                    .spacing(0)
+                    .on_toggle(args.on_toggle)
+            ]
+            .spacing(10)
         }))
         .push(
             iced_aw::number_input(value, bounds, on_change).style(|t: &iced::Theme, _| {
@@ -403,12 +409,12 @@ pub fn expandable<'a, Message: 'a + Clone>(
         text("▼").size(10)
     })
     .on_press(on_press.clone())
-    .padding(padding::Padding {
-        top: 10.0,
-        right: 10.0,
-        bottom: 5.0,
-        left: 10.0,
-    })
+    // .padding(padding::Padding {
+    //     top: 10.0,
+    //     right: 10.0,
+    //     bottom: 5.0,
+    //     left: 10.0,
+    // })
     .style(move |t, s| {
         if hovered {
             button::secondary(t, button::Status::Active)

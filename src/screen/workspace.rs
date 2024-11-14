@@ -144,7 +144,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.container_padding.is_none(),
-                label: Some("Use Global"),
+                label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
             })
         );
@@ -155,7 +155,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.float_override.is_none(),
-                label: Some("Use Global"),
+                label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
             })
         );
@@ -170,7 +170,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             |v| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.window_container_behaviour.is_none(),
-                label: Some("Use Global"),
+                label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v)),
             })
         );
@@ -181,7 +181,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.workspace_padding.is_none(),
-                label: Some("Use Global"),
+                label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
             })
         );

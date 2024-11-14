@@ -22,7 +22,8 @@ use iced::{
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI Emoji");
+    static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI");
+    static ref EMOJI_FONT: Font = Font::with_name("Segoe UI Emoji");
     static ref ITALIC_FONT: Font = {
         let mut f = Font::with_name("Segoe UI");
         f.style = iced::font::Style::Italic;
@@ -162,9 +163,9 @@ impl Komofig {
             Screen::Home => {
                 let title = container(
                     row![
-                        text("🍉").size(70),
+                        text("🍉").shaping(text::Shaping::Advanced).size(70),
                         text("Komorice").size(75),
-                        text("🍚").size(70)
+                        text("🍚").shaping(text::Shaping::Advanced).size(70)
                     ]
                     .align_y(Center),
                 )
