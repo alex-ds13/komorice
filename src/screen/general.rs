@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use iced::{widget::Space, Element, Length::Shrink, Task};
 use komorebi::{
     CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
-    WindowContainerBehaviour,
+    OperationBehaviour, WindowContainerBehaviour,
 };
 use komorebi_client::StaticConfig;
 use lazy_static::lazy_static;
@@ -203,10 +203,10 @@ impl General {
             },
             Message::ToggleGlobalWorkAreaOffsetExpand => {
                 self.global_work_area_offset_expanded = !self.global_work_area_offset_expanded;
-            },
+            }
             Message::ToggleGlobalWorkAreaOffsetHover(hover) => {
                 self.global_work_area_offset_hovered = hover;
-            },
+            }
         }
         (Action::None, Task::none())
     }
@@ -321,6 +321,13 @@ impl General {
                             Value must be greater or equal to 0.0"),
                             config.transparency_alpha.unwrap_or(200).into(),
                             |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
+                    ),
+                    opt_helpers::choose(
+                        "Unmanaged Window Behaviour",
+                        Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
+                        [OperationBehaviour::Op, OperationBehaviour::NoOp],
+                        Some(config.unmanaged_window_operation_behaviour.unwrap_or(OperationBehaviour::Op)),
+                        |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
                     ),
                     opt_helpers::choose(
                         "Window Container Behaviour",
