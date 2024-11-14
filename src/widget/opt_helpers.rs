@@ -212,7 +212,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
     disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
 ) -> Element<'a, Message> {
-    let should_disable = disable_args.is_some();
+    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
     let on_change = move |v| {
         if should_disable {
             on_change(value)
@@ -220,7 +220,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
             on_change(v)
         }
     };
-    let bounds = if disable_args.is_some() {
+    let bounds = if should_disable {
         0..=0
     } else {
         i32::MIN..=i32::MAX
@@ -230,12 +230,12 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
             checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
         }))
         .push(
-            iced_aw::number_input(value, bounds, on_change).style(
-                |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
+            iced_aw::number_input(value, bounds, on_change).style(|t: &iced::Theme, _| {
+                iced_aw::number_input::number_input::Style {
                     button_background: Some(t.extended_palette().background.weak.color.into()),
                     icon_color: t.extended_palette().background.weak.text,
-                },
-            ),
+                }
+            }),
         )
         .spacing(10)
         .align_y(Center);
@@ -271,7 +271,9 @@ pub fn bool_with_disable<'a, Message: 'a>(
     on_toggle: impl Fn(bool) -> Message + 'a,
     disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
 ) -> Element<'a, Message> {
-    let on_toggle_maybe = disable_args.as_ref().map(|_| on_toggle);
+    let on_toggle_maybe = disable_args
+        .as_ref()
+        .and_then(|args| (!args.disable).then_some(on_toggle));
     let element = row![label_with_description(name, description)]
         .push_maybe(disable_args.map(|args| {
             checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
@@ -313,7 +315,9 @@ pub fn toggle_with_disable<'a, Message: 'a>(
     on_toggle: impl Fn(bool) -> Message + 'a,
     disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
 ) -> Element<'a, Message> {
-    let on_toggle_maybe = disable_args.as_ref().map(|_| on_toggle);
+    let on_toggle_maybe = disable_args
+        .as_ref()
+        .and_then(|args| (!args.disable).then_some(on_toggle));
     let element = row![label_with_description(name, description)]
         .push_maybe(disable_args.map(|args| {
             checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
