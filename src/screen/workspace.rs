@@ -81,7 +81,7 @@ impl WorkspaceScreen for WorkspaceConfig {
     }
 
     fn view(&self, idx: usize, expanded: bool) -> Element<Message> {
-        let title = text!("Workspace [{}] - \"{}\":", idx, self.name).size(20);
+        // let title = text!("Workspace [{}] - \"{}\":", idx, self.name).size(20);
         let name = opt_helpers::input(
             "Name",
             Some("Name of the workspace. Should be unique."),
@@ -139,7 +139,7 @@ impl WorkspaceScreen for WorkspaceConfig {
         //     Message::ToggleExpanded(idx),
         // )
         column![
-            title,
+            // title,
             name,
             layout,
             apply_window_based_offset,

@@ -83,6 +83,45 @@ pub fn label_with_description<'a, Message: 'a>(
         .into()
 }
 
+///Creates a `button` with `name` and `description` as label
+pub fn opt_button<'a, Message: 'a + Clone>(
+    name: impl Into<Text<'a>>,
+    description: Option<&'a str>,
+    hovered: bool,
+    on_press: Message,
+    on_hover: impl Fn(bool) -> Message,
+) -> Element<'a, Message> {
+    let right_button = button(text("›").size(20))
+    .on_press(on_press.clone())
+    // .padding(padding::Padding {
+    //     top: 10.0,
+    //     right: 10.0,
+    //     bottom: 5.0,
+    //     left: 10.0,
+    // })
+    .style(move |t, s| {
+        if hovered {
+            button::secondary(t, button::Status::Active)
+        } else {
+            button::text(t, s)
+        }
+    });
+
+    let main = row![label_with_description(name, description), right_button]
+        .align_y(Center)
+        .padding(padding::right(10));
+
+    let area = |el| {
+        mouse_area(el)
+            .on_press(on_press)
+            .on_enter(on_hover(true))
+            .on_exit(on_hover(false))
+            .interaction(iced::mouse::Interaction::Pointer)
+    };
+
+    area(opt_box(main)).into()
+}
+
 ///Creates a row with a label with `name` and a `text_input`
 ///using the remainder parameters for it.
 ///
@@ -264,12 +303,29 @@ pub fn section_row<'a, Message: 'a>(
     Row::with_children(contents).spacing(10).into()
 }
 
+///Creates the view for a sub section of options with `title` and the `contents` to be inserted on
+///a section_view.
+pub fn sub_section_view<'a, Message: 'a>(
+    title: Element<'a, Message>,
+    contents: impl IntoIterator<Item = Element<'a, Message>>,
+) -> Element<'a, Message> {
+    column![
+        title,
+        horizontal_rule(2.0),
+        Column::with_children(contents)
+            .padding(padding::top(10).bottom(10))
+            .spacing(10),
+    ]
+    .spacing(10)
+    .into()
+}
+
 ///Creates the view for a section of options with `title` and the `contents`.
 pub fn section_view<'a, Message: 'a>(
     title: impl Into<Text<'a>>,
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
-    let section_title = row![title.into().size(20.0).font(*BOLD_FONT)];
+    let section_title: Text = (title.into() as Text).size(20.0).font(*BOLD_FONT);
     column![
         section_title,
         horizontal_rule(2.0),
