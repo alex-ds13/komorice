@@ -51,7 +51,14 @@ fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
 }
 
 fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
+    let palette = theme.extended_palette();
+    let background = if palette.is_dark {
+        Some(palette.background.weak.color.scale_alpha(0.15).into())
+    } else {
+        Some(iced::Color::BLACK.scale_alpha(0.05).into())
+    };
     container::Style {
+        background,
         border: iced::Border {
             radius: iced::border::bottom(5),
             ..opt_box_style(theme).border
