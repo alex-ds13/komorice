@@ -83,7 +83,9 @@ pub fn label_with_description<'a, Message: 'a>(
         .into()
 }
 
-///Creates a `button` with `name` and `description` as label
+///Creates a `button` with `name` as label.
+///
+///If `Some(description)` is given, it adds the description below the label.
 pub fn opt_button<'a, Message: 'a + Clone>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
@@ -92,20 +94,20 @@ pub fn opt_button<'a, Message: 'a + Clone>(
     on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
     let right_button = button(text("›").size(20))
-    .on_press(on_press.clone())
-    // .padding(padding::Padding {
-    //     top: 10.0,
-    //     right: 10.0,
-    //     bottom: 5.0,
-    //     left: 10.0,
-    // })
-    .style(move |t, s| {
-        if hovered {
-            button::secondary(t, button::Status::Active)
-        } else {
-            button::text(t, s)
-        }
-    });
+        .on_press(on_press.clone())
+        // .padding(padding::Padding {
+        //     top: 10.0,
+        //     right: 10.0,
+        //     bottom: 5.0,
+        //     left: 10.0,
+        // })
+        .style(move |t, s| {
+            if hovered {
+                button::secondary(t, button::Status::Active)
+            } else {
+                button::text(t, s)
+            }
+        });
 
     let main = row![label_with_description(name, description), right_button]
         .align_y(Center)
@@ -125,8 +127,7 @@ pub fn opt_button<'a, Message: 'a + Clone>(
 ///Creates a row with a label with `name` and a `text_input`
 ///using the remainder parameters for it.
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn input<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
@@ -147,8 +148,7 @@ pub fn input<'a, Message: 'a + Clone>(
 ///Creates a row with a label with `name` and a `number_input`
 ///using the remainder parameters for it.
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn number<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
@@ -171,8 +171,7 @@ pub fn number<'a, Message: 'a + Clone>(
 
 ///Creates a `checkbox` with `name` as label
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn bool<'a, Message: 'a>(
     name: &'a str,
     description: Option<&'a str>,
@@ -190,8 +189,7 @@ pub fn bool<'a, Message: 'a>(
 
 ///Creates a `toggler` with `name` as label
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn toggle<'a, Message: 'a>(
     name: &'a str,
     description: Option<&'a str>,
@@ -210,10 +208,9 @@ pub fn toggle<'a, Message: 'a>(
 }
 
 ///Creates a `pick_list`, if `name` is not empty it wraps the
-///`pick_list` on a row with a label with `name` in front.
+///`pick_list` on a row with a label with `name`.
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn choose<'a, T, V, L, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
@@ -236,8 +233,7 @@ where
 
 ///Creates an expandable option with children options to be shown when expanded.
 ///
-///If `Some(description)` is given, it will wrap the resulting
-///widget on a tooltip with the given `description`.
+///If `Some(description)` is given, it adds the description below the label.
 pub fn expandable<'a, Message: 'a + Clone>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
