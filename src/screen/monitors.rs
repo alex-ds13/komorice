@@ -50,8 +50,7 @@ impl Monitors {
                             window_based_work_area_offset_hovered: false,
                             work_area_offset_expanded: false,
                             work_area_offset_hovered: false,
-                            show_workspaces: false,
-                            show_workspaces_hovered: false,
+                            workspaces_button_hovered: false,
                             hovered_workspaces: m
                                 .workspaces
                                 .iter()

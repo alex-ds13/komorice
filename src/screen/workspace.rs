@@ -1,11 +1,10 @@
-use iced::widget::column;
-use iced::{widget::text, Element};
-use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
-use komorebi_client::DefaultLayout;
-
 use crate::utils::DisplayOptionCustom as DisplayOption;
 use crate::widget::opt_helpers;
 
+use iced::widget::column;
+use iced::Element;
+use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
+use komorebi_client::DefaultLayout;
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -31,13 +30,11 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
-    ToggleExpanded(usize),
 }
 
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
-    ToggleExpanded(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -54,7 +51,7 @@ pub enum ConfigChange {
 pub trait WorkspaceScreen {
     fn update(&mut self, message: Message) -> Action;
 
-    fn view(&self, idx: usize, expanded: bool) -> Element<Message>;
+    fn view(&self) -> Element<Message>;
 }
 
 impl WorkspaceScreen for WorkspaceConfig {
@@ -73,15 +70,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                 }
                 ConfigChange::WorkspacePadding(value) => self.workspace_padding = Some(value),
             },
-            Message::ToggleExpanded(idx) => {
-                return Action::ToggleExpanded(idx);
-            }
         }
         Action::None
     }
 
-    fn view(&self, idx: usize, expanded: bool) -> Element<Message> {
-        // let title = text!("Workspace [{}] - \"{}\":", idx, self.name).size(20);
+    fn view(&self) -> Element<Message> {
         let name = opt_helpers::input(
             "Name",
             Some("Name of the workspace. Should be unique."),
@@ -131,15 +124,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             self.workspace_padding.unwrap_or_default(),
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
         );
-        // opt_helpers::expandable(
-        //     title,
-        //     None,
-        //     [name, layout],
-        //     expanded,
-        //     Message::ToggleExpanded(idx),
-        // )
         column![
-            // title,
             name,
             layout,
             apply_window_based_offset,

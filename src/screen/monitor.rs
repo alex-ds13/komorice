@@ -20,7 +20,6 @@ pub enum Message {
     SetSubScreenWorkspace(usize),
     ToggleWorkspacesHover(bool),
     ToggleWorkspaceHover(usize, bool),
-    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -54,8 +53,7 @@ pub struct Monitor {
     pub window_based_work_area_offset_hovered: bool,
     pub work_area_offset_expanded: bool,
     pub work_area_offset_hovered: bool,
-    pub show_workspaces: bool,
-    pub show_workspaces_hovered: bool,
+    pub workspaces_button_hovered: bool,
     pub hovered_workspaces: HashMap<usize, bool>,
 }
 
@@ -63,7 +61,7 @@ impl Monitor {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-    Message::ConfigChange(change) => match change {
+            Message::ConfigChange(change) => match change {
                 ConfigChange::WindowBasedWorkAreaOffset(_) => todo!(),
                 ConfigChange::WindowBasedWorkAreaOffsetTop(value) => {
                     if let Some(offset) = &mut self.config.window_based_work_area_offset {
@@ -185,9 +183,6 @@ impl Monitor {
                     let action = workspace.update(message);
                     match action {
                         workspace::Action::None => {},
-                        workspace::Action::ToggleExpanded(idx) => {
-                            self.hovered_workspaces.entry(idx).and_modify(|expanded| *expanded = !*expanded).or_insert(true);
-                        },
                     }
                 }
             },
@@ -196,19 +191,18 @@ impl Monitor {
             },
             Message::SetSubScreenWorkspaces => {
                 self.sub_screen = SubScreen::Workspaces;
-                self.show_workspaces_hovered = false;
+                self.workspaces_button_hovered = false;
             },
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
                 self.hovered_workspaces.entry(idx).and_modify(|hovered| *hovered = false).or_insert(false);
             },
             Message::ToggleWorkspacesHover(hover) => {
-                self.show_workspaces_hovered = hover;
+                self.workspaces_button_hovered = hover;
             },
             Message::ToggleWorkspaceHover(idx, hover) => {
                 self.hovered_workspaces.entry(idx).and_modify(|hovered| *hovered = hover).or_insert(true);
             },
-            Message::Nothing => {}
         }
         Task::none()
     }
@@ -307,7 +301,7 @@ impl Monitor {
                 opt_helpers::opt_button(
                     "Workspaces",
                     None,
-                    self.show_workspaces_hovered,
+                    self.workspaces_button_hovered,
                     Message::SetSubScreenWorkspaces,
                     Message::ToggleWorkspacesHover,
                 ),
@@ -344,7 +338,7 @@ impl Monitor {
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
                 text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name).size(18),
             ].into(),
-            [self.config.workspaces[idx].view(idx, self.hovered_workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+            [self.config.workspaces[idx].view().map(move |m| Message::Workspace(idx, m))],
         )
     }
 }
