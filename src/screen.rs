@@ -6,7 +6,7 @@ pub mod workspace;
 
 use std::fmt::{Display, Formatter};
 
-use iced::{widget::text, Element};
+use iced::{widget::value, Element};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Screen {
@@ -45,13 +45,13 @@ impl Display for Screen {
 }
 
 impl<Message> From<Screen> for Element<'_, Message> {
-    fn from(value: Screen) -> Self {
-        text(value.to_string()).into()
+    fn from(screen: Screen) -> Self {
+        value(screen).into()
     }
 }
 
 impl<Message> From<&Screen> for Element<'_, Message> {
-    fn from(value: &Screen) -> Self {
-        text(value.to_string()).into()
+    fn from(screen: &Screen) -> Self {
+        value(screen).into()
     }
 }

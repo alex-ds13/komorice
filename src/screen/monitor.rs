@@ -1,6 +1,6 @@
 use super::workspace::{self, WorkspaceScreen};
 
-use crate::{widget::opt_helpers, BOLD_FONT};
+use crate::widget::opt_helpers;
 
 use std::collections::HashMap;
 
