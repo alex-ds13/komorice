@@ -88,6 +88,25 @@ fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
     })
 }
 
+fn disable_checkbox<'a, Message: 'a + Clone>(
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Option<Element<'a, Message>> {
+    disable_args.map(|args| {
+        mouse_area(
+            row![
+                text(args.label.unwrap_or_default()),
+                checkbox("", args.disable)
+                    .spacing(0)
+                    .on_toggle(args.on_toggle)
+            ]
+            .spacing(10),
+        )
+        .on_press((args.on_toggle)(!args.disable))
+        .interaction(iced::mouse::Interaction::Pointer)
+        .into()
+    })
+}
+
 ///Creates a column with a label element and a description
 ///
 ///If `Some(description)` is given, it adds the description below the name.
@@ -199,9 +218,7 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
     let on_input_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
     let element = row![label_with_description(name, description),]
-        .push_maybe(disable_args.map(|args| {
-            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(
             widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
         )
@@ -259,15 +276,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
         i32::MIN..=i32::MAX
     };
     let element = row![label_with_description(name, description),]
-        .push_maybe(disable_args.map(|args| {
-            row![
-                text(args.label.unwrap_or_default()),
-                checkbox("", args.disable)
-                    .spacing(0)
-                    .on_toggle(args.on_toggle)
-            ]
-            .spacing(10)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(
             iced_aw::number_input(value, bounds, on_change)
                 .style(
@@ -328,15 +337,7 @@ pub fn number_with_disable_default<'a, Message: 'a + Clone>(
         i32::MIN..=i32::MAX
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_args.map(|args| {
-            row![
-                text(args.label.unwrap_or_default()),
-                checkbox("", args.disable)
-                    .spacing(0)
-                    .on_toggle(args.on_toggle)
-            ]
-            .spacing(10)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(
             iced_aw::number_input(value, bounds, on_change)
                 .style(
@@ -383,7 +384,7 @@ pub fn bool<'a, Message: 'a>(
 ///toggling the bool on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn bool_with_disable<'a, Message: 'a>(
+pub fn bool_with_disable<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -394,9 +395,7 @@ pub fn bool_with_disable<'a, Message: 'a>(
         .as_ref()
         .and_then(|args| (!args.disable).then_some(on_toggle));
     let element = row![label_with_description(name, description)]
-        .push_maybe(disable_args.map(|args| {
-            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(checkbox(if value { "On" } else { "Off" }, value).on_toggle_maybe(on_toggle_maybe))
         .spacing(10)
         .align_y(Center);
@@ -427,7 +426,7 @@ pub fn toggle<'a, Message: 'a>(
 ///toggling the toggler on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn toggle_with_disable<'a, Message: 'a>(
+pub fn toggle_with_disable<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -438,9 +437,7 @@ pub fn toggle_with_disable<'a, Message: 'a>(
         .as_ref()
         .and_then(|args| (!args.disable).then_some(on_toggle));
     let element = row![label_with_description(name, description)]
-        .push_maybe(disable_args.map(|args| {
-            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(
             toggler(value)
                 .label(if value { "On" } else { "Off" })
@@ -497,9 +494,7 @@ where
         .spacing(10)
         .align_y(Center)
         .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
-        .push_maybe(disable_args.map(|args| {
-            checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
-        }))
+        .push_maybe(disable_checkbox(disable_args))
         .push(pick_list(options, selected, on_selected));
     opt_box(element).into()
 }
