@@ -43,6 +43,7 @@ fn main() -> iced::Result {
         .theme(Komofig::theme)
         .default_font(*DEFAULT_FONT)
         .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
+        .font(include_bytes!("../assets/icons.ttf"))
         .run_with(Komofig::initialize)
 }
 

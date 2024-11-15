@@ -5,7 +5,7 @@ use iced::{
     padding,
     widget::{
         button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
-        scrollable, text, text_input, toggler, Column, Container, Row, Text,
+        scrollable, text, text_input, toggler, Button, Column, Container, Row, Text,
     },
     Center, Element, Fill,
 };
@@ -68,14 +68,34 @@ fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Contain
     container(element).padding(10).style(opt_box_style)
 }
 
-///Creates a column with a label and a description
+fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
+    button(
+        text("\u{E826}")
+            .font(iced::Font::with_name("icons"))
+            .size(13)
+            .style(|t: &iced::Theme| text::Style {
+                color: Some(t.extended_palette().primary.strong.color),
+            }),
+    )
+    .on_press(message)
+    .padding(padding::all(2.5))
+    .style(|t, s| {
+        if matches!(s, button::Status::Hovered) {
+            button::secondary(t, button::Status::Active)
+        } else {
+            button::text(t, s)
+        }
+    })
+}
+
+///Creates a column with a label element and a description
 ///
 ///If `Some(description)` is given, it adds the description below the name.
-pub fn label_with_description<'a, Message: 'a>(
-    name: impl Into<Text<'a>>,
+pub fn label_element_with_description<'a, Message: 'a>(
+    label_el: impl Into<Element<'a, Message>>,
     description: Option<&'a str>,
 ) -> Element<'a, Message> {
-    column![widget::label(name)]
+    column![label_el.into()]
         .push_maybe(description.map(|d| {
             text(d)
                 .style(|t: &iced::Theme| {
@@ -94,6 +114,16 @@ pub fn label_with_description<'a, Message: 'a>(
         .width(Fill)
         .spacing(5)
         .into()
+}
+
+///Creates a column with a label and a description
+///
+///If `Some(description)` is given, it adds the description below the name.
+pub fn label_with_description<'a, Message: 'a>(
+    name: impl Into<Text<'a>>,
+    description: Option<&'a str>,
+) -> Element<'a, Message> {
+    label_element_with_description(widget::label(name), description)
 }
 
 ///Creates a `button` with `name` as label.
@@ -229,6 +259,75 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
         i32::MIN..=i32::MAX
     };
     let element = row![label_with_description(name, description),]
+        .push_maybe(disable_args.map(|args| {
+            row![
+                text(args.label.unwrap_or_default()),
+                checkbox("", args.disable)
+                    .spacing(0)
+                    .on_toggle(args.on_toggle)
+            ]
+            .spacing(10)
+        }))
+        .push(
+            iced_aw::number_input(value, bounds, on_change)
+                .style(
+                    |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
+                        button_background: Some(t.extended_palette().background.weak.color.into()),
+                        icon_color: t.extended_palette().background.weak.text,
+                    },
+                )
+                .input_style(move |t, s| {
+                    text_input::default(
+                        t,
+                        if should_disable {
+                            text_input::Status::Disabled
+                        } else {
+                            s
+                        },
+                    )
+                }),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
+///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+///toggling the number input on/off. It also adds a button in front of the label in case the value
+///is diferent from `default_value` to send a message with the default value.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn number_with_disable_default<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: i32,
+    default_value: i32,
+    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let is_dirty = value != default_value && !should_disable;
+    let label = if is_dirty {
+        row![name, reset_button(on_change(default_value))]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let on_change = move |v| {
+        if should_disable {
+            on_change(value)
+        } else {
+            on_change(v)
+        }
+    };
+    let bounds = if should_disable {
+        value..=value
+    } else {
+        i32::MIN..=i32::MAX
+    };
+    let element = row![label_element_with_description(label, description)]
         .push_maybe(disable_args.map(|args| {
             row![
                 text(args.label.unwrap_or_default()),

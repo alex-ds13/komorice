@@ -135,10 +135,11 @@ impl WorkspaceScreen for WorkspaceConfig {
             self.apply_window_based_work_area_offset.unwrap_or(true),
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
         );
-        let container_padding = opt_helpers::number_with_disable(
+        let container_padding = opt_helpers::number_with_disable_default(
             "Container Padding",
             Some("Container padding (default: global)"),
             self.container_padding.unwrap_or(10),
+            10,
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.container_padding.is_none(),
