@@ -10,13 +10,11 @@ use iced::{
     Center, Element, Fill,
 };
 
-pub struct DisableArgs<'a, Message, F>
-where
-    F: Fn(bool) -> Message + 'a,
+pub struct DisableArgs<'a, Message>
 {
     pub disable: bool,
     pub label: Option<&'a str>,
-    pub on_toggle: F,
+    pub on_toggle: fn(bool) -> Message,
 }
 
 fn opt_box_style(theme: &iced::Theme) -> container::Style {
@@ -167,7 +165,7 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
     value: &'a str,
     on_change: impl Fn(String) -> Message + 'a,
     on_submit: Option<Message>,
-    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+    disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let element = row![label_with_description(name, description),]
         .push_maybe(disable_args.map(|args| {
@@ -212,7 +210,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
     description: Option<&'a str>,
     value: i32,
     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
-    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+    disable_args: Option<DisableArgs<'a, Message>>
 ) -> Element<'a, Message> {
     let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
     let on_change = move |v| {
@@ -277,7 +275,7 @@ pub fn bool_with_disable<'a, Message: 'a>(
     description: Option<&'a str>,
     value: bool,
     on_toggle: impl Fn(bool) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+    disable_args: Option<DisableArgs<'a, Message>>
 ) -> Element<'a, Message> {
     let on_toggle_maybe = disable_args
         .as_ref()
@@ -321,7 +319,7 @@ pub fn toggle_with_disable<'a, Message: 'a>(
     description: Option<&'a str>,
     value: bool,
     on_toggle: impl Fn(bool) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+    disable_args: Option<DisableArgs<'a, Message>>
 ) -> Element<'a, Message> {
     let on_toggle_maybe = disable_args
         .as_ref()
@@ -375,7 +373,7 @@ pub fn choose_with_disable<'a, T, V, L, Message: 'a + Clone>(
     options: L,
     selected: Option<V>,
     on_selected: impl Fn(T) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message, impl Fn(bool) -> Message + 'a>>,
+    disable_args: Option<DisableArgs<'a, Message>>
 ) -> Element<'a, Message>
 where
     T: ToString + PartialEq + Clone + 'a,
