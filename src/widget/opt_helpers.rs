@@ -4,13 +4,13 @@ use crate::{widget, BOLD_FONT, EMOJI_FONT};
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row, scrollable, text, text_input, toggler, Column, Container, Row, Text
+        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
+        scrollable, text, text_input, toggler, Column, Container, Row, Text,
     },
     Center, Element, Fill,
 };
 
-pub struct DisableArgs<'a, Message>
-{
+pub struct DisableArgs<'a, Message> {
     pub disable: bool,
     pub label: Option<&'a str>,
     pub on_toggle: fn(bool) -> Message,
@@ -166,12 +166,15 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
     on_submit: Option<Message>,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let on_input_maybe = (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
+    let on_input_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
     let element = row![label_with_description(name, description),]
         .push_maybe(disable_args.map(|args| {
             checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
         }))
-        .push(widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe))
+        .push(
+            widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
+        )
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
@@ -210,7 +213,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
     description: Option<&'a str>,
     value: i32,
     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
-    disable_args: Option<DisableArgs<'a, Message>>
+    disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
     let on_change = move |v| {
@@ -237,14 +240,21 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
         }))
         .push(
             iced_aw::number_input(value, bounds, on_change)
-                .style(|t: &iced::Theme, _| {
-                    iced_aw::number_input::number_input::Style {
+                .style(
+                    |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
                         button_background: Some(t.extended_palette().background.weak.color.into()),
                         icon_color: t.extended_palette().background.weak.text,
-                    }
-                })
+                    },
+                )
                 .input_style(move |t, s| {
-                    text_input::default(t, if should_disable { text_input::Status::Disabled } else { s })
+                    text_input::default(
+                        t,
+                        if should_disable {
+                            text_input::Status::Disabled
+                        } else {
+                            s
+                        },
+                    )
                 }),
         )
         .spacing(10)
@@ -279,7 +289,7 @@ pub fn bool_with_disable<'a, Message: 'a>(
     description: Option<&'a str>,
     value: bool,
     on_toggle: impl Fn(bool) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message>>
+    disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_maybe = disable_args
         .as_ref()
@@ -323,7 +333,7 @@ pub fn toggle_with_disable<'a, Message: 'a>(
     description: Option<&'a str>,
     value: bool,
     on_toggle: impl Fn(bool) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message>>
+    disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_maybe = disable_args
         .as_ref()
@@ -377,7 +387,7 @@ pub fn choose_with_disable<'a, T, V, L, Message: 'a + Clone>(
     options: L,
     selected: Option<V>,
     on_selected: impl Fn(T) -> Message + 'a,
-    disable_args: Option<DisableArgs<'a, Message>>
+    disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
     T: ToString + PartialEq + Clone + 'a,

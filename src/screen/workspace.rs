@@ -79,36 +79,34 @@ impl WorkspaceScreen for WorkspaceConfig {
                 }
                 ConfigChange::WorkspacePadding(value) => self.workspace_padding = Some(value),
             },
-            Message::ToggleOverrideGlobal(to_override) => {
-                match to_override {
-                    OverrideConfig::ContainerPadding(disable) => {
-                        if disable {
-                            self.container_padding = None;
-                        } else {
-                            self.container_padding = Some(10);
-                        }
-                    },
-                    OverrideConfig::FloatOverride(disable) => {
-                        if disable {
-                            self.float_override = None;
-                        } else {
-                            self.float_override = Some(false);
-                        }
-                    },
-                    OverrideConfig::WindowContainerBehaviour(disable) => {
-                        if disable {
-                            self.window_container_behaviour = None;
-                        } else {
-                            self.window_container_behaviour = Some(WindowContainerBehaviour::Create);
-                        }
-                    },
-                    OverrideConfig::WorkspacePadding(disable) => {
-                        if disable {
-                            self.workspace_padding = None;
-                        } else {
-                            self.workspace_padding = Some(10);
-                        }
-                    },
+            Message::ToggleOverrideGlobal(to_override) => match to_override {
+                OverrideConfig::ContainerPadding(disable) => {
+                    if disable {
+                        self.container_padding = None;
+                    } else {
+                        self.container_padding = Some(10);
+                    }
+                }
+                OverrideConfig::FloatOverride(disable) => {
+                    if disable {
+                        self.float_override = None;
+                    } else {
+                        self.float_override = Some(false);
+                    }
+                }
+                OverrideConfig::WindowContainerBehaviour(disable) => {
+                    if disable {
+                        self.window_container_behaviour = None;
+                    } else {
+                        self.window_container_behaviour = Some(WindowContainerBehaviour::Create);
+                    }
+                }
+                OverrideConfig::WorkspacePadding(disable) => {
+                    if disable {
+                        self.workspace_padding = None;
+                    } else {
+                        self.workspace_padding = Some(10);
+                    }
                 }
             },
         }
@@ -146,7 +144,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 disable: self.container_padding.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
-            })
+            }),
         );
         let float_override = opt_helpers::toggle_with_disable(
             "Float Override",
@@ -171,8 +169,10 @@ impl WorkspaceScreen for WorkspaceConfig {
             Some(opt_helpers::DisableArgs {
                 disable: self.window_container_behaviour.is_none(),
                 label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v)),
-            })
+                on_toggle: |v| {
+                    Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v))
+                },
+            }),
         );
         let workspace_padding = opt_helpers::number_with_disable(
             "Workspace Padding",
@@ -183,7 +183,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 disable: self.workspace_padding.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
-            })
+            }),
         );
         column![
             name,
