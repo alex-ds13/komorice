@@ -163,15 +163,16 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
     description: Option<&'a str>,
     placeholder: &'a str,
     value: &'a str,
-    on_change: impl Fn(String) -> Message + 'a,
+    on_change: impl Fn(String) -> Message + 'a + Clone,
     on_submit: Option<Message>,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
+    let on_input_maybe = (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
     let element = row![label_with_description(name, description),]
         .push_maybe(disable_args.map(|args| {
             checkbox(args.label.unwrap_or_default(), args.disable).on_toggle(args.on_toggle)
         }))
-        .push(widget::input(placeholder, value, on_change, on_submit))
+        .push(widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe))
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
