@@ -4,8 +4,7 @@ use crate::{widget, BOLD_FONT, EMOJI_FONT};
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
-        scrollable, text, toggler, Column, Container, Row, Text,
+        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row, scrollable, text, text_input, toggler, Column, Container, Row, Text
     },
     Center, Element, Fill,
 };
@@ -222,7 +221,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
         }
     };
     let bounds = if should_disable {
-        0..=0
+        value..=value
     } else {
         i32::MIN..=i32::MAX
     };
@@ -237,12 +236,16 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
             .spacing(10)
         }))
         .push(
-            iced_aw::number_input(value, bounds, on_change).style(|t: &iced::Theme, _| {
-                iced_aw::number_input::number_input::Style {
-                    button_background: Some(t.extended_palette().background.weak.color.into()),
-                    icon_color: t.extended_palette().background.weak.text,
-                }
-            }),
+            iced_aw::number_input(value, bounds, on_change)
+                .style(|t: &iced::Theme, _| {
+                    iced_aw::number_input::number_input::Style {
+                        button_background: Some(t.extended_palette().background.weak.color.into()),
+                        icon_color: t.extended_palette().background.weak.text,
+                    }
+                })
+                .input_style(move |t, s| {
+                    text_input::default(t, if should_disable { text_input::Status::Disabled } else { s })
+                }),
         )
         .spacing(10)
         .align_y(Center);

@@ -140,7 +140,7 @@ impl WorkspaceScreen for WorkspaceConfig {
         let container_padding = opt_helpers::number_with_disable(
             "Container Padding",
             Some("Container padding (default: global)"),
-            self.container_padding.unwrap_or_default(),
+            self.container_padding.unwrap_or(10),
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.container_padding.is_none(),
@@ -177,7 +177,7 @@ impl WorkspaceScreen for WorkspaceConfig {
         let workspace_padding = opt_helpers::number_with_disable(
             "Workspace Padding",
             Some("Workspace padding (default: global)"),
-            self.workspace_padding.unwrap_or_default(),
+            self.workspace_padding.unwrap_or(10),
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.workspace_padding.is_none(),
