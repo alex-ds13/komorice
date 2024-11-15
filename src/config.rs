@@ -1,15 +1,13 @@
 use crate::apperror::{AppError, AppErrorKind};
 use crate::Message;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_std::channel::{self, Receiver};
 use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
-use komorebi::MonitorConfig;
+use komorebi::{MonitorConfig, WorkspaceConfig};
 use komorebi_client::StaticConfig;
 use notify_debouncer_mini::{
     new_debouncer,
@@ -17,34 +15,85 @@ use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 
-pub fn change_monitor_config(config: &mut StaticConfig, idx: usize, f: impl Fn(&mut MonitorConfig)) {
-    if let Some(monitors) = &mut config.monitors {
-        if let Some(monitor) = monitors.get_mut(idx) {
-            f(monitor);
+trait ChangeConfig {
+    fn change_config(&mut self, mut f: impl FnMut(&mut Self)) {
+        f(self);
+    }
+
+    fn change_monitor_config(&mut self, idx: usize, f: impl Fn(&mut MonitorConfig));
+
+    fn change_workspace_config(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+        f: impl Fn(&mut WorkspaceConfig),
+    );
+}
+
+impl ChangeConfig for StaticConfig {
+    fn change_monitor_config(&mut self, idx: usize, f: impl Fn(&mut MonitorConfig)) {
+        if let Some(monitors) = &mut self.monitors {
+            if let Some(monitor) = monitors.get_mut(idx) {
+                f(monitor);
+            } else {
+                monitors.reserve(idx + 1 - monitors.len());
+                for _ in monitors.len()..(idx + 1) {
+                    monitors.push(MonitorConfig {
+                        workspaces: Vec::new(),
+                        work_area_offset: None,
+                        window_based_work_area_offset: None,
+                        window_based_work_area_offset_limit: None,
+                    });
+                }
+                f(&mut monitors[idx]);
+            }
         } else {
-            monitors.reserve(idx + 1 - monitors.len());
-            for _ in monitors.len()..(idx + 1) {
-                monitors.push(komorebi::MonitorConfig {
+            let mut monitors = vec![
+                komorebi::MonitorConfig {
                     workspaces: Vec::new(),
                     work_area_offset: None,
                     window_based_work_area_offset: None,
                     window_based_work_area_offset_limit: None,
-                });
-            }
+                };
+                idx + 1
+            ];
             f(&mut monitors[idx]);
+            self.monitors = Some(monitors);
         }
-    } else {
-        let mut monitors = vec![
-            komorebi::MonitorConfig {
-                workspaces: Vec::new(),
-                work_area_offset: None,
-                window_based_work_area_offset: None,
-                window_based_work_area_offset_limit: None,
-            };
-        idx + 1
-        ];
-        f(&mut monitors[idx]);
-        config.monitors = Some(monitors);
+    }
+
+    fn change_workspace_config(
+        &mut self,
+        monitor_idx: usize,
+        workspace_idx: usize,
+        f: impl Fn(&mut WorkspaceConfig),
+    ) {
+        self.change_monitor_config(monitor_idx, |monitor| {
+            if let Some(workspace) = monitor.workspaces.get_mut(workspace_idx) {
+                f(workspace);
+            } else {
+                monitor
+                    .workspaces
+                    .reserve(workspace_idx + 1 - monitor.workspaces.len());
+                for _ in monitor.workspaces.len()..(workspace_idx + 1) {
+                    monitor.workspaces.push(WorkspaceConfig {
+                        name: String::default(),
+                        layout: None,
+                        custom_layout: None,
+                        layout_rules: None,
+                        custom_layout_rules: None,
+                        container_padding: None,
+                        workspace_padding: None,
+                        initial_workspace_rules: None,
+                        workspace_rules: None,
+                        apply_window_based_work_area_offset: None,
+                        window_container_behaviour: None,
+                        float_override: None,
+                    });
+                }
+                f(&mut monitor.workspaces[workspace_idx]);
+            }
+        });
     }
 }
 
