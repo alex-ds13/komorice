@@ -163,9 +163,9 @@ impl Komofig {
             Screen::Home => {
                 let title = container(
                     row![
-                        text("🍉").shaping(text::Shaping::Advanced).size(70),
+                        text("🍉").font(*EMOJI_FONT).size(70),
                         text("Komorice").size(75),
-                        text("🍚").shaping(text::Shaping::Advanced).size(70)
+                        text("🍚").font(*EMOJI_FONT).size(70)
                     ]
                     .align_y(Center),
                 )

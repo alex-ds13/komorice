@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::{widget, BOLD_FONT};
+use crate::{widget, BOLD_FONT, EMOJI_FONT};
 
 use iced::{
     padding,
@@ -109,14 +109,9 @@ pub fn opt_button<'a, Message: 'a + Clone>(
     on_press: Message,
     on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
-    let right_button = button(text("›").shaping(text::Shaping::Advanced))
+    let right_button = button(text("›").font(*EMOJI_FONT).size(25))
         .on_press(on_press.clone())
-        // .padding(padding::Padding {
-        //     top: 10.0,
-        //     right: 10.0,
-        //     bottom: 5.0,
-        //     left: 10.0,
-        // })
+        .padding(padding::left(10).right(10))
         .style(move |t, s| {
             if hovered {
                 button::secondary(t, button::Status::Active)
