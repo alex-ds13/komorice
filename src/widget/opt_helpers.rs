@@ -354,6 +354,59 @@ pub fn number_with_disable_default<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
+///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+///toggling the number input on/off. It also adds a button in front of the label in case the value
+///is diferent from `default_value` to send a message with the default value.
+///
+///This version of `number` uses values as `Option`s to allow the default value to be `None`.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: Option<i32>,
+    default_value: Option<i32>,
+    on_change: impl Fn(Option<i32>) -> Message + 'a + Copy + 'static,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let default_value_internal = default_value.unwrap_or_default();
+    let value_internal = value.unwrap_or(default_value_internal);
+    let is_dirty = ((value_internal != default_value_internal)
+        || (default_value.is_none() && value.is_some()))
+        && !should_disable;
+    let label = if is_dirty {
+        row![name, reset_button(on_change(default_value))]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let on_change = move |v| {
+        if should_disable {
+            on_change(None)
+        } else {
+            on_change(Some(v))
+        }
+    };
+    let bounds = if should_disable {
+        value_internal..=value_internal
+    } else {
+        i32::MIN..=i32::MAX
+    };
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(
+            iced_aw::number_input(value_internal, bounds, on_change)
+                .style(num_button_style)
+                .input_style(num_input_style(should_disable)),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a `checkbox` with `name` as label
 ///
 ///If `Some(description)` is given, it adds the description below the label.
@@ -440,6 +493,50 @@ pub fn toggle_with_disable<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
+///Creates a `toggler` with `name` as label and a disable checkbox which allows
+///toggling the toggler on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: Option<bool>,
+    default_value: Option<bool>,
+    on_toggle: impl Fn(Option<bool>) -> Message + 'a + Clone,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let on_toggle_c = on_toggle.clone();
+    let on_toggle_maybe = disable_args
+        .as_ref()
+        .and_then(|args| (!args.disable).then_some(move |v| on_toggle_c(Some(v))));
+    let is_dirty = if let (Some(v), Some(df)) = (&value, &default_value) {
+        v != df
+    } else {
+        !matches!((&value, &default_value), (None, None))
+    };
+    let value = value.unwrap_or_default();
+    let label = if is_dirty {
+        let on_default = (on_toggle)(default_value.as_ref().cloned());
+        row![name, reset_button(on_default)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let element = row![label_element_with_description(label, description)]
+    // let element = row![label_with_description(name, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(
+            toggler(value)
+                .label(if value { "On" } else { "Off" })
+                .on_toggle_maybe(on_toggle_maybe),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a `pick_list`, if `name` is not empty it wraps the
 ///`pick_list` on a row with a label with `name`.
 ///
@@ -488,6 +585,47 @@ where
         .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
         .push_maybe(disable_checkbox(disable_args))
         .push(pick_list(options, selected, on_selected));
+    opt_box(element).into()
+}
+
+///Creates a `pick_list`, if `name` is not empty it wraps the
+///`pick_list` on a row with a label with `name`. And adds a disable
+///checkbox which allows toggling the choose on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn choose_with_disable_default<'a, T, V, L, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    options: L,
+    selected: Option<V>,
+    on_selected: impl Fn(Option<T>) -> Message + 'a,
+    default_value: Option<V>,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message>
+where
+    T: ToString + PartialEq + Clone + 'a,
+    V: std::borrow::Borrow<T> + 'a,
+    L: std::borrow::Borrow<[T]> + 'a,
+{
+    let is_dirty = if let (Some(v), Some(df)) = (&selected, &default_value) {
+        v.borrow() != df.borrow()
+    } else {
+        !matches!((&selected, &default_value), (None, None))
+    };
+    let label = if is_dirty {
+        let on_default = (on_selected)(default_value.as_ref().map(|df| df.borrow()).cloned());
+        row![name, reset_button(on_default)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(pick_list(options, selected, move |v| on_selected(Some(v))))
+        .spacing(10)
+        .align_y(Center);
     opt_box(element).into()
 }
 

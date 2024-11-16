@@ -41,12 +41,12 @@ pub enum Action {
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
     ApplyWindowBasedWorkAreaOffset(bool),
-    ContainerPadding(i32),
-    FloatOverride(bool),
+    ContainerPadding(Option<i32>),
+    FloatOverride(Option<bool>),
     Layout(Option<DefaultLayout>),
     Name(String),
-    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WorkspacePadding(i32),
+    WindowContainerBehaviour(Option<komorebi::WindowContainerBehaviour>),
+    WorkspacePadding(Option<i32>),
 }
 
 #[derive(Clone, Debug)]
@@ -70,14 +70,14 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
                     self.apply_window_based_work_area_offset = Some(value)
                 }
-                ConfigChange::ContainerPadding(value) => self.container_padding = Some(value),
-                ConfigChange::FloatOverride(value) => self.float_override = Some(value),
+                ConfigChange::ContainerPadding(value) => self.container_padding = value,
+                ConfigChange::FloatOverride(value) => self.float_override = value,
                 ConfigChange::Layout(value) => self.layout = value,
                 ConfigChange::Name(value) => self.name = value,
                 ConfigChange::WindowContainerBehaviour(value) => {
-                    self.window_container_behaviour = Some(value)
+                    self.window_container_behaviour = value;
                 }
-                ConfigChange::WorkspacePadding(value) => self.workspace_padding = Some(value),
+                ConfigChange::WorkspacePadding(value) => self.workspace_padding = value,
             },
             Message::ToggleOverrideGlobal(to_override) => match to_override {
                 OverrideConfig::ContainerPadding(disable) => {
@@ -122,12 +122,14 @@ impl WorkspaceScreen for WorkspaceConfig {
             |v| Message::ConfigChange(ConfigChange::Name(v)),
             None,
         );
-        let layout = opt_helpers::choose(
+        let layout = opt_helpers::choose_with_disable_default(
             "Layout",
             Some("Layout (default: BSP)"),
             &DEFAULT_LAYOUT_OPTIONS[..],
             Some(DisplayOption(self.layout, "[None] (Floating)")),
-            |s| Message::ConfigChange(ConfigChange::Layout(s.0)),
+            |s| Message::ConfigChange(ConfigChange::Layout(s.and_then(|s| s.0))),
+            Some(DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)")),
+            None,
         );
         let apply_window_based_offset = opt_helpers::toggle(
             "Apply Window Based Work Area Offset",
@@ -135,11 +137,11 @@ impl WorkspaceScreen for WorkspaceConfig {
             self.apply_window_based_work_area_offset.unwrap_or(true),
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
         );
-        let container_padding = opt_helpers::number_with_disable_default(
+        let container_padding = opt_helpers::number_with_disable_default_option(
             "Container Padding",
             Some("Container padding (default: global)"),
-            self.container_padding.unwrap_or(10),
-            10,
+            self.container_padding,
+            None,
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.container_padding.is_none(),
@@ -147,10 +149,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
             }),
         );
-        let float_override = opt_helpers::toggle_with_disable(
+        let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
             Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
-            self.float_override.unwrap_or_default(),
+            self.float_override,
+            None,
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.float_override.is_none(),
@@ -158,7 +161,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
             })
         );
-        let window_container_behaviour = opt_helpers::choose_with_disable(
+        let window_container_behaviour = opt_helpers::choose_with_disable_default(
             "Window Container Behaviour",
             Some("Determine what happens when a new window is opened (default: global)"),
             [
@@ -167,6 +170,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             ],
             self.window_container_behaviour,
             |v| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(v)),
+            None,
             Some(opt_helpers::DisableArgs {
                 disable: self.window_container_behaviour.is_none(),
                 label: Some("Global"),
@@ -175,10 +179,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                 },
             }),
         );
-        let workspace_padding = opt_helpers::number_with_disable(
+        let workspace_padding = opt_helpers::number_with_disable_default_option(
             "Workspace Padding",
             Some("Workspace padding (default: global)"),
-            self.workspace_padding.unwrap_or(10),
+            self.workspace_padding,
+            None,
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: self.workspace_padding.is_none(),
