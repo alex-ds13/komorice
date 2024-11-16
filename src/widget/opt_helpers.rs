@@ -107,6 +107,31 @@ fn disable_checkbox<'a, Message: 'a + Clone>(
     })
 }
 
+fn num_button_style(
+    t: &iced::Theme,
+    _s: iced_aw::style::Status,
+) -> iced_aw::number_input::number_input::Style {
+    iced_aw::number_input::number_input::Style {
+        button_background: Some(t.extended_palette().background.weak.color.into()),
+        icon_color: t.extended_palette().background.weak.text,
+    }
+}
+
+fn num_input_style(
+    disable: bool,
+) -> impl Fn(&iced::Theme, text_input::Status) -> text_input::Style {
+    move |t: &iced::Theme, s: text_input::Status| {
+        text_input::default(
+            t,
+            if disable {
+                text_input::Status::Disabled
+            } else {
+                s
+            },
+        )
+    }
+}
+
 ///Creates a column with a label element and a description
 ///
 ///If `Some(description)` is given, it adds the description below the name.
@@ -239,12 +264,7 @@ pub fn number<'a, Message: 'a + Clone>(
 ) -> Element<'a, Message> {
     let element = row![
         label_with_description(name, description),
-        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(|t: &iced::Theme, _| {
-            iced_aw::number_input::number_input::Style {
-                button_background: Some(t.extended_palette().background.weak.color.into()),
-                icon_color: t.extended_palette().background.weak.text,
-            }
-        }),
+        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style),
     ]
     .spacing(10)
     .align_y(Center);
@@ -279,22 +299,8 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
         .push_maybe(disable_checkbox(disable_args))
         .push(
             iced_aw::number_input(value, bounds, on_change)
-                .style(
-                    |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
-                        button_background: Some(t.extended_palette().background.weak.color.into()),
-                        icon_color: t.extended_palette().background.weak.text,
-                    },
-                )
-                .input_style(move |t, s| {
-                    text_input::default(
-                        t,
-                        if should_disable {
-                            text_input::Status::Disabled
-                        } else {
-                            s
-                        },
-                    )
-                }),
+                .style(num_button_style)
+                .input_style(num_input_style(should_disable)),
         )
         .spacing(10)
         .align_y(Center);
@@ -340,22 +346,8 @@ pub fn number_with_disable_default<'a, Message: 'a + Clone>(
         .push_maybe(disable_checkbox(disable_args))
         .push(
             iced_aw::number_input(value, bounds, on_change)
-                .style(
-                    |t: &iced::Theme, _| iced_aw::number_input::number_input::Style {
-                        button_background: Some(t.extended_palette().background.weak.color.into()),
-                        icon_color: t.extended_palette().background.weak.text,
-                    },
-                )
-                .input_style(move |t, s| {
-                    text_input::default(
-                        t,
-                        if should_disable {
-                            text_input::Status::Disabled
-                        } else {
-                            s
-                        },
-                    )
-                }),
+                .style(num_button_style)
+                .input_style(num_input_style(should_disable)),
         )
         .spacing(10)
         .align_y(Center);
