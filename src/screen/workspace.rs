@@ -40,7 +40,7 @@ pub enum Action {
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
-    ApplyWindowBasedWorkAreaOffset(bool),
+    ApplyWindowBasedWorkAreaOffset(Option<bool>),
     ContainerPadding(Option<i32>),
     FloatOverride(Option<bool>),
     Layout(Option<DefaultLayout>),
@@ -68,7 +68,7 @@ impl WorkspaceScreen for WorkspaceConfig {
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
-                    self.apply_window_based_work_area_offset = Some(value)
+                    self.apply_window_based_work_area_offset = value
                 }
                 ConfigChange::ContainerPadding(value) => self.container_padding = value,
                 ConfigChange::FloatOverride(value) => self.float_override = value,
@@ -131,11 +131,13 @@ impl WorkspaceScreen for WorkspaceConfig {
             Some(DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)")),
             None,
         );
-        let apply_window_based_offset = opt_helpers::toggle(
+        let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
             "Apply Window Based Work Area Offset",
             Some("Apply this monitor's window-based work area offset (default: true)"),
-            self.apply_window_based_work_area_offset.unwrap_or(true),
+            self.apply_window_based_work_area_offset.or(Some(true)),
+            Some(true),
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
+            None,
         );
         let container_padding = opt_helpers::number_with_disable_default_option(
             "Container Padding",
