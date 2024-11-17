@@ -24,13 +24,13 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
-    WindowBasedWorkAreaOffset(komorebi::Rect),
+    WindowBasedWorkAreaOffset(Option<komorebi::Rect>),
     WindowBasedWorkAreaOffsetTop(i32),
     WindowBasedWorkAreaOffsetBottom(i32),
     WindowBasedWorkAreaOffsetRight(i32),
     WindowBasedWorkAreaOffsetLeft(i32),
     WindowBasedWorkAreaOffsetLimit(i32),
-    WorkAreaOffset(komorebi::Rect),
+    WorkAreaOffset(Option<komorebi::Rect>),
     WorkAreaOffsetTop(i32),
     WorkAreaOffsetBottom(i32),
     WorkAreaOffsetRight(i32),
@@ -62,7 +62,9 @@ impl Monitor {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ConfigChange(change) => match change {
-                ConfigChange::WindowBasedWorkAreaOffset(_) => todo!(),
+                ConfigChange::WindowBasedWorkAreaOffset(rect) => {
+                    self.config.window_based_work_area_offset = rect;
+                }
                 ConfigChange::WindowBasedWorkAreaOffsetTop(value) => {
                     if let Some(offset) = &mut self.config.window_based_work_area_offset {
                         offset.top = value;
@@ -115,7 +117,7 @@ impl Monitor {
                     self.config.window_based_work_area_offset_limit = Some(limit.try_into().unwrap_or_default());
                 }
                 ConfigChange::WorkAreaOffset(rect) => {
-                    self.config.work_area_offset = Some(rect);
+                    self.config.work_area_offset = rect;
                 }
                 ConfigChange::WorkAreaOffsetTop(value) => {
                     if let Some(offset) = &mut self.config.work_area_offset {
@@ -219,9 +221,9 @@ impl Monitor {
         opt_helpers::sub_section_view(
             text!("Monitor [{}]:", self.index).size(18).into(),
             [
-                opt_helpers::expandable(
+                opt_helpers::expandable_with_disable_default(
                     "Window Based Work Area Offset",
-                    Some("Window based work area offset (default: None)"),
+                    Some("Window based work area offset (default: global)"),
                     [
                         opt_helpers::number(
                             "left",
@@ -252,21 +254,30 @@ impl Monitor {
                     self.window_based_work_area_offset_hovered,
                     Message::ToggleWindowBasedWorkAreaOffsetExpand,
                     Message::ToggleWindowBasedWorkAreaOffsetHover,
+                    self.config.window_based_work_area_offset.is_some(),
+                    Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
+                    Some(opt_helpers::DisableArgs {
+                        disable: self.config.window_based_work_area_offset.is_none(),
+                        label: Some("Global"),
+                        on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
+                    }),
                 ),
-                opt_helpers::number(
+                opt_helpers::number_with_disable_default(
                     "Window Based Work Area Offset Limit",
                     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
                     self.config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+                    1,
                     move |value| {
                         Message::ConfigChange(
                             
                             ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
                         )
                     },
+                    None,
                 ),
-                opt_helpers::expandable(
+                opt_helpers::expandable_with_disable_default(
                     "Work Area Offset",
-                    Some("Monitor-specific work area offset (default: None)"),
+                    Some("Monitor-specific work area offset (default: global)"),
                     [
                         opt_helpers::number(
                             "left",
@@ -297,6 +308,13 @@ impl Monitor {
                     self.work_area_offset_hovered,
                     Message::ToggleWorkAreaOffsetExpand,
                     Message::ToggleWorkAreaOffsetHover,
+                    self.config.work_area_offset.is_some(),
+                    Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
+                    Some(opt_helpers::DisableArgs {
+                        disable: self.config.work_area_offset.is_none(),
+                        label: Some("Global"),
+                        on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
+                    }),
                 ),
                 opt_helpers::opt_button(
                     "Workspaces",
