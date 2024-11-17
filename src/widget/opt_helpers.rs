@@ -436,9 +436,8 @@ pub fn bool_with_disable<'a, Message: 'a + Clone>(
     on_toggle: impl Fn(bool) -> Message + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let on_toggle_maybe = disable_args
-        .as_ref()
-        .and_then(|args| (!args.disable).then_some(on_toggle));
+    let on_toggle_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
     let element = row![label_with_description(name, description)]
         .push_maybe(disable_checkbox(disable_args))
         .push(checkbox(if value { "On" } else { "Off" }, value).on_toggle_maybe(on_toggle_maybe))
@@ -478,9 +477,8 @@ pub fn toggle_with_disable<'a, Message: 'a + Clone>(
     on_toggle: impl Fn(bool) -> Message + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let on_toggle_maybe = disable_args
-        .as_ref()
-        .and_then(|args| (!args.disable).then_some(on_toggle));
+    let on_toggle_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
     let element = row![label_with_description(name, description)]
         .push_maybe(disable_checkbox(disable_args))
         .push(
@@ -506,9 +504,8 @@ pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_c = on_toggle.clone();
-    let on_toggle_maybe = disable_args
-        .as_ref()
-        .and_then(|args| (!args.disable).then_some(move |v| on_toggle_c(Some(v))));
+    let on_toggle_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(move |v| on_toggle(Some(v)));
     let is_dirty = if let (Some(v), Some(df)) = (&value, &default_value) {
         v != df
     } else {
@@ -516,7 +513,7 @@ pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
     };
     let value = value.unwrap_or_default();
     let label = if is_dirty {
-        let on_default = (on_toggle)(default_value.as_ref().cloned());
+        let on_default = (on_toggle_c)(default_value.as_ref().cloned());
         row![name, reset_button(on_default)]
             .spacing(5)
             .height(30)
@@ -525,7 +522,6 @@ pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
         row![name].height(30).align_y(Center)
     };
     let element = row![label_element_with_description(label, description)]
-    // let element = row![label_with_description(name, description)]
         .push_maybe(disable_checkbox(disable_args))
         .push(
             toggler(value)
