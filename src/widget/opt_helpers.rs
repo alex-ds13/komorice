@@ -256,6 +256,17 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
 ///using the remainder parameters for it.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
+pub fn number_simple<'a, Message: 'a + Clone>(
+    value: i32,
+    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+) -> iced_aw::NumberInput<'a, i32, Message> {
+    iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style)
+}
+
+///Creates a row with a label with `name` and a `number_input`
+///using the remainder parameters for it.
+///
+///If `Some(description)` is given, it adds the description below the label.
 pub fn number<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
@@ -264,7 +275,7 @@ pub fn number<'a, Message: 'a + Clone>(
 ) -> Element<'a, Message> {
     let element = row![
         label_with_description(name, description),
-        iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style),
+        number_simple(value, on_change),
     ]
     .spacing(10)
     .align_y(Center);
