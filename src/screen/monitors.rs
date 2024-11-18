@@ -1,4 +1,7 @@
-use super::monitor::{self, Monitor};
+use super::{
+    monitor::{self, Monitor},
+    workspace,
+};
 
 use crate::{widget::monitors_viewer, BOLD_FONT};
 
@@ -51,11 +54,11 @@ impl Monitors {
                             work_area_offset_expanded: false,
                             work_area_offset_hovered: false,
                             workspaces_button_hovered: false,
-                            hovered_workspaces: m
+                            workspaces: m
                                 .workspaces
                                 .iter()
                                 .enumerate()
-                                .map(|(i, _)| (i, false))
+                                .map(|(i, _)| (i, workspace::Workspace::default()))
                                 .collect(),
                         },
                     )
@@ -116,7 +119,9 @@ impl Monitors {
     ) -> Element<'a, Message> {
         let title = text("Monitors:").size(20).font(*BOLD_FONT);
         let monitors: Element<Message> = if let Some(state) = &komorebi_state {
-            let mut col = column![].spacing(10).padding(padding::top(10).bottom(10).right(20));
+            let mut col = column![]
+                .spacing(10)
+                .padding(padding::top(10).bottom(10).right(20));
 
             let m = monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
                 .selected(self.monitor_to_config)

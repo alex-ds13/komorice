@@ -1,8 +1,10 @@
 use crate::utils::DisplayOptionCustom as DisplayOption;
-use crate::widget::opt_helpers;
+use crate::widget::{icons, opt_helpers};
 
-use iced::widget::column;
-use iced::Element;
+use std::collections::{BTreeMap, HashMap};
+
+use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text};
+use iced::{Center, Element, Fill};
 use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
 use komorebi_client::DefaultLayout;
 use lazy_static::lazy_static;
@@ -25,12 +27,28 @@ lazy_static! {
         DisplayOption(Some(DefaultLayout::Columns), "[None] (Floating)"),
         DisplayOption(Some(DefaultLayout::Grid), "[None] (Floating)"),
     ];
+    static ref DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE: [DefaultLayout; 8] = [
+        DefaultLayout::BSP,
+        DefaultLayout::VerticalStack,
+        DefaultLayout::RightMainVerticalStack,
+        DefaultLayout::UltrawideVerticalStack,
+        DefaultLayout::HorizontalStack,
+        DefaultLayout::Rows,
+        DefaultLayout::Columns,
+        DefaultLayout::Grid,
+    ];
 }
 
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
     ToggleOverrideGlobal(OverrideConfig),
+    ToggleLayoutRulesExpand,
+    LayoutRulesHover(bool),
+    ChangeNewLayoutRuleLimit(i32),
+    ChangeNewLayoutRuleLayout(DefaultLayout),
+    AddNewLayoutRule,
+    RemoveLayoutRule(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -44,6 +62,9 @@ pub enum ConfigChange {
     ContainerPadding(Option<i32>),
     FloatOverride(Option<bool>),
     Layout(Option<DefaultLayout>),
+    LayoutRules(Option<HashMap<usize, DefaultLayout>>),
+    LayoutRuleLimit((usize, i32)),
+    LayoutRuleLayout((usize, DefaultLayout)),
     Name(String),
     WindowContainerBehaviour(Option<komorebi::WindowContainerBehaviour>),
     WorkspacePadding(Option<i32>),
@@ -57,14 +78,34 @@ pub enum OverrideConfig {
     WorkspacePadding(bool),
 }
 
-pub trait WorkspaceScreen {
-    fn update(&mut self, message: Message) -> Action;
+pub struct Workspace {
+    pub is_hovered: bool,
+    pub layout_rules_expanded: bool,
+    pub layout_rules_hovered: bool,
+    pub new_layout_rule_limit: usize,
+    pub new_layout_rule_layout: DefaultLayout,
+}
 
-    fn view(&self) -> Element<Message>;
+impl Default for Workspace {
+    fn default() -> Self {
+        Self {
+            is_hovered: Default::default(),
+            layout_rules_expanded: Default::default(),
+            layout_rules_hovered: Default::default(),
+            new_layout_rule_limit: Default::default(),
+            new_layout_rule_layout: DefaultLayout::BSP,
+        }
+    }
+}
+
+pub trait WorkspaceScreen {
+    fn update(&mut self, workspace: &mut Workspace, message: Message) -> Action;
+
+    fn view(&self, workspace: &Workspace) -> Element<Message>;
 }
 
 impl WorkspaceScreen for WorkspaceConfig {
-    fn update(&mut self, message: Message) -> Action {
+    fn update(&mut self, workspace: &mut Workspace, message: Message) -> Action {
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
@@ -73,6 +114,26 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::ContainerPadding(value) => self.container_padding = value,
                 ConfigChange::FloatOverride(value) => self.float_override = value,
                 ConfigChange::Layout(value) => self.layout = value,
+                ConfigChange::LayoutRules(value) => {
+                    self.layout_rules = value;
+                }
+                ConfigChange::LayoutRuleLimit((previous_limit, new_limit)) => {
+                    if let Ok(new_limit) = new_limit.try_into() {
+                        if let Some(layout_rules) = &mut self.layout_rules {
+                            if !layout_rules.contains_key(&new_limit) {
+                                if let Some(layout) = layout_rules.remove(&previous_limit) {
+                                    layout_rules.insert(new_limit, layout);
+                                }
+                            }
+                        }
+                    }
+                }
+                ConfigChange::LayoutRuleLayout((limit, new_layout)) => {
+                    if let Some(layout_rules) = &mut self.layout_rules {
+                        let rule_layout = layout_rules.entry(limit).or_insert(DefaultLayout::BSP);
+                        *rule_layout = new_layout;
+                    }
+                }
                 ConfigChange::Name(value) => self.name = value,
                 ConfigChange::WindowContainerBehaviour(value) => {
                     self.window_container_behaviour = value;
@@ -109,11 +170,49 @@ impl WorkspaceScreen for WorkspaceConfig {
                     }
                 }
             },
+            Message::ToggleLayoutRulesExpand => {
+                workspace.layout_rules_expanded = !workspace.layout_rules_expanded;
+            }
+            Message::LayoutRulesHover(hover) => {
+                workspace.layout_rules_hovered = hover;
+            }
+            Message::ChangeNewLayoutRuleLimit(limit) => {
+                if let Ok(limit) = limit.try_into() {
+                    workspace.new_layout_rule_limit = limit;
+                }
+            }
+            Message::ChangeNewLayoutRuleLayout(layout) => {
+                workspace.new_layout_rule_layout = layout;
+            }
+            Message::AddNewLayoutRule => {
+                if let Some(layout_rules) = &mut self.layout_rules {
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        layout_rules.entry(workspace.new_layout_rule_limit)
+                    {
+                        e.insert(workspace.new_layout_rule_layout);
+                        workspace.new_layout_rule_limit = 0;
+                        workspace.new_layout_rule_layout = DefaultLayout::BSP;
+                    }
+                } else {
+                    let rules = HashMap::from([(
+                        workspace.new_layout_rule_limit,
+                        workspace.new_layout_rule_layout,
+                    )]);
+                    self.layout_rules = Some(rules);
+                    workspace.new_layout_rule_limit = 0;
+                    workspace.new_layout_rule_layout = DefaultLayout::BSP;
+                }
+            }
+            Message::RemoveLayoutRule(limit) => {
+                if let Some(layout_rules) = &mut self.layout_rules {
+                    layout_rules.remove(&limit);
+                }
+            }
         }
         Action::None
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self, workspace: &Workspace) -> Element<Message> {
         let name = opt_helpers::input(
             "Name",
             Some("Name of the workspace. Should be unique."),
@@ -163,6 +262,107 @@ impl WorkspaceScreen for WorkspaceConfig {
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
             })
         );
+        let layout_rules = opt_helpers::expandable_with_disable_default(
+            "Layout Rules",
+            Some(
+                "Layout rules (default: None)\n\n\
+                Define rules to automatically change the layout on a specified \
+                workspace when a threshold of window containers is met.\n\n\
+                However, if you add workspace layout rules, you will not be able \
+                to manually change the layout of a workspace until all layout \
+                rules for that workspace have been cleared.",
+            ),
+            {
+                let mut content = self.layout_rules.as_ref().map_or(Vec::new(), |lr| {
+                    lr.iter().collect::<BTreeMap<&usize, &DefaultLayout>>().into_iter()
+                        .map(|(limit, layout)| {
+                            let limit = *limit;
+                            let layout = *layout;
+                            let number = opt_helpers::number_simple(limit as i32, move |new_l| {
+                                Message::ConfigChange(ConfigChange::LayoutRuleLimit((
+                                    limit,
+                                    new_l,
+                                )))
+                            })
+                            .content_width(50);
+                            let choose = container(pick_list(
+                                &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
+                                Some(layout),
+                                move |v| {
+                                    Message::ConfigChange(ConfigChange::LayoutRuleLayout((
+                                        limit, v,
+                                    )))
+                                },
+                            ))
+                            .max_width(200)
+                            .width(Fill);
+                            let remove_button =
+                                button(icons::delete_icon().style(|t| text::Style {
+                                    color: t.palette().danger.into(),
+                                }))
+                                .on_press(Message::RemoveLayoutRule(limit))
+                                .style(button::text);
+                            row![
+                                text("If windows open >="),
+                                number,
+                                text("change layout to "),
+                                choose,
+                                remove_button,
+                            ]
+                            .spacing(10)
+                            .align_y(Center)
+                            .into()
+                        })
+                        .collect()
+                });
+                content.insert(0, text("Rules:").into());
+                content.push(horizontal_rule(2.0).into());
+                content.push(text("Add New Rule:").into());
+                content.push({
+                    let number = opt_helpers::number_simple(
+                        workspace.new_layout_rule_limit as i32,
+                        Message::ChangeNewLayoutRuleLimit,
+                    )
+                    .content_width(50);
+                    let choose = container(pick_list(
+                        &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
+                        Some(workspace.new_layout_rule_layout),
+                        Message::ChangeNewLayoutRuleLayout,
+                    ))
+                    .max_width(200)
+                    .width(Fill);
+                    let add_button = button(icons::plus_icon().style(|t| text::Style {
+                        color: t.palette().primary.into(),
+                    }))
+                    .on_press(Message::AddNewLayoutRule)
+                    .style(button::text);
+                    row![
+                        text("If windows open >="),
+                        number,
+                        text("change layout to "),
+                        choose,
+                        add_button,
+                    ]
+                    .spacing(5)
+                    .align_y(Center)
+                    .into()
+                });
+                content
+            },
+            workspace.layout_rules_expanded,
+            workspace.layout_rules_hovered,
+            Message::ToggleLayoutRulesExpand,
+            Message::LayoutRulesHover,
+            self.layout_rules.is_some(),
+            Message::ConfigChange(ConfigChange::LayoutRules(None)),
+            Some(opt_helpers::DisableArgs {
+                disable: self.layout_rules.is_none(),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::LayoutRules((!v).then_some(HashMap::new())))
+                },
+            }),
+        );
         let window_container_behaviour = opt_helpers::choose_with_disable_default(
             "Window Container Behaviour",
             Some("Determine what happens when a new window is opened (default: global)"),
@@ -199,6 +399,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             apply_window_based_offset,
             container_padding,
             float_override,
+            layout_rules,
             window_container_behaviour,
             workspace_padding
         ]
