@@ -16,7 +16,7 @@ pub struct DisableArgs<'a, Message> {
     pub on_toggle: fn(bool) -> Message,
 }
 
-fn opt_box_style(theme: &iced::Theme) -> container::Style {
+pub fn opt_box_style(theme: &iced::Theme) -> container::Style {
     let palette = theme.extended_palette();
     let background = if palette.is_dark {
         Some(palette.background.weak.color.scale_alpha(0.35).into())
@@ -37,7 +37,7 @@ fn opt_box_style(theme: &iced::Theme) -> container::Style {
     }
 }
 
-fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
+pub fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
     container::Style {
         border: iced::Border {
             radius: iced::border::top(5),
@@ -47,7 +47,7 @@ fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
     }
 }
 
-fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
+pub fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
     let palette = theme.extended_palette();
     let background = if palette.is_dark {
         Some(palette.background.weak.color.scale_alpha(0.15).into())
@@ -64,7 +64,7 @@ fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
     }
 }
 
-fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Container<'a, Message> {
+pub fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Container<'a, Message> {
     container(element).padding(10).style(opt_box_style)
 }
 

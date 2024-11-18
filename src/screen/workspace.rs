@@ -3,8 +3,8 @@ use crate::widget::{icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
 
-use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text};
-use iced::{Center, Element, Fill};
+use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
+use iced::{Center, Element, Fill, Shrink};
 use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
 use komorebi_client::DefaultLayout;
 use lazy_static::lazy_static;
@@ -274,79 +274,54 @@ impl WorkspaceScreen for WorkspaceConfig {
             ),
             {
                 let mut content = self.layout_rules.as_ref().map_or(Vec::new(), |lr| {
-                    lr.iter().collect::<BTreeMap<&usize, &DefaultLayout>>().into_iter()
+                    lr.iter()
+                        .collect::<BTreeMap<&usize, &DefaultLayout>>()
+                        .into_iter()
                         .map(|(limit, layout)| {
                             let limit = *limit;
                             let layout = *layout;
-                            let number = opt_helpers::number_simple(limit as i32, move |new_l| {
-                                Message::ConfigChange(ConfigChange::LayoutRuleLimit((
-                                    limit,
-                                    new_l,
-                                )))
-                            })
-                            .content_width(50);
-                            let choose = container(pick_list(
-                                &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
-                                Some(layout),
-                                move |v| {
-                                    Message::ConfigChange(ConfigChange::LayoutRuleLayout((
-                                        limit, v,
+                            layout_rule(
+                                limit,
+                                layout,
+                                move |new_limit| {
+                                    Message::ConfigChange(ConfigChange::LayoutRuleLimit((
+                                        limit, new_limit,
                                     )))
                                 },
-                            ))
-                            .max_width(200)
-                            .width(Fill);
-                            let remove_button =
-                                button(icons::delete_icon().style(|t| text::Style {
-                                    color: t.palette().danger.into(),
-                                }))
-                                .on_press(Message::RemoveLayoutRule(limit))
-                                .style(button::text);
-                            row![
-                                text("If windows open >="),
-                                number,
-                                text("change layout to "),
-                                choose,
-                                remove_button,
-                            ]
-                            .spacing(10)
-                            .align_y(Center)
-                            .into()
+                                move |new_layout| {
+                                    Message::ConfigChange(ConfigChange::LayoutRuleLayout((
+                                        limit, new_layout,
+                                    )))
+                                },
+                                false,
+                            )
                         })
                         .collect()
                 });
-                content.insert(0, text("Rules:").into());
+                if content.is_empty() {
+                    content.push(text("Rules:").into());
+                    // The 30.8 height came from trial and error to make it so the space is the
+                    // same as the one from one rule. Why isn't it 30, I don't know?! Any other
+                    // value other 30.8 would result in the UI adjusting when adding first rule.
+                    content.push(Space::new(Shrink, 30.8).into());
+                } else {
+                    content.insert(0, text("Rules:").into());
+                }
                 content.push(horizontal_rule(2.0).into());
-                content.push(text("Add New Rule:").into());
-                content.push({
-                    let number = opt_helpers::number_simple(
-                        workspace.new_layout_rule_limit as i32,
-                        Message::ChangeNewLayoutRuleLimit,
-                    )
-                    .content_width(50);
-                    let choose = container(pick_list(
-                        &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
-                        Some(workspace.new_layout_rule_layout),
-                        Message::ChangeNewLayoutRuleLayout,
-                    ))
-                    .max_width(200)
-                    .width(Fill);
-                    let add_button = button(icons::plus_icon().style(|t| text::Style {
-                        color: t.palette().primary.into(),
-                    }))
-                    .on_press(Message::AddNewLayoutRule)
-                    .style(button::text);
-                    row![
-                        text("If windows open >="),
-                        number,
-                        text("change layout to "),
-                        choose,
-                        add_button,
+                let new_rule = opt_helpers::opt_box(
+                    column![
+                        text("Add New Rule:"),
+                        layout_rule(
+                            workspace.new_layout_rule_limit,
+                            workspace.new_layout_rule_layout,
+                            Message::ChangeNewLayoutRuleLimit,
+                            Message::ChangeNewLayoutRuleLayout,
+                            true,
+                        ),
                     ]
-                    .spacing(5)
-                    .align_y(Center)
-                    .into()
-                });
+                    .spacing(10),
+                );
+                content.push(new_rule.into());
                 content
             },
             workspace.layout_rules_expanded,
@@ -406,4 +381,46 @@ impl WorkspaceScreen for WorkspaceConfig {
         .spacing(10)
         .into()
     }
+}
+
+fn layout_rule<'a>(
+    limit: usize,
+    layout: DefaultLayout,
+    limit_message: impl Fn(i32) -> Message + Copy + 'static,
+    layout_message: impl Fn(DefaultLayout) -> Message + 'a,
+    is_add: bool,
+) -> Element<'a, Message> {
+    let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    let choose = container(pick_list(
+        &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
+        Some(layout),
+        layout_message,
+    ))
+    .max_width(200)
+    .width(Fill);
+    let final_button = if is_add {
+        let add_button = button(icons::plus_icon().style(|t| text::Style {
+            color: t.palette().primary.into(),
+        }))
+        .on_press(Message::AddNewLayoutRule)
+        .style(button::text);
+        add_button
+    } else {
+        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+            color: t.palette().danger.into(),
+        }))
+        .on_press(Message::RemoveLayoutRule(limit))
+        .style(button::text);
+        remove_button
+    };
+    row![
+        text("If windows open >="),
+        number,
+        text("change layout to "),
+        choose,
+        final_button,
+    ]
+    .spacing(5)
+    .align_y(Center)
+    .into()
 }
