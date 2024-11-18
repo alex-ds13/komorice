@@ -378,7 +378,22 @@ fn layout_rules_children<'a>(
     layout_rules: &Option<HashMap<usize, DefaultLayout>>,
     workspace: &Workspace,
 ) -> Vec<Element<'a, Message>> {
-    let mut children = layout_rules.as_ref().map_or(Vec::new(), |lr| {
+    let mut children = Vec::new();
+    let new_rule = opt_helpers::opt_box(
+        column![
+            text("Add New Rule:"),
+            layout_rule(
+                workspace.new_layout_rule_limit,
+                workspace.new_layout_rule_layout,
+                Message::ChangeNewLayoutRuleLimit,
+                Message::ChangeNewLayoutRuleLayout,
+                true,
+            ),
+        ]
+        .spacing(10),
+    );
+    children.push(new_rule.into());
+    let mut rules = layout_rules.as_ref().map_or(Vec::new(), |lr| {
         lr.iter()
             .collect::<BTreeMap<&usize, &DefaultLayout>>()
             .into_iter()
@@ -399,29 +414,16 @@ fn layout_rules_children<'a>(
             })
             .collect()
     });
-    if children.is_empty() {
-        children.push(text("Rules:").into());
+    if rules.is_empty() {
+        rules.push(text("Rules:").into());
         // The 30.8 height came from trial and error to make it so the space is the
         // same as the one from one rule. Why isn't it 30, I don't know?! Any other
         // value other 30.8 would result in the UI adjusting when adding first rule.
-        children.push(Space::new(Shrink, 30.8).into());
+        rules.push(Space::new(Shrink, 30.8).into());
     } else {
-        children.insert(0, text("Rules:").into());
+        rules.insert(0, text("Rules:").into());
     }
     children.push(horizontal_rule(2.0).into());
-    let new_rule = opt_helpers::opt_box(
-        column![
-            text("Add New Rule:"),
-            layout_rule(
-                workspace.new_layout_rule_limit,
-                workspace.new_layout_rule_layout,
-                Message::ChangeNewLayoutRuleLimit,
-                Message::ChangeNewLayoutRuleLayout,
-                true,
-            ),
-        ]
-        .spacing(10),
-    );
-    children.push(new_rule.into());
+    children.extend(rules);
     children
 }
