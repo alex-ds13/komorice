@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 use iced::{
     padding,
-    widget::{column, pick_list, row, text, Column, Space},
+    widget::{
+        button, column, horizontal_space, pick_list, row, text, text_input, Column, Space, Text,
+    },
     Center, Element, Shrink, Task,
 };
 use komorebi::{
-    config_generation::{
-        IdWithIdentifier, IdWithIdentifierAndComment, MatchingRule, MatchingStrategy,
-    },
+    config_generation::{IdWithIdentifier, IdWithIdentifierAndComment, MatchingRule},
     ApplicationIdentifier,
 };
 use lazy_static::lazy_static;
@@ -22,6 +22,103 @@ lazy_static! {
         ApplicationIdentifier::Class,
         ApplicationIdentifier::Path,
     ];
+    static ref MATCHING_STRATEGY_OPTIONS: [MatchingStrategy; 10] = [
+        MatchingStrategy::Legacy,
+        MatchingStrategy::Equals,
+        MatchingStrategy::StartsWith,
+        MatchingStrategy::EndsWith,
+        MatchingStrategy::Contains,
+        MatchingStrategy::Regex,
+        MatchingStrategy::DoesNotEndWith,
+        MatchingStrategy::DoesNotStartWith,
+        MatchingStrategy::DoesNotEqual,
+        MatchingStrategy::DoesNotContain,
+    ];
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MatchingStrategy {
+    Legacy,
+    Equals,
+    StartsWith,
+    EndsWith,
+    Contains,
+    Regex,
+    DoesNotEndWith,
+    DoesNotStartWith,
+    DoesNotEqual,
+    DoesNotContain,
+}
+
+impl std::fmt::Display for MatchingStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MatchingStrategy::Legacy => write!(f, "Legacy"),
+            MatchingStrategy::Equals => write!(f, "Equals"),
+            MatchingStrategy::StartsWith => write!(f, "StartsWith"),
+            MatchingStrategy::EndsWith => write!(f, "EndsWith"),
+            MatchingStrategy::Contains => write!(f, "Contains"),
+            MatchingStrategy::Regex => write!(f, "Regex"),
+            MatchingStrategy::DoesNotEndWith => write!(f, "DoesNotEndWith"),
+            MatchingStrategy::DoesNotStartWith => write!(f, "DoesNotStartWith"),
+            MatchingStrategy::DoesNotEqual => write!(f, "DoesNotEqual"),
+            MatchingStrategy::DoesNotContain => write!(f, "DoesNotContain"),
+        }
+    }
+}
+
+impl From<MatchingStrategy> for komorebi::config_generation::MatchingStrategy {
+    fn from(value: MatchingStrategy) -> Self {
+        match value {
+            MatchingStrategy::Legacy => komorebi::config_generation::MatchingStrategy::Legacy,
+            MatchingStrategy::Equals => komorebi::config_generation::MatchingStrategy::Equals,
+            MatchingStrategy::StartsWith => {
+                komorebi::config_generation::MatchingStrategy::StartsWith
+            }
+            MatchingStrategy::EndsWith => komorebi::config_generation::MatchingStrategy::EndsWith,
+            MatchingStrategy::Contains => komorebi::config_generation::MatchingStrategy::Contains,
+            MatchingStrategy::Regex => komorebi::config_generation::MatchingStrategy::Regex,
+            MatchingStrategy::DoesNotEndWith => {
+                komorebi::config_generation::MatchingStrategy::DoesNotEndWith
+            }
+            MatchingStrategy::DoesNotStartWith => {
+                komorebi::config_generation::MatchingStrategy::DoesNotStartWith
+            }
+            MatchingStrategy::DoesNotEqual => {
+                komorebi::config_generation::MatchingStrategy::DoesNotEqual
+            }
+            MatchingStrategy::DoesNotContain => {
+                komorebi::config_generation::MatchingStrategy::DoesNotContain
+            }
+        }
+    }
+}
+
+impl From<&komorebi::config_generation::MatchingStrategy> for MatchingStrategy {
+    fn from(value: &komorebi::config_generation::MatchingStrategy) -> Self {
+        match value {
+            komorebi::config_generation::MatchingStrategy::Legacy => MatchingStrategy::Legacy,
+            komorebi::config_generation::MatchingStrategy::Equals => MatchingStrategy::Equals,
+            komorebi::config_generation::MatchingStrategy::StartsWith => {
+                MatchingStrategy::StartsWith
+            }
+            komorebi::config_generation::MatchingStrategy::EndsWith => MatchingStrategy::EndsWith,
+            komorebi::config_generation::MatchingStrategy::Contains => MatchingStrategy::Contains,
+            komorebi::config_generation::MatchingStrategy::Regex => MatchingStrategy::Regex,
+            komorebi::config_generation::MatchingStrategy::DoesNotEndWith => {
+                MatchingStrategy::DoesNotEndWith
+            }
+            komorebi::config_generation::MatchingStrategy::DoesNotStartWith => {
+                MatchingStrategy::DoesNotStartWith
+            }
+            komorebi::config_generation::MatchingStrategy::DoesNotEqual => {
+                MatchingStrategy::DoesNotEqual
+            }
+            komorebi::config_generation::MatchingStrategy::DoesNotContain => {
+                MatchingStrategy::DoesNotContain
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -57,7 +154,7 @@ pub enum Action {
 #[derive(Debug, Default)]
 pub struct Rule {
     pub show_new_rule: bool,
-    pub new_rule: Vec<MatchingRule>,
+    pub new_rule: Vec<IdWithIdentifier>,
     pub rules_settings: HashMap<usize, RuleSettings>,
 }
 
@@ -70,7 +167,7 @@ pub struct RuleSettings {
 impl Rule {
     pub fn update(
         &mut self,
-        rules: &mut Option<&mut Vec<MatchingRule>>,
+        rules: &mut Option<Vec<MatchingRule>>,
         message: Message,
     ) -> (Action, Task<Message>) {
         match message {
@@ -80,19 +177,34 @@ impl Rule {
             Message::ChangeNewRuleId(_, _) => todo!(),
             Message::ChangeNewRuleMatchingStrategy(_, _) => todo!(),
             Message::ToggleShowNewRule => {
-                self.new_rule = vec![MatchingRule::Simple(IdWithIdentifier {
+                self.new_rule = vec![IdWithIdentifier {
                     kind: ApplicationIdentifier::Exe,
                     id: "".into(),
-                    matching_strategy: None,
-                })];
+                    matching_strategy: Some(MatchingStrategy::Equals.into()),
+                }];
                 self.show_new_rule = !self.show_new_rule;
-            },
+            }
             Message::AddNewRule => {
-                self.new_rule = vec![MatchingRule::Simple(IdWithIdentifier {
+                if self.new_rule.len() == 1 {
+                    if let Some(rules) = rules {
+                        let rule = MatchingRule::Simple(self.new_rule.remove(0));
+                        rules.push(rule);
+                    } else {
+                        let rule = MatchingRule::Simple(self.new_rule.remove(0));
+                        *rules = Some(vec![rule]);
+                    }
+                } else if let Some(rules) = rules {
+                    let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
+                    rules.push(rule);
+                } else {
+                    let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
+                    *rules = Some(vec![rule]);
+                }
+                self.new_rule = vec![IdWithIdentifier {
                     kind: ApplicationIdentifier::Exe,
                     id: "".into(),
-                    matching_strategy: None,
-                })];
+                    matching_strategy: Some(MatchingStrategy::Equals.into()),
+                }];
             }
             Message::ComposingAddToNewRule => todo!(),
             Message::ToggleRuleHover(_, _) => todo!(),
@@ -106,87 +218,94 @@ impl Rule {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self, rules: &Option<&Vec<MatchingRule>>) -> Element<Message> {
+    pub fn view<'a>(
+        &'a self,
+        title: impl Into<Text<'a>>,
+        rules: Option<&'a Vec<MatchingRule>>,
+    ) -> Element<'a, Message> {
         if let Some(rules) = rules {
             let add_new_rule_button =
                 widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
-                    .on_press(Message::ToggleShowNewRule);
+                    .on_press(Message::ToggleShowNewRule)
+                    .style(button::secondary)
+                    .into();
 
             let new_rule: Element<_> = if self.show_new_rule {
-                let rls = self.new_rule.iter().enumerate().fold(
-                    column![].spacing(10),
-                    |col, (idx, rule)| match rule {
-                        MatchingRule::Simple(rule) => {
-                            let pl = pick_list(
-                                &APPLICATION_IDENTIFIER_OPTIONS[..],
-                                Some(rule.kind),
-                                move |v| Message::ChangeNewRuleKind(idx, v),
-                            );
-                            col.push(row![pl].spacing(10).align_y(Center))
-                        }
-                        MatchingRule::Composite(rules) => {
-                            col.push(rules.iter().fold(column![].spacing(10), move |col, rule| {
-                                col.push({
-                                    let pl = pick_list(
-                                        &APPLICATION_IDENTIFIER_OPTIONS[..],
-                                        Some(rule.kind),
-                                        move |v| Message::ChangeNewRuleKind(idx, v),
-                                    );
-                                    row![pl].spacing(10).align_y(Center)
-                                })
-                            }))
-                        }
-                    },
-                );
+                let rls = self
+                    .new_rule
+                    .iter()
+                    .enumerate()
+                    .fold(column![].spacing(10), |col, (idx, rule)| {
+                        col.push(rule_view(idx, rule))
+                    });
                 opt_helpers::opt_box(column!["Match any window where:", rls].spacing(10)).into()
             } else {
                 Space::new(Shrink, Shrink).into()
             };
 
-            column![add_new_rule_button, new_rule]
-                .padding(padding::top(10).bottom(10))
-                .spacing(10)
-                .into()
+            let rls = rules
+                .iter()
+                .enumerate()
+                .fold(column![].spacing(10), |col, (idx, rule)| match rule {
+                    MatchingRule::Simple(rule) => col.push(rule_view(idx, rule)),
+                    MatchingRule::Composite(rules) => {
+                        col.extend(rules.iter().map(|r| rule_view(idx, r)))
+                    }
+                })
+                .into();
+
+            widget::opt_helpers::section_view(title, [add_new_rule_button, new_rule, rls])
         } else {
             let add_new_rule_button =
                 widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
-                    .on_press(Message::ToggleShowNewRule);
+                    .on_press(Message::ToggleShowNewRule)
+                    .style(button::secondary)
+                    .into();
 
             let new_rule: Element<_> = if self.show_new_rule {
-                let rls = self.new_rule.iter().enumerate().fold(
-                    column![].spacing(10),
-                    |col, (idx, rule)| match rule {
-                        MatchingRule::Simple(rule) => {
-                            let pl = pick_list(
-                                &APPLICATION_IDENTIFIER_OPTIONS[..],
-                                Some(rule.kind),
-                                move |v| Message::ChangeNewRuleKind(idx, v),
-                            );
-                            col.push(row![pl].spacing(10).align_y(Center))
-                        }
-                        MatchingRule::Composite(rules) => {
-                            col.push(rules.iter().fold(column![].spacing(10), move |col, rule| {
-                                col.push({
-                                    let pl = pick_list(
-                                        &APPLICATION_IDENTIFIER_OPTIONS[..],
-                                        Some(rule.kind),
-                                        move |v| Message::ChangeNewRuleKind(idx, v),
-                                    );
-                                    row![pl].spacing(10).align_y(Center)
-                                })
-                            }))
-                        }
-                    },
-                );
-                opt_helpers::opt_box(column!["Match any window with:", rls].spacing(10)).into()
+                let rls = self
+                    .new_rule
+                    .iter()
+                    .enumerate()
+                    .fold(column![].spacing(10), |col, (idx, rule)| {
+                        col.push(rule_view(idx, rule))
+                    });
+                opt_helpers::opt_box(column!["Match any window where:", rls].spacing(10)).into()
             } else {
                 Space::new(Shrink, Shrink).into()
             };
 
-            column![add_new_rule_button, new_rule]
-                .padding(padding::top(10).bottom(10))
-                .spacing(10)
-                .into()
+            widget::opt_helpers::section_view(title, [add_new_rule_button, new_rule])
         }
     }
+}
+
+fn rule_view(idx: usize, rule: &IdWithIdentifier) -> Element<Message> {
+    let kind = pick_list(
+        &APPLICATION_IDENTIFIER_OPTIONS[..],
+        Some(rule.kind),
+        move |v| Message::ChangeNewRuleKind(idx, v),
+    );
+    let matching_strategy = pick_list(
+        &MATCHING_STRATEGY_OPTIONS[..],
+        rule.matching_strategy
+            .as_ref()
+            .map(Into::<MatchingStrategy>::into),
+        move |v| Message::ChangeNewRuleMatchingStrategy(idx, Some(v)),
+    );
+    let id = text_input("", &rule.id).on_input(move |v| Message::ChangeNewRuleId(idx, v));
+    row![
+        kind,
+        matching_strategy,
+        id,
+        horizontal_space(),
+        button(icons::plus_icon().style(|t| text::Style {
+            color: t.palette().primary.into()
+        }))
+        .style(button::text)
+        .on_press(Message::AddNewRule),
+    ]
+    .spacing(10)
+    .align_y(Center)
+    .into()
 }

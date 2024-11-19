@@ -118,11 +118,13 @@ impl Komofig {
                 return Task::batch([task.map(Message::Monitors), action_task]);
             }
             Message::Rules(message) => {
-                let (action, task) = self.rules.update(&mut self.config.as_mut().and_then(|c| c.ignore_rules.as_mut()), message);
-                let action_task = match action {
-                    rule::Action::None => Task::none(),
-                };
-                return Task::batch([task.map(Message::Rules), action_task]);
+                if let Some(c) = &mut self.config {
+                    let (action, task) = self.rules.update(&mut c.ignore_rules, message);
+                    let action_task = match action {
+                        rule::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::Rules), action_task]);
+                }
             }
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
@@ -224,10 +226,7 @@ impl Komofig {
             Screen::Transparency => center(text("Transparency").size(50)).into(),
             // Screen::Rules => center(text("Rules").size(50)).into(),
             Screen::Rules => {
-                widget::opt_helpers::section_view(
-                    "Ignore Rules",
-                    [self.rules.view(&self.config.as_ref().and_then(|c| c.ignore_rules.as_ref())).map(Message::Rules)],
-                )
+                self.rules.view("Ignore Rules", self.config.as_ref().and_then(|c| c.ignore_rules.as_ref())).map(Message::Rules)
             }
             Screen::Debug => {
                 let notifications = scrollable(
