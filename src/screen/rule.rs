@@ -166,6 +166,22 @@ pub struct RuleSettings {
 }
 
 impl Rule {
+    pub fn new(rules: &Option<Vec<MatchingRule>>) -> Self {
+        Rule {
+            show_new_rule: false,
+            new_rule: Vec::new(),
+            rules_settings: rules
+                .as_ref()
+                .map_or(HashMap::new(), |rules| {
+                    rules
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, _rule)| (idx, RuleSettings::default()))
+                        .collect()
+                }),
+        }
+    }
+
     pub fn update(
         &mut self,
         rules: &mut Option<Vec<MatchingRule>>,
@@ -384,14 +400,22 @@ fn rule_view(idx: usize, rule: &IdWithIdentifier, show_and: bool, edit: bool) ->
     };
     let composing_add_button: Option<Element<_>> = show_and.then(|| {
         if edit {
-            button("And")
-                .style(button::secondary)
-                .on_press(Message::ComposingAddToNewRule)
-                .into()
+            button(
+                row![icons::level_down_icon(), "And"]
+                    .spacing(5)
+                    .align_y(Center),
+            )
+            .style(button::secondary)
+            .on_press(Message::ComposingAddToNewRule)
+            .into()
         } else {
-            container(row![icons::level_down_icon(), "And"].spacing(5).align_y(Center))
-                .padding(5)
-                .into()
+            container(
+                row![icons::level_down_icon(), "And"]
+                    .spacing(5)
+                    .align_y(Center),
+            )
+            .padding(5)
+            .into()
         }
     });
     row![kind, matching_strategy, id]
