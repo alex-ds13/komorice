@@ -82,10 +82,22 @@ pub fn minus_icon<'a>() -> Text<'a> {
     icon('\u{F146}')
 }
 
+pub fn cross_icon<'a>() -> Text<'a> {
+    icon('\u{E807}')
+}
+
+pub fn check_icon<'a>() -> Text<'a> {
+    icon('\u{E806}')
+}
+
 pub fn level_up_icon<'a>() -> Text<'a> {
     icon('\u{F148}')
 }
 
 pub fn level_down_icon<'a>() -> Text<'a> {
     icon('\u{F149}')
+}
+
+pub fn edit_icon<'a>() -> Text<'a> {
+    icon('\u{E80C}')
 }
