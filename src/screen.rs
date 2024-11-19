@@ -1,6 +1,8 @@
 pub mod general;
 pub mod monitor;
 pub mod monitors;
+pub mod rule;
+pub mod rules;
 pub mod sidebar;
 pub mod workspace;
 

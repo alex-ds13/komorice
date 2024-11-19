@@ -6,7 +6,7 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::screen::{general, monitors, sidebar, Screen};
+use crate::screen::{general, monitors, rule, sidebar, Screen};
 
 use std::sync::Arc;
 
@@ -56,6 +56,7 @@ enum Message {
     // View/Screen related Messages
     General(general::Message),
     Monitors(monitors::Message),
+    Rules(rule::Message),
     Sidebar(sidebar::Message),
 
     // Komorebi related Messages
@@ -72,6 +73,7 @@ struct Komofig {
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
     general: general::General,
+    rules: rule::Rule,
     config: Option<komorebi_client::StaticConfig>,
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
@@ -114,6 +116,13 @@ impl Komofig {
                     monitors::Action::None => Task::none(),
                 };
                 return Task::batch([task.map(Message::Monitors), action_task]);
+            }
+            Message::Rules(message) => {
+                let (action, task) = self.rules.update(&mut self.config.as_mut().and_then(|c| c.ignore_rules.as_mut()), message);
+                let action_task = match action {
+                    rule::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
@@ -213,7 +222,13 @@ impl Komofig {
             Screen::Border => center(text("Border").size(50)).into(),
             Screen::Stackbar => center(text("Stackbar").size(50)).into(),
             Screen::Transparency => center(text("Transparency").size(50)).into(),
-            Screen::Rules => center(text("Rules").size(50)).into(),
+            // Screen::Rules => center(text("Rules").size(50)).into(),
+            Screen::Rules => {
+                widget::opt_helpers::section_view(
+                    "Ignore Rules",
+                    [self.rules.view(&self.config.as_ref().and_then(|c| c.ignore_rules.as_ref())).map(Message::Rules)],
+                )
+            }
             Screen::Debug => {
                 let notifications = scrollable(
                     self.notifications
