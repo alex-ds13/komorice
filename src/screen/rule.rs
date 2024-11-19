@@ -3,8 +3,9 @@ use crate::widget::{self, icons, opt_helpers};
 use std::collections::HashMap;
 
 use iced::{
+    padding,
     widget::{button, column, container, pick_list, row, text, text_input, Space, Text},
-    Center, Element, Shrink, Task,
+    Center, Element, Fill, Right, Shrink, Task,
 };
 use komorebi::{
     config_generation::{IdWithIdentifier, MatchingRule},
@@ -134,6 +135,7 @@ pub enum Message {
 
     ToggleRuleHover(usize, bool),
     ToggleRuleEdit(usize, bool),
+    SaveRuleEdit(usize),
 
     ChangeRuleKind(usize, usize, ApplicationIdentifier),
     ChangeRuleId(usize, usize, String),
@@ -211,16 +213,22 @@ impl Rule {
                     if let Some(rules) = rules {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         rules.push(rule);
+                        let idx = rules.len() - 1;
+                        self.rules_settings.entry(idx).or_default();
                     } else {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         *rules = Some(vec![rule]);
+                        self.rules_settings.entry(0).or_default();
                     }
                 } else if let Some(rules) = rules {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     rules.push(rule);
+                    let idx = rules.len() - 1;
+                    self.rules_settings.entry(idx).or_default();
                 } else {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     *rules = Some(vec![rule]);
+                    self.rules_settings.entry(0).or_default();
                 }
                 self.new_rule = vec![default_rule()];
             }
@@ -228,12 +236,68 @@ impl Rule {
                 self.new_rule.push(default_rule());
             }
             Message::ToggleRuleHover(_, _) => todo!(),
-            Message::ToggleRuleEdit(_, _) => todo!(),
-            Message::ChangeRuleKind(_, _, _) => todo!(),
-            Message::ChangeRuleId(_, _, _) => todo!(),
-            Message::ChangeRuleMatchingStrategy(_, _, _) => todo!(),
+            Message::ToggleRuleEdit(idx, edit) => {
+                if let (Some(_rule), Some(rule_settings)) = (
+                    rules.as_mut().and_then(|rls| rls.get_mut(idx)),
+                    self.rules_settings.get_mut(&idx),
+                ) {
+                    rule_settings.edit = edit;
+                }
+            }
+            Message::SaveRuleEdit(idx) => {
+                todo!()
+            }
+            Message::ChangeRuleKind(idx, sub_idx, kind) => {
+                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
+                    match rule {
+                        MatchingRule::Simple(rule) => {
+                            rule.kind = kind;
+                        }
+                        MatchingRule::Composite(rules) => {
+                            if let Some(rule) = rules.get_mut(sub_idx) {
+                                rule.kind = kind;
+                            }
+                        }
+                    }
+                }
+            }
+            Message::ChangeRuleId(idx, sub_idx, id) => {
+                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
+                    match rule {
+                        MatchingRule::Simple(rule) => {
+                            rule.id = id;
+                        }
+                        MatchingRule::Composite(rules) => {
+                            if let Some(rule) = rules.get_mut(sub_idx) {
+                                rule.id = id;
+                            }
+                        }
+                    }
+                }
+            }
+            Message::ChangeRuleMatchingStrategy(idx, sub_idx, matching_strategy) => {
+                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
+                    match rule {
+                        MatchingRule::Simple(rule) => {
+                            rule.matching_strategy = matching_strategy.map(Into::into);
+                        }
+                        MatchingRule::Composite(rules) => {
+                            if let Some(rule) = rules.get_mut(sub_idx) {
+                                rule.matching_strategy = matching_strategy.map(Into::into);
+                            }
+                        }
+                    }
+                }
+            }
             Message::ComposingAddToRule(_) => todo!(),
-            Message::RemoveRule(_) => todo!(),
+            Message::RemoveRule(idx) => {
+                if let Some(rules) = rules {
+                    if rules.get(idx).is_some() {
+                        rules.remove(idx);
+                        self.rules_settings.remove(&idx);
+                    }
+                }
+            }
         }
         (Action::None, Task::none())
     }
@@ -279,23 +343,139 @@ impl Rule {
                 .iter()
                 .enumerate()
                 .fold(column![].spacing(10), |col, (idx, rule)| match rule {
-                    MatchingRule::Simple(rule) => col.push(
-                        opt_helpers::opt_box(
-                            column![
-                                "Match any window where:",
-                                rule_view(idx, rule, false, false)
-                            ]
-                            .spacing(10),
-                        )
-                        .style(opt_helpers::opt_box_style_bottom),
-                    ),
-                    MatchingRule::Composite(rules) => col.push(
-                        opt_helpers::opt_box(rules.iter().enumerate().fold(
-                            column!["Match any window where:"].spacing(10),
-                            |col, (i, r)| col.push(rule_view(idx, r, i != rules.len() - 1, false)),
-                        ))
-                        .style(opt_helpers::opt_box_style_bottom),
-                    ),
+                    MatchingRule::Simple(rule) => col.push(iced::widget::hover(
+                        iced::widget::stack([
+                            container(
+                                opt_helpers::opt_box(
+                                    column![
+                                        "Match any window where:",
+                                        rule_view(
+                                            idx,
+                                            rule,
+                                            false,
+                                            self.rules_settings
+                                                .get(&idx)
+                                                .map(|rs| rs.edit)
+                                                .unwrap_or_default()
+                                        )
+                                    ]
+                                    .spacing(10),
+                                )
+                                .style(opt_helpers::opt_box_style_bottom),
+                            )
+                            .padding(padding::right(170))
+                            .into(),
+                            column![row![]
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::cross_icon())
+                                            .on_press(Message::ToggleRuleEdit(idx, false))
+                                            .style(button::secondary),
+                                    )
+                                }))
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::check_icon())
+                                            .on_press(Message::SaveRuleEdit(idx))
+                                            .style(button::primary),
+                                    )
+                                }))
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::delete_icon())
+                                            .on_press(Message::RemoveRule(idx))
+                                            .style(button::danger),
+                                    )
+                                }))
+                                .spacing(10)
+                                .align_y(Center)
+                                .width(160)
+                                .height(Fill)]
+                            .width(Fill)
+                            .align_x(Right)
+                            .into(),
+                        ]),
+                        column![row![]
+                            .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                (!rs.edit).then_some(
+                                    button(icons::edit_icon())
+                                        .on_press(Message::ToggleRuleEdit(idx, true))
+                                        .style(button::secondary),
+                                )
+                            }))
+                            .spacing(10)
+                            .align_y(Center)
+                            .width(160)
+                            .height(Fill)]
+                        .width(Fill)
+                        .align_x(Right),
+                    )),
+                    MatchingRule::Composite(rules) => col.push(iced::widget::hover(
+                        iced::widget::stack([
+                            container(
+                                opt_helpers::opt_box(rules.iter().enumerate().fold(
+                                    column!["Match any window where:"].spacing(10),
+                                    |col, (i, r)| {
+                                        col.push(rule_view(
+                                            idx,
+                                            r,
+                                            i != rules.len() - 1,
+                                            self.rules_settings
+                                                .get(&idx)
+                                                .map(|rs| rs.edit)
+                                                .unwrap_or_default(),
+                                        ))
+                                    },
+                                ))
+                                .style(opt_helpers::opt_box_style_bottom),
+                            )
+                            .padding(padding::right(170))
+                            .into(),
+                            column![row![]
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::cross_icon())
+                                            .on_press(Message::ToggleRuleEdit(idx, false))
+                                            .style(button::secondary),
+                                    )
+                                }))
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::check_icon())
+                                            .on_press(Message::SaveRuleEdit(idx))
+                                            .style(button::primary),
+                                    )
+                                }))
+                                .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                    rs.edit.then_some(
+                                        button(icons::delete_icon())
+                                            .on_press(Message::RemoveRule(idx))
+                                            .style(button::danger),
+                                    )
+                                }))
+                                .spacing(10)
+                                .align_y(Center)
+                                .width(160)
+                                .height(Fill)]
+                            .width(Fill)
+                            .align_x(Right)
+                            .into(),
+                        ]),
+                        column![row![]
+                            .push_maybe(self.rules_settings.get(&idx).and_then(|rs| {
+                                (!rs.edit).then_some(
+                                    button(icons::edit_icon())
+                                        .on_press(Message::ToggleRuleEdit(idx, true))
+                                        .style(button::secondary),
+                                )
+                            }))
+                            .spacing(10)
+                            .align_y(Center)
+                            .width(160)
+                            .height(Fill)]
+                        .width(Fill)
+                        .align_x(Right),
+                    )),
                 });
 
             column![add_new_rule_button, new_rule, rls]
@@ -382,9 +562,13 @@ fn rule_view(idx: usize, rule: &IdWithIdentifier, show_and: bool, edit: bool) ->
         .into()
     };
     let id: Element<_> = if edit {
-        text_input("", &rule.id)
-            .on_input(move |v| Message::ChangeNewRuleId(idx, v))
-            .into()
+        container(
+            text_input("", &rule.id)
+                .on_input(move |v| Message::ChangeNewRuleId(idx, v))
+                .width(150),
+        )
+        .max_width(150)
+        .into()
     } else {
         container(text(&rule.id))
             .padding(5)

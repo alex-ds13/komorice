@@ -82,7 +82,8 @@ impl Rules {
     ) -> (Action, Task<Message>) {
         match message {
             Message::SetScreen(screen) => {
-                let rule = Rule::new(&config.ignore_rules);
+                let rules = get_rules_from_config_mut(config, &screen);
+                let rule = Rule::new(rules);
                 self.rule_screen = Some((rule, screen));
             }
             Message::SetMainRulesScreen => {
