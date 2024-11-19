@@ -5,12 +5,13 @@ use std::collections::HashMap;
 use iced::{
     padding,
     widget::{
-        button, column, horizontal_space, pick_list, row, text, text_input, Column, Space, Text,
+        button, column, container, horizontal_space, pick_list, row, text, text_input, Column,
+        Space, Text,
     },
     Center, Element, Shrink, Task,
 };
 use komorebi::{
-    config_generation::{IdWithIdentifier, IdWithIdentifierAndComment, MatchingRule},
+    config_generation::{IdWithIdentifier, MatchingRule},
     ApplicationIdentifier,
 };
 use lazy_static::lazy_static;
@@ -173,15 +174,26 @@ impl Rule {
         match message {
             Message::ToggleRulesExpand => todo!(),
             Message::RulesHover(_) => todo!(),
-            Message::ChangeNewRuleKind(_, _) => todo!(),
-            Message::ChangeNewRuleId(_, _) => todo!(),
-            Message::ChangeNewRuleMatchingStrategy(_, _) => todo!(),
+            Message::ChangeNewRuleKind(idx, kind) => {
+                if let Some(rule) = self.new_rule.get_mut(idx) {
+                    rule.kind = kind;
+                }
+                //TODO: inform user if idx didn't exist?!
+            }
+            Message::ChangeNewRuleId(idx, id) => {
+                if let Some(rule) = self.new_rule.get_mut(idx) {
+                    rule.id = id;
+                }
+                //TODO: inform user if idx didn't exist?!
+            }
+            Message::ChangeNewRuleMatchingStrategy(idx, matching_strategy) => {
+                if let Some(rule) = self.new_rule.get_mut(idx) {
+                    rule.matching_strategy = matching_strategy.map(Into::into);
+                }
+                //TODO: inform user if idx didn't exist?!
+            }
             Message::ToggleShowNewRule => {
-                self.new_rule = vec![IdWithIdentifier {
-                    kind: ApplicationIdentifier::Exe,
-                    id: "".into(),
-                    matching_strategy: Some(MatchingStrategy::Equals.into()),
-                }];
+                self.new_rule = vec![default_rule()];
                 self.show_new_rule = !self.show_new_rule;
             }
             Message::AddNewRule => {
@@ -200,13 +212,11 @@ impl Rule {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     *rules = Some(vec![rule]);
                 }
-                self.new_rule = vec![IdWithIdentifier {
-                    kind: ApplicationIdentifier::Exe,
-                    id: "".into(),
-                    matching_strategy: Some(MatchingStrategy::Equals.into()),
-                }];
+                self.new_rule = vec![default_rule()];
             }
-            Message::ComposingAddToNewRule => todo!(),
+            Message::ComposingAddToNewRule => {
+                self.new_rule.push(default_rule());
+            }
             Message::ToggleRuleHover(_, _) => todo!(),
             Message::ToggleRuleEdit(_, _) => todo!(),
             Message::ChangeRuleKind(_, _, _) => todo!(),
@@ -231,14 +241,27 @@ impl Rule {
                     .into();
 
             let new_rule: Element<_> = if self.show_new_rule {
-                let rls = self
-                    .new_rule
-                    .iter()
-                    .enumerate()
-                    .fold(column![].spacing(10), |col, (idx, rule)| {
-                        col.push(rule_view(idx, rule))
-                    });
-                opt_helpers::opt_box(column!["Match any window where:", rls].spacing(10)).into()
+                let rls = self.new_rule.iter().enumerate().fold(
+                    column![].spacing(10),
+                    |col, (idx, rule)| {
+                        col.push(rule_view(idx, rule, idx == self.new_rule.len() - 1, true))
+                    },
+                );
+                // let add_rule_button = button(icons::plus_icon().style(|t| text::Style {
+                //     color: t.palette().primary.into(),
+                // }))
+                // .style(button::text)
+                // .on_press(Message::AddNewRule);
+                let add_rule_button = button(icons::plus_icon()).on_press(Message::AddNewRule);
+                opt_helpers::opt_box(
+                    row![
+                        column!["Match any window where:", rls].spacing(10),
+                        add_rule_button
+                    ]
+                    .spacing(10)
+                    .align_y(Center),
+                )
+                .into()
             } else {
                 Space::new(Shrink, Shrink).into()
             };
@@ -247,10 +270,23 @@ impl Rule {
                 .iter()
                 .enumerate()
                 .fold(column![].spacing(10), |col, (idx, rule)| match rule {
-                    MatchingRule::Simple(rule) => col.push(rule_view(idx, rule)),
-                    MatchingRule::Composite(rules) => {
-                        col.extend(rules.iter().map(|r| rule_view(idx, r)))
-                    }
+                    MatchingRule::Simple(rule) => col.push(
+                        opt_helpers::opt_box(
+                            column![
+                                "Match any window where:",
+                                rule_view(idx, rule, false, false)
+                            ]
+                            .spacing(10),
+                        )
+                        .style(opt_helpers::opt_box_style_bottom),
+                    ),
+                    MatchingRule::Composite(rules) => col.push(
+                        opt_helpers::opt_box(rules.iter().enumerate().fold(
+                            column!["Match any window where:"].spacing(10),
+                            |col, (i, r)| col.push(rule_view(idx, r, i != rules.len() - 1, false)),
+                        ))
+                        .style(opt_helpers::opt_box_style_bottom),
+                    ),
                 })
                 .into();
 
@@ -263,14 +299,27 @@ impl Rule {
                     .into();
 
             let new_rule: Element<_> = if self.show_new_rule {
-                let rls = self
-                    .new_rule
-                    .iter()
-                    .enumerate()
-                    .fold(column![].spacing(10), |col, (idx, rule)| {
-                        col.push(rule_view(idx, rule))
-                    });
-                opt_helpers::opt_box(column!["Match any window where:", rls].spacing(10)).into()
+                let rls = self.new_rule.iter().enumerate().fold(
+                    column![].spacing(10),
+                    |col, (idx, rule)| {
+                        col.push(rule_view(idx, rule, idx == self.new_rule.len() - 1, true))
+                    },
+                );
+                // let add_rule_button = button(icons::plus_icon().style(|t| text::Style {
+                //     color: t.palette().primary.into(),
+                // }))
+                // .style(button::text)
+                // .on_press(Message::AddNewRule);
+                let add_rule_button = button(icons::plus_icon()).on_press(Message::AddNewRule);
+                opt_helpers::opt_box(
+                    row![
+                        column!["Match any window where:", rls].spacing(10),
+                        add_rule_button
+                    ]
+                    .spacing(10)
+                    .align_y(Center),
+                )
+                .into()
             } else {
                 Space::new(Shrink, Shrink).into()
             };
@@ -280,32 +329,82 @@ impl Rule {
     }
 }
 
-fn rule_view(idx: usize, rule: &IdWithIdentifier) -> Element<Message> {
-    let kind = pick_list(
-        &APPLICATION_IDENTIFIER_OPTIONS[..],
-        Some(rule.kind),
-        move |v| Message::ChangeNewRuleKind(idx, v),
-    );
-    let matching_strategy = pick_list(
-        &MATCHING_STRATEGY_OPTIONS[..],
-        rule.matching_strategy
-            .as_ref()
-            .map(Into::<MatchingStrategy>::into),
-        move |v| Message::ChangeNewRuleMatchingStrategy(idx, Some(v)),
-    );
-    let id = text_input("", &rule.id).on_input(move |v| Message::ChangeNewRuleId(idx, v));
-    row![
-        kind,
-        matching_strategy,
-        id,
-        horizontal_space(),
-        button(icons::plus_icon().style(|t| text::Style {
-            color: t.palette().primary.into()
-        }))
-        .style(button::text)
-        .on_press(Message::AddNewRule),
-    ]
-    .spacing(10)
-    .align_y(Center)
-    .into()
+fn rule_view(idx: usize, rule: &IdWithIdentifier, show_and: bool, edit: bool) -> Element<Message> {
+    let kind: Element<_> = if edit {
+        pick_list(
+            &APPLICATION_IDENTIFIER_OPTIONS[..],
+            Some(rule.kind),
+            move |v| Message::ChangeNewRuleKind(idx, v),
+        )
+        .into()
+    } else {
+        row![
+            container(iced::widget::value(rule.kind))
+                .padding(5)
+                .style(container::dark),
+            "→"
+        ]
+        .spacing(10)
+        .align_y(Center)
+        .into()
+    };
+    let matching_strategy: Element<_> = if edit {
+        pick_list(
+            &MATCHING_STRATEGY_OPTIONS[..],
+            rule.matching_strategy
+                .as_ref()
+                .map(Into::<MatchingStrategy>::into),
+            move |v| Message::ChangeNewRuleMatchingStrategy(idx, Some(v)),
+        )
+        .into()
+    } else {
+        row![
+            container(iced::widget::value(
+                rule.matching_strategy
+                    .as_ref()
+                    .map_or(MatchingStrategy::Legacy, Into::into),
+            ))
+            .padding(5)
+            .style(container::dark),
+            "→"
+        ]
+        .spacing(10)
+        .align_y(Center)
+        .into()
+    };
+    let id: Element<_> = if edit {
+        text_input("", &rule.id)
+            .on_input(move |v| Message::ChangeNewRuleId(idx, v))
+            .into()
+    } else {
+        container(text(&rule.id))
+            .padding(5)
+            .style(container::dark)
+            .into()
+    };
+    let composing_add_button: Option<Element<_>> = show_and.then(|| {
+        if edit {
+            button("And")
+                .style(button::secondary)
+                .on_press(Message::ComposingAddToNewRule)
+                .into()
+        } else {
+            container(row![icons::level_down_icon(), "And"].spacing(5).align_y(Center))
+                .padding(5)
+                .into()
+        }
+    });
+    row![kind, matching_strategy, id]
+        .push_maybe(composing_add_button)
+        .spacing(10)
+        .align_y(Center)
+        .into()
+}
+
+fn default_rule() -> IdWithIdentifier {
+    IdWithIdentifier {
+        kind: ApplicationIdentifier::Exe,
+        id: "".into(),
+        matching_strategy: Some(MatchingStrategy::Equals.into()),
+    }
 }
