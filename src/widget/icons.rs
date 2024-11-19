@@ -81,3 +81,11 @@ pub fn plus_icon<'a>() -> Text<'a> {
 pub fn minus_icon<'a>() -> Text<'a> {
     icon('\u{F146}')
 }
+
+pub fn level_up_icon<'a>() -> Text<'a> {
+    icon('\u{F148}')
+}
+
+pub fn level_down_icon<'a>() -> Text<'a> {
+    icon('\u{F149}')
+}
