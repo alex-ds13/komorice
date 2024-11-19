@@ -6,18 +6,15 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::screen::{general, monitors, rule, sidebar, Screen};
+use crate::screen::{general, monitors, rules, sidebar, Screen};
 
 use std::sync::Arc;
 
-use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
+use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space, Space};
 use iced::{
     padding,
     widget::{column, container, horizontal_rule, row, scrollable, text, vertical_rule},
-    Alignment::Center,
-    Element, Font,
-    Length::Fill,
-    Subscription, Task, Theme,
+    Center, Element, Fill, Font, Shrink, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
 
@@ -35,6 +32,7 @@ lazy_static! {
         f
     };
     static ref NONE_STR: Arc<str> = Arc::from("");
+    static ref SCREENS_TO_RESET: [Screen; 1] = [Screen::Rules,];
 }
 
 fn main() -> iced::Result {
@@ -56,7 +54,7 @@ enum Message {
     // View/Screen related Messages
     General(general::Message),
     Monitors(monitors::Message),
-    Rules(rule::Message),
+    Rules(rules::Message),
     Sidebar(sidebar::Message),
 
     // Komorebi related Messages
@@ -73,7 +71,7 @@ struct Komofig {
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
     general: general::General,
-    rules: rule::Rule,
+    rules: rules::Rules,
     config: Option<komorebi_client::StaticConfig>,
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
@@ -119,9 +117,9 @@ impl Komofig {
             }
             Message::Rules(message) => {
                 if let Some(c) = &mut self.config {
-                    let (action, task) = self.rules.update(&mut c.ignore_rules, message);
+                    let (action, task) = self.rules.update(c, message);
                     let action_task = match action {
-                        rule::Action::None => Task::none(),
+                        rules::Action::None => Task::none(),
                     };
                     return Task::batch([task.map(Message::Rules), action_task]);
                 }
@@ -131,6 +129,9 @@ impl Komofig {
                 let action_task = match action {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::UpdateMainScreen(screen) => {
+                        if SCREENS_TO_RESET.contains(&screen) && matches!(screen, Screen::Rules) {
+                            self.rules = rules::Rules::default();
+                        }
                         self.main_screen = screen;
                         Task::none()
                     }
@@ -226,7 +227,11 @@ impl Komofig {
             Screen::Transparency => center(text("Transparency").size(50)).into(),
             // Screen::Rules => center(text("Rules").size(50)).into(),
             Screen::Rules => {
-                self.rules.view("Ignore Rules", self.config.as_ref().and_then(|c| c.ignore_rules.as_ref())).map(Message::Rules)
+                if let Some(config) = &self.config {
+                    self.rules.view(config).map(Message::Rules)
+                } else {
+                    Space::new(Shrink, Shrink).into()
+                }
             }
             Screen::Debug => {
                 let notifications = scrollable(
@@ -275,7 +280,9 @@ impl Komofig {
         .spacing(10)
         .width(Fill);
         let right_col = column![
-            container(main_screen).height(Fill).padding(padding::all(20).bottom(0)),
+            container(main_screen)
+                .height(Fill)
+                .padding(padding::all(20).bottom(0)),
             container(horizontal_rule(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];

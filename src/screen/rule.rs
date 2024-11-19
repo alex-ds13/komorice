@@ -3,11 +3,7 @@ use crate::widget::{self, icons, opt_helpers};
 use std::collections::HashMap;
 
 use iced::{
-    padding,
-    widget::{
-        button, column, container, horizontal_space, pick_list, row, text, text_input, Column,
-        Space, Text,
-    },
+    widget::{button, column, container, pick_list, row, text, text_input, Space, Text},
     Center, Element, Shrink, Task,
 };
 use komorebi::{
@@ -170,15 +166,13 @@ impl Rule {
         Rule {
             show_new_rule: false,
             new_rule: Vec::new(),
-            rules_settings: rules
-                .as_ref()
-                .map_or(HashMap::new(), |rules| {
-                    rules
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, _rule)| (idx, RuleSettings::default()))
-                        .collect()
-                }),
+            rules_settings: rules.as_ref().map_or(HashMap::new(), |rules| {
+                rules
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, _rule)| (idx, RuleSettings::default()))
+                    .collect()
+            }),
         }
     }
 
@@ -253,8 +247,7 @@ impl Rule {
             let add_new_rule_button =
                 widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
                     .on_press(Message::ToggleShowNewRule)
-                    .style(button::secondary)
-                    .into();
+                    .style(button::secondary);
 
             let new_rule: Element<_> = if self.show_new_rule {
                 let rls = self.new_rule.iter().enumerate().fold(
@@ -303,16 +296,16 @@ impl Rule {
                         ))
                         .style(opt_helpers::opt_box_style_bottom),
                     ),
-                })
-                .into();
+                });
 
-            widget::opt_helpers::section_view(title, [add_new_rule_button, new_rule, rls])
+            column![add_new_rule_button, new_rule, rls]
+                .spacing(10)
+                .into()
         } else {
             let add_new_rule_button =
                 widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
                     .on_press(Message::ToggleShowNewRule)
-                    .style(button::secondary)
-                    .into();
+                    .style(button::secondary);
 
             let new_rule: Element<_> = if self.show_new_rule {
                 let rls = self.new_rule.iter().enumerate().fold(
@@ -340,7 +333,7 @@ impl Rule {
                 Space::new(Shrink, Shrink).into()
             };
 
-            widget::opt_helpers::section_view(title, [add_new_rule_button, new_rule])
+            column![add_new_rule_button, new_rule].spacing(10).into()
         }
     }
 }

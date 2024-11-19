@@ -1,4 +1,4 @@
-use crate::Screen;
+use crate::{Screen, SCREENS_TO_RESET};
 
 use iced::{
     widget::{button, column, container, Container, Space},
@@ -27,7 +27,7 @@ impl Sidebar {
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::SelectScreen(screen) => {
-                if screen != self.selected_screen {
+                if screen != self.selected_screen || SCREENS_TO_RESET.contains(&screen) {
                     self.selected_screen = screen.clone();
                     return (Action::UpdateMainScreen(screen), Task::none());
                 }
