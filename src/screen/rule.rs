@@ -149,13 +149,7 @@ pub enum Action {
 pub struct Rule {
     pub show_new_rule: bool,
     pub new_rule: Vec<IdWithIdentifier>,
-    pub rules_settings: Vec<RuleSettings>,
-}
-
-#[derive(Debug, Default)]
-pub struct RuleSettings {
-    pub _is_hovered: bool,
-    pub edit: bool,
+    pub rules_edit: Vec<bool>,
 }
 
 impl Rule {
@@ -163,8 +157,9 @@ impl Rule {
         Rule {
             show_new_rule: false,
             new_rule: Vec::new(),
-            rules_settings: rules.as_ref().map_or(Vec::new(), |rules| {
-                rules.iter().map(|_| RuleSettings::default()).collect()
+            rules_edit: rules.as_ref().map_or(Vec::new(), |rules| {
+                let count = rules.len();
+                vec![false; count]
             }),
         }
     }
@@ -202,20 +197,20 @@ impl Rule {
                     if let Some(rules) = rules {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         rules.push(rule);
-                        self.rules_settings.push(RuleSettings::default());
+                        self.rules_edit.push(false);
                     } else {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         *rules = Some(vec![rule]);
-                        self.rules_settings = vec![RuleSettings::default()];
+                        self.rules_edit = vec![false];
                     }
                 } else if let Some(rules) = rules {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     rules.push(rule);
-                    self.rules_settings.push(RuleSettings::default());
+                    self.rules_edit.push(false);
                 } else {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     *rules = Some(vec![rule]);
-                    self.rules_settings = vec![RuleSettings::default()];
+                    self.rules_edit = vec![false];
                 }
                 self.new_rule = vec![default_rule()];
             }
@@ -226,11 +221,11 @@ impl Rule {
                 self.new_rule.remove(idx);
             }
             Message::ToggleRuleEdit(idx, edit) => {
-                if let (Some(_rule), Some(rule_settings)) = (
+                if let (Some(_rule), Some(rule_edit)) = (
                     rules.as_mut().and_then(|rls| rls.get_mut(idx)),
-                    self.rules_settings.get_mut(idx),
+                    self.rules_edit.get_mut(idx),
                 ) {
-                    rule_settings.edit = edit;
+                    *rule_edit = edit;
                 }
             }
             Message::ChangeRuleKind(idx, sub_idx, kind) => {
@@ -309,7 +304,7 @@ impl Rule {
                 if let Some(rules) = rules {
                     if rules.get(idx).is_some() {
                         rules.remove(idx);
-                        self.rules_settings.remove(idx);
+                        self.rules_edit.remove(idx);
                     }
                 }
             }
@@ -375,11 +370,8 @@ impl Rule {
                                 .push(
                                     rule_view(
                                         rule,
-                                        self.rules_settings[idx].edit,
-                                        self.rules_settings
-                                            .get(idx)
-                                            .map(|rs| rs.edit)
-                                            .unwrap_or_default(),
+                                        self.rules_edit[idx],
+                                        self.rules_edit[idx],
                                         move |v| Message::ChangeRuleKind(idx, 0, v),
                                         move |v| {
                                             Message::ChangeRuleMatchingStrategy(idx, 0, Some(v))
@@ -406,15 +398,12 @@ impl Rule {
                                         col.push(
                                             rule_view(
                                                 r,
-                                                if self.rules_settings[idx].edit {
+                                                if self.rules_edit[idx] {
                                                     i == rules.len() - 1
                                                 } else {
                                                     i != rules.len() - 1
                                                 },
-                                                self.rules_settings
-                                                    .get(idx)
-                                                    .map(|rs| rs.edit)
-                                                    .unwrap_or_default(),
+                                                self.rules_edit[idx],
                                                 move |v| Message::ChangeRuleKind(idx, i, v),
                                                 move |v| {
                                                     Message::ChangeRuleMatchingStrategy(
@@ -460,20 +449,18 @@ impl Rule {
                     .padding(padding::right(170))
                     .into(),
                 column![row![]
-                    .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
-                        rs.edit.then_some(
+                    .push_maybe(self.rules_edit[idx].then_some(
                             button(icons::check_icon())
                                 .on_press(Message::ToggleRuleEdit(idx, false))
                                 .style(button::primary),
                         )
-                    }))
-                    .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
-                        rs.edit.then_some(
+                    )
+                    .push_maybe(self.rules_edit[idx].then_some(
                             button(icons::delete_icon())
                                 .on_press(Message::RemoveRule(idx))
                                 .style(button::danger),
                         )
-                    }))
+                    )
                     .spacing(10)
                     .align_y(Center)
                     .width(160)
@@ -483,13 +470,12 @@ impl Rule {
                 .into(),
             ]),
             column![row![]
-                .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
-                    (!rs.edit).then_some(
+                .push_maybe((!self.rules_edit[idx]).then_some(
                         button(icons::edit_icon())
                             .on_press(Message::ToggleRuleEdit(idx, true))
                             .style(button::secondary),
                     )
-                }))
+                )
                 .spacing(10)
                 .align_y(Center)
                 .width(160)
