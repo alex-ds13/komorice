@@ -2,9 +2,7 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 
 use iced::{
     padding,
-    widget::{
-        button, column, container, horizontal_rule, pick_list, row, text, text_input, Row, Space,
-    },
+    widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
     Center, Element, Fill, Right, Shrink, Task, Top,
 };
 use komorebi::{
@@ -352,6 +350,7 @@ impl Rule {
                 .spacing(10)
                 .align_y(Top),
             )
+            .max_width(685)
             .into()
         } else {
             Space::new(Shrink, Shrink).into()
@@ -366,21 +365,16 @@ impl Rule {
                         self.matching_rule_view(
                             idx,
                             column!["Match any window where:"]
-                                .push(
-                                    rule_view(
-                                        rule,
-                                        self.rules_edit[idx],
-                                        self.rules_edit[idx],
-                                        move |v| Message::ChangeRuleKind(idx, 0, v),
-                                        move |v| {
-                                            Message::ChangeRuleMatchingStrategy(idx, 0, Some(v))
-                                        },
-                                        move |v| Message::ChangeRuleId(idx, 0, v),
-                                        Message::ComposingAddToRule(idx),
-                                        None,
-                                    )
-                                    .width(635),
-                                )
+                                .push(rule_view(
+                                    rule,
+                                    self.rules_edit[idx],
+                                    self.rules_edit[idx],
+                                    move |v| Message::ChangeRuleKind(idx, 0, v),
+                                    move |v| Message::ChangeRuleMatchingStrategy(idx, 0, Some(v)),
+                                    move |v| Message::ChangeRuleId(idx, 0, v),
+                                    Message::ComposingAddToRule(idx),
+                                    None,
+                                ))
                                 .spacing(10)
                                 .into(),
                         ),
@@ -394,33 +388,26 @@ impl Rule {
                                 .fold(
                                     column!["Match any window where:"].spacing(10),
                                     |col, (i, r)| {
-                                        col.push(
-                                            rule_view(
-                                                r,
-                                                if self.rules_edit[idx] {
-                                                    i == rules.len() - 1
-                                                } else {
-                                                    i != rules.len() - 1
-                                                },
-                                                self.rules_edit[idx],
-                                                move |v| Message::ChangeRuleKind(idx, i, v),
-                                                move |v| {
-                                                    Message::ChangeRuleMatchingStrategy(
-                                                        idx,
-                                                        i,
-                                                        Some(v),
-                                                    )
-                                                },
-                                                move |v| Message::ChangeRuleId(idx, i, v),
-                                                Message::ComposingAddToRule(idx),
-                                                if i != 0 {
-                                                    Some(Message::ComposingRemoveFromRule(idx, i))
-                                                } else {
-                                                    None
-                                                },
-                                            )
-                                            .width(635),
-                                        )
+                                        col.push(rule_view(
+                                            r,
+                                            if self.rules_edit[idx] {
+                                                i == rules.len() - 1
+                                            } else {
+                                                i != rules.len() - 1
+                                            },
+                                            self.rules_edit[idx],
+                                            move |v| Message::ChangeRuleKind(idx, i, v),
+                                            move |v| {
+                                                Message::ChangeRuleMatchingStrategy(idx, i, Some(v))
+                                            },
+                                            move |v| Message::ChangeRuleId(idx, i, v),
+                                            Message::ComposingAddToRule(idx),
+                                            if i != 0 {
+                                                Some(Message::ComposingRemoveFromRule(idx, i))
+                                            } else {
+                                                None
+                                            },
+                                        ))
                                     },
                                 )
                                 .into(),
@@ -448,9 +435,14 @@ impl Rule {
     ) -> Element<'a, Message> {
         iced::widget::hover(
             iced::widget::stack([
-                container(opt_helpers::opt_box(content).style(opt_helpers::opt_box_style_bottom))
-                    .padding(padding::right(170))
-                    .into(),
+                container(
+                    opt_helpers::opt_box(content)
+                        .max_width(685)
+                        .style(opt_helpers::opt_box_style_bottom),
+                )
+                .width(Shrink)
+                .padding(padding::right(90))
+                .into(),
                 column![row![]
                     .push_maybe(
                         self.rules_edit[idx].then_some(
@@ -468,7 +460,7 @@ impl Rule {
                     )
                     .spacing(10)
                     .align_y(Center)
-                    .width(160)
+                    .width(80)
                     .height(Fill)]
                 .width(Fill)
                 .align_x(Right)
@@ -484,7 +476,7 @@ impl Rule {
                 )
                 .spacing(10)
                 .align_y(Center)
-                .width(160)
+                .width(80)
                 .height(Fill)]
             .width(Fill)
             .align_x(Right),
@@ -529,6 +521,7 @@ fn rule_view<'a>(
                 .map(Into::<MatchingStrategy>::into),
             change_matching_strategy,
         )
+        .width(Fill)
         .into()
     } else {
         row![
@@ -537,6 +530,7 @@ fn rule_view<'a>(
                     .as_ref()
                     .map_or(MatchingStrategy::Legacy, Into::into),
             ))
+            .width(Fill)
             .padding(5)
             .style(container::dark),
             "→"
@@ -546,10 +540,14 @@ fn rule_view<'a>(
         .into()
     };
     let id: Element<_> = if edit {
-        text_input("", &rule.id).on_input(change_id).into()
+        text_input("", &rule.id)
+            .on_input(change_id)
+            .width(Fill)
+            .into()
     } else {
         container(text(&rule.id))
             .padding(5)
+            .width(Fill)
             .style(container::dark)
             .into()
     };
@@ -583,20 +581,22 @@ fn rule_view<'a>(
         ));
 
     let delete_rule_line_button: Option<Element<_>> = edit
-        .then_some(composing_remove.map(|m| {
-            button(icons::delete_icon())
-                .on_press(m)
-                .style(button::danger)
-                .into()
-        }))
-        .flatten()
-        .or_else(|| Some(Space::new(32, Shrink).into()));
+        .then_some(
+            composing_remove
+                .map(|m| {
+                    button(icons::delete_icon())
+                        .on_press(m)
+                        .style(button::danger)
+                        .into()
+                })
+                .or_else(|| Some(Space::new(33, Shrink).into())),
+        )
+        .flatten();
 
     row![kind, matching_strategy, id]
         .push_maybe(composing_add_button)
         .push_maybe(delete_rule_line_button)
         .spacing(10)
-        .width(550)
         .align_y(Center)
 }
 
