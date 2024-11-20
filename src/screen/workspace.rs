@@ -1,10 +1,13 @@
+use super::rule;
+
 use crate::utils::DisplayOptionCustom as DisplayOption;
 use crate::widget::{icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
 
 use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
-use iced::{Center, Element, Fill, Shrink};
+use iced::{Center, Element, Fill, Shrink, Task};
+use komorebi::config_generation::MatchingRule;
 use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
 use komorebi_client::DefaultLayout;
 use lazy_static::lazy_static;
@@ -41,6 +44,7 @@ lazy_static! {
 
 #[derive(Clone, Debug)]
 pub enum Message {
+    SetScreen(Screen),
     ConfigChange(ConfigChange),
     ToggleOverrideGlobal(OverrideConfig),
     ToggleLayoutRulesExpand,
@@ -49,11 +53,15 @@ pub enum Message {
     ChangeNewLayoutRuleLayout(DefaultLayout),
     AddNewLayoutRule,
     RemoveLayoutRule(usize),
+    WorkspaceRulesHover(bool),
+    InitialWorkspaceRulesHover(bool),
+    Rule(rule::Message),
 }
 
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
+    ScreenChange(Screen),
 }
 
 #[derive(Clone, Debug)]
@@ -78,35 +86,58 @@ pub enum OverrideConfig {
     WorkspacePadding(bool),
 }
 
+#[derive(Clone, Debug)]
+pub enum Screen {
+    Workspace,
+    WorkspaceRules,
+    InitialWorkspaceRules,
+}
+
 pub struct Workspace {
+    pub screen: Screen,
+    pub rule: rule::Rule,
     pub is_hovered: bool,
     pub layout_rules_expanded: bool,
     pub layout_rules_hovered: bool,
     pub new_layout_rule_limit: usize,
     pub new_layout_rule_layout: DefaultLayout,
+    pub workspace_rules_hovered: bool,
+    pub initial_workspace_rules_hovered: bool,
 }
 
 impl Default for Workspace {
     fn default() -> Self {
         Self {
+            screen: Screen::Workspace,
+            rule: Default::default(),
             is_hovered: Default::default(),
             layout_rules_expanded: Default::default(),
             layout_rules_hovered: Default::default(),
             new_layout_rule_limit: Default::default(),
             new_layout_rule_layout: DefaultLayout::BSP,
+            workspace_rules_hovered: Default::default(),
+            initial_workspace_rules_hovered: Default::default(),
         }
     }
 }
 
 pub trait WorkspaceScreen {
-    fn update(&mut self, workspace: &mut Workspace, message: Message) -> Action;
+    fn update(&mut self, workspace: &mut Workspace, message: Message) -> (Action, Task<Message>);
 
-    fn view(&self, workspace: &Workspace) -> Element<Message>;
+    fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message>;
 }
 
 impl WorkspaceScreen for WorkspaceConfig {
-    fn update(&mut self, workspace: &mut Workspace, message: Message) -> Action {
+    fn update(&mut self, workspace: &mut Workspace, message: Message) -> (Action, Task<Message>) {
         match message {
+            Message::SetScreen(screen) => {
+                if matches!(screen, Screen::WorkspaceRules | Screen::InitialWorkspaceRules) {
+                    let rules = get_rules_from_config_mut(self, &screen);
+                    workspace.rule = rule::Rule::new(rules);
+                    workspace.screen = screen.clone();
+                    return (Action::ScreenChange(screen), Task::none());
+                }
+            },
             Message::ConfigChange(change) => match change {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
                     self.apply_window_based_work_area_offset = value
@@ -208,16 +239,45 @@ impl WorkspaceScreen for WorkspaceConfig {
                     layout_rules.remove(&limit);
                 }
             }
+            Message::WorkspaceRulesHover(hover) => {
+                workspace.workspace_rules_hovered = hover;
+            }
+            Message::InitialWorkspaceRulesHover(hover) => {
+                workspace.initial_workspace_rules_hovered = hover;
+            }
+            Message::Rule(message) => {
+                if matches!(workspace.screen, Screen::WorkspaceRules | Screen::InitialWorkspaceRules) {
+                    let rules = get_rules_from_config_mut(self, &workspace.screen);
+                    let (action, task) = workspace.rule.update(rules, message);
+                    let action_task = match action {
+                        rule::Action::None => Task::none(),
+                    };
+                    return (
+                        Action::None,
+                        Task::batch([task.map(Message::Rule), action_task]),
+                    );
+                }
+            }
         }
-        Action::None
+        (Action::None, Task::none())
     }
 
-    fn view(&self, workspace: &Workspace) -> Element<Message> {
+    fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message> {
+        match workspace.screen {
+            Screen::Workspace => workspace.workspace_view(self),
+            Screen::WorkspaceRules |
+            Screen::InitialWorkspaceRules => workspace.rule.view(get_rules_from_config(self, &workspace.screen)).map(Message::Rule)
+        }
+    }
+}
+
+impl Workspace {
+    fn workspace_view<'a>(&'a self, ws_config: &'a WorkspaceConfig) -> Element<'a, Message> {
         let name = opt_helpers::input(
             "Name",
             Some("Name of the workspace. Should be unique."),
             "",
-            &self.name,
+            &ws_config.name,
             |v| Message::ConfigChange(ConfigChange::Name(v)),
             None,
         );
@@ -225,7 +285,7 @@ impl WorkspaceScreen for WorkspaceConfig {
             "Layout",
             Some("Layout (default: BSP)"),
             &DEFAULT_LAYOUT_OPTIONS[..],
-            Some(DisplayOption(self.layout, "[None] (Floating)")),
+            Some(DisplayOption(ws_config.layout, "[None] (Floating)")),
             |s| Message::ConfigChange(ConfigChange::Layout(s.and_then(|s| s.0))),
             Some(DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)")),
             None,
@@ -233,7 +293,7 @@ impl WorkspaceScreen for WorkspaceConfig {
         let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
             "Apply Window Based Work Area Offset",
             Some("Apply this monitor's window-based work area offset (default: true)"),
-            self.apply_window_based_work_area_offset.or(Some(true)),
+            ws_config.apply_window_based_work_area_offset.or(Some(true)),
             Some(true),
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
             None,
@@ -241,11 +301,11 @@ impl WorkspaceScreen for WorkspaceConfig {
         let container_padding = opt_helpers::number_with_disable_default_option(
             "Container Padding",
             Some("Container padding (default: global)"),
-            self.container_padding,
+            ws_config.container_padding,
             None,
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
-                disable: self.container_padding.is_none(),
+                disable: ws_config.container_padding.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
             }),
@@ -253,11 +313,11 @@ impl WorkspaceScreen for WorkspaceConfig {
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
             Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
-            self.float_override,
+            ws_config.float_override,
             None,
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
             Some(opt_helpers::DisableArgs {
-                disable: self.float_override.is_none(),
+                disable: ws_config.float_override.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
             })
@@ -272,15 +332,15 @@ impl WorkspaceScreen for WorkspaceConfig {
                 to manually change the layout of a workspace until all layout \
                 rules for that workspace have been cleared.",
             ),
-            layout_rules_children(&self.layout_rules, workspace),
-            workspace.layout_rules_expanded,
-            workspace.layout_rules_hovered,
+            layout_rules_children(&ws_config.layout_rules, self),
+            self.layout_rules_expanded,
+            self.layout_rules_hovered,
             Message::ToggleLayoutRulesExpand,
             Message::LayoutRulesHover,
-            self.layout_rules.is_some(),
+            ws_config.layout_rules.is_some(),
             Message::ConfigChange(ConfigChange::LayoutRules(None)),
             Some(opt_helpers::DisableArgs {
-                disable: self.layout_rules.is_none(),
+                disable: ws_config.layout_rules.is_none(),
                 label: Some("None"),
                 on_toggle: |v| {
                     Message::ConfigChange(ConfigChange::LayoutRules((!v).then_some(HashMap::new())))
@@ -294,11 +354,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                 WindowContainerBehaviour::Create,
                 WindowContainerBehaviour::Append,
             ],
-            self.window_container_behaviour,
+            ws_config.window_container_behaviour,
             |v| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(v)),
             None,
             Some(opt_helpers::DisableArgs {
-                disable: self.window_container_behaviour.is_none(),
+                disable: ws_config.window_container_behaviour.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| {
                     Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v))
@@ -308,14 +368,33 @@ impl WorkspaceScreen for WorkspaceConfig {
         let workspace_padding = opt_helpers::number_with_disable_default_option(
             "Workspace Padding",
             Some("Workspace padding (default: global)"),
-            self.workspace_padding,
+            ws_config.workspace_padding,
             None,
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
             Some(opt_helpers::DisableArgs {
-                disable: self.workspace_padding.is_none(),
+                disable: ws_config.workspace_padding.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
             }),
+        );
+        let initial_workspace_rules_button = opt_helpers::opt_button(
+            "Initial Workspace Rules",
+            Some(
+                "Initial workspace application rules. The matched windows only move to this worksapace once, \
+                after that you can freely move them anywhere.",
+            ),
+            self.initial_workspace_rules_hovered,
+            Message::SetScreen(Screen::InitialWorkspaceRules),
+            Message::InitialWorkspaceRulesHover,
+        );
+        let workspace_rules_button = opt_helpers::opt_button(
+            "Workspace Rules",
+            Some(
+                "Permanent workspace application rules. The matched windows will always move to this workspace.",
+            ),
+            self.workspace_rules_hovered,
+            Message::SetScreen(Screen::WorkspaceRules),
+            Message::WorkspaceRulesHover,
         );
         column![
             name,
@@ -325,10 +404,34 @@ impl WorkspaceScreen for WorkspaceConfig {
             float_override,
             layout_rules,
             window_container_behaviour,
-            workspace_padding
+            workspace_padding,
+            initial_workspace_rules_button,
+            workspace_rules_button,
         ]
         .spacing(10)
         .into()
+    }
+}
+
+fn get_rules_from_config<'a>(
+    config: &'a WorkspaceConfig,
+    screen: &'a Screen,
+) -> Option<&'a Vec<MatchingRule>> {
+    match screen {
+        Screen::WorkspaceRules => config.workspace_rules.as_ref(),
+        Screen::InitialWorkspaceRules => config.initial_workspace_rules.as_ref(),
+        _ => None,
+    }
+}
+
+fn get_rules_from_config_mut<'a>(
+    config: &'a mut WorkspaceConfig,
+    screen: &'a Screen,
+) -> &'a mut Option<Vec<MatchingRule>> {
+    match screen {
+        Screen::WorkspaceRules => &mut config.workspace_rules,
+        Screen::InitialWorkspaceRules => &mut config.initial_workspace_rules,
+        _ => panic!("wrong screen for rules!"),
     }
 }
 

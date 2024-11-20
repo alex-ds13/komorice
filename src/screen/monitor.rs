@@ -43,6 +43,8 @@ pub enum SubScreen {
     Monitor,
     Workspaces,
     Workspace(usize),
+    WorkspaceRules(usize),
+    InitialWorkspaceRules(usize),
 }
 
 pub struct Monitor {
@@ -183,10 +185,18 @@ impl Monitor {
                 if let (Some(workspace_config), Some(workspace)) =
                     (self.config.workspaces.get_mut(idx), self.workspaces.get_mut(&idx))
                 {
-                    let action = workspace_config.update(workspace, message);
+                    let (action, task) = workspace_config.update(workspace, message);
                     match action {
                         workspace::Action::None => {},
+                        workspace::Action::ScreenChange(ws_screen) => {
+                            match ws_screen {
+                                workspace::Screen::Workspace => self.sub_screen = SubScreen::Workspace(idx),
+                                workspace::Screen::WorkspaceRules => self.sub_screen = SubScreen::WorkspaceRules(idx),
+                                workspace::Screen::InitialWorkspaceRules => self.sub_screen = SubScreen::InitialWorkspaceRules(idx),
+                            }
+                        }
                     }
+                    return task.map(move |m| Message::Workspace(idx, m));
                 }
             },
             Message::SetSubScreenMonitor => {
@@ -198,7 +208,7 @@ impl Monitor {
             },
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
-                self.workspaces.entry(idx).and_modify(|ws| ws.is_hovered = false).or_default();
+                self.workspaces.entry(idx).and_modify(|ws| ws.is_hovered = false).or_default().screen = workspace::Screen::Workspace;
             },
             Message::ToggleWorkspacesHover(hover) => {
                 self.workspaces_button_hovered = hover;
@@ -216,6 +226,8 @@ impl Monitor {
             SubScreen::Monitor => self.monitor_view(),
             SubScreen::Workspaces => self.workspaces_view(),
             SubScreen::Workspace(idx) => self.workspace_view(idx),
+            SubScreen::WorkspaceRules(idx) => self.workspace_rules_view(idx),
+            SubScreen::InitialWorkspaceRules(idx) => self.initial_workspace_rules_view(idx),
         }
     }
 
@@ -357,6 +369,30 @@ impl Monitor {
                 nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
                 text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name).size(18),
+            ].into(),
+            [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+        )
+    }
+
+    pub fn workspace_rules_view(&self, idx: usize) -> Element<Message> {
+        opt_helpers::sub_section_view(
+            row![
+                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                nav_button(text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name), Message::SetSubScreenWorkspace(idx)),
+                text("> Workspace Rules").size(18),
+            ].into(),
+            [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+        )
+    }
+
+    pub fn initial_workspace_rules_view(&self, idx: usize) -> Element<Message> {
+        opt_helpers::sub_section_view(
+            row![
+                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                nav_button(text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name), Message::SetSubScreenWorkspace(idx)),
+                text("> Initial Workspace Rules").size(18),
             ].into(),
             [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
         )
