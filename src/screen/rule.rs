@@ -2,7 +2,7 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 
 use iced::{
     padding,
-    widget::{button, column, container, pick_list, row, text, text_input, Row, Space, Text},
+    widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
     Center, Element, Fill, Right, Shrink, Task, Top,
 };
 use komorebi::{
@@ -129,9 +129,7 @@ pub enum Message {
     ComposingAddToNewRule,
     ComposingRemoveFromNewRule(usize),
 
-    ToggleRuleHover(usize, bool),
     ToggleRuleEdit(usize, bool),
-    SaveRuleEdit(usize),
 
     ChangeRuleKind(usize, usize, ApplicationIdentifier),
     ChangeRuleId(usize, usize, String),
@@ -156,7 +154,7 @@ pub struct Rule {
 
 #[derive(Debug, Default)]
 pub struct RuleSettings {
-    pub is_hovered: bool,
+    pub _is_hovered: bool,
     pub edit: bool,
 }
 
@@ -227,7 +225,6 @@ impl Rule {
             Message::ComposingRemoveFromNewRule(idx) => {
                 self.new_rule.remove(idx);
             }
-            Message::ToggleRuleHover(_, _) => todo!(),
             Message::ToggleRuleEdit(idx, edit) => {
                 if let (Some(_rule), Some(rule_settings)) = (
                     rules.as_mut().and_then(|rls| rls.get_mut(idx)),
@@ -235,9 +232,6 @@ impl Rule {
                 ) {
                     rule_settings.edit = edit;
                 }
-            }
-            Message::SaveRuleEdit(idx) => {
-                todo!()
             }
             Message::ChangeRuleKind(idx, sub_idx, kind) => {
                 if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
@@ -325,7 +319,6 @@ impl Rule {
 
     pub fn view<'a>(
         &'a self,
-        title: impl Into<Text<'a>>,
         rules: Option<&'a Vec<MatchingRule>>,
     ) -> Element<'a, Message> {
         let add_new_rule_button =

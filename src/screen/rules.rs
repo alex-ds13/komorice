@@ -138,7 +138,7 @@ impl Rules {
             ];
             let rules = get_rules_from_config(config, screen);
             let content = rule
-                .view(iced::widget::value(screen), rules.as_ref())
+                .view(rules.as_ref())
                 .map(Message::Rule);
             column![
                 title,
