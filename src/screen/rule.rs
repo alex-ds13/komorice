@@ -1,9 +1,9 @@
-use crate::widget::{self, icons, opt_helpers};
+use crate::widget::{self, button_with_icon, icons, opt_helpers};
 
 use iced::{
     padding,
-    widget::{button, column, container, pick_list, row, text, text_input, Space, Text},
-    Center, Element, Fill, Right, Shrink, Task,
+    widget::{button, column, container, pick_list, row, text, text_input, Row, Space, Text},
+    Center, Element, Fill, Right, Shrink, Task, Top,
 };
 use komorebi::{
     config_generation::{IdWithIdentifier, MatchingRule},
@@ -127,6 +127,7 @@ pub enum Message {
 
     AddNewRule,
     ComposingAddToNewRule,
+    ComposingRemoveFromNewRule(usize),
 
     ToggleRuleHover(usize, bool),
     ToggleRuleEdit(usize, bool),
@@ -136,6 +137,7 @@ pub enum Message {
     ChangeRuleId(usize, usize, String),
     ChangeRuleMatchingStrategy(usize, usize, Option<MatchingStrategy>),
     ComposingAddToRule(usize),
+    ComposingRemoveFromRule(usize, usize),
 
     RemoveRule(usize),
 }
@@ -222,6 +224,9 @@ impl Rule {
             Message::ComposingAddToNewRule => {
                 self.new_rule.push(default_rule());
             }
+            Message::ComposingRemoveFromNewRule(idx) => {
+                self.new_rule.remove(idx);
+            }
             Message::ToggleRuleHover(_, _) => todo!(),
             Message::ToggleRuleEdit(idx, edit) => {
                 if let (Some(_rule), Some(rule_settings)) = (
@@ -289,6 +294,23 @@ impl Rule {
                     rules.insert(idx, changed_rule);
                 }
             }
+            Message::ComposingRemoveFromRule(idx, sub_idx) => {
+                if let Some(rules) = rules {
+                    let rule = rules.remove(idx);
+                    let changed_rule = match rule {
+                        MatchingRule::Simple(_) => rule,
+                        MatchingRule::Composite(mut rls) => {
+                            rls.remove(sub_idx);
+                            if rls.len() == 1 {
+                                MatchingRule::Simple(rls.remove(0))
+                            } else {
+                                MatchingRule::Composite(rls)
+                            }
+                        }
+                    };
+                    rules.insert(idx, changed_rule);
+                }
+            }
             Message::RemoveRule(idx) => {
                 if let Some(rules) = rules {
                     if rules.get(idx).is_some() {
@@ -325,21 +347,23 @@ impl Rule {
                             move |v| Message::ChangeNewRuleMatchingStrategy(idx, Some(v)),
                             move |v| Message::ChangeNewRuleId(idx, v),
                             Message::ComposingAddToNewRule,
+                            if idx != 0 {
+                                Some(Message::ComposingRemoveFromNewRule(idx))
+                            } else {
+                                None
+                            },
                         ))
                     });
-            // let add_rule_button = button(icons::plus_icon().style(|t| text::Style {
-            //     color: t.palette().primary.into(),
-            // }))
-            // .style(button::text)
-            // .on_press(Message::AddNewRule);
-            let add_rule_button = button(icons::plus_icon()).on_press(Message::AddNewRule);
+            let add_rule_button = button_with_icon(icons::plus_icon(), "Add")
+                .on_press(Message::AddNewRule)
+                .width(75);
             opt_helpers::opt_box(
                 row![
                     column!["Match any window where:", rls].spacing(10),
                     add_rule_button
                 ]
                 .spacing(10)
-                .align_y(Center),
+                .align_y(Top),
             )
             .into()
         } else {
@@ -355,18 +379,24 @@ impl Rule {
                         self.matching_rule_view(
                             idx,
                             column!["Match any window where:"]
-                                .push(rule_view(
-                                    rule,
-                                    self.rules_settings[idx].edit,
-                                    self.rules_settings
-                                        .get(idx)
-                                        .map(|rs| rs.edit)
-                                        .unwrap_or_default(),
-                                    move |v| Message::ChangeRuleKind(idx, 0, v),
-                                    move |v| Message::ChangeRuleMatchingStrategy(idx, 0, Some(v)),
-                                    move |v| Message::ChangeRuleId(idx, 0, v),
-                                    Message::ComposingAddToRule(idx),
-                                ))
+                                .push(
+                                    rule_view(
+                                        rule,
+                                        self.rules_settings[idx].edit,
+                                        self.rules_settings
+                                            .get(idx)
+                                            .map(|rs| rs.edit)
+                                            .unwrap_or_default(),
+                                        move |v| Message::ChangeRuleKind(idx, 0, v),
+                                        move |v| {
+                                            Message::ChangeRuleMatchingStrategy(idx, 0, Some(v))
+                                        },
+                                        move |v| Message::ChangeRuleId(idx, 0, v),
+                                        Message::ComposingAddToRule(idx),
+                                        None,
+                                    )
+                                    .width(635),
+                                )
                                 .spacing(10)
                                 .into(),
                         ),
@@ -380,24 +410,36 @@ impl Rule {
                                 .fold(
                                     column!["Match any window where:"].spacing(10),
                                     |col, (i, r)| {
-                                        col.push(rule_view(
-                                            r,
-                                            if self.rules_settings[idx].edit {
-                                                i == rules.len() - 1
-                                            } else {
-                                                i != rules.len() - 1
-                                            },
-                                            self.rules_settings
-                                                .get(idx)
-                                                .map(|rs| rs.edit)
-                                                .unwrap_or_default(),
-                                            move |v| Message::ChangeRuleKind(idx, i, v),
-                                            move |v| {
-                                                Message::ChangeRuleMatchingStrategy(idx, i, Some(v))
-                                            },
-                                            move |v| Message::ChangeRuleId(idx, i, v),
-                                            Message::ComposingAddToRule(idx),
-                                        ))
+                                        col.push(
+                                            rule_view(
+                                                r,
+                                                if self.rules_settings[idx].edit {
+                                                    i == rules.len() - 1
+                                                } else {
+                                                    i != rules.len() - 1
+                                                },
+                                                self.rules_settings
+                                                    .get(idx)
+                                                    .map(|rs| rs.edit)
+                                                    .unwrap_or_default(),
+                                                move |v| Message::ChangeRuleKind(idx, i, v),
+                                                move |v| {
+                                                    Message::ChangeRuleMatchingStrategy(
+                                                        idx,
+                                                        i,
+                                                        Some(v),
+                                                    )
+                                                },
+                                                move |v| Message::ChangeRuleId(idx, i, v),
+                                                Message::ComposingAddToRule(idx),
+                                                if i != 0 {
+                                                    Some(Message::ComposingRemoveFromRule(idx, i))
+                                                } else {
+                                                    None
+                                                },
+                                            )
+                                            .width(635),
+                                        )
                                     },
                                 )
                                 .into(),
@@ -425,25 +467,11 @@ impl Rule {
                     .padding(padding::right(170))
                     .into(),
                 column![row![]
-                    // .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
-                    //     rs.edit.then_some(
-                    //         button(icons::cross_icon())
-                    //             .on_press(Message::ToggleRuleEdit(idx, false))
-                    //             .style(button::secondary),
-                    //     )
-                    // }))
-                    // .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
-                    //     rs.edit.then_some(
-                    //         button(icons::check_icon())
-                    //             .on_press(Message::SaveRuleEdit(idx))
-                    //             .style(button::primary),
-                    //     )
-                    // }))
                     .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
                         rs.edit.then_some(
                             button(icons::check_icon())
                                 .on_press(Message::ToggleRuleEdit(idx, false))
-                                .style(button::secondary),
+                                .style(button::primary),
                         )
                     }))
                     .push_maybe(self.rules_settings.get(idx).and_then(|rs| {
@@ -479,6 +507,7 @@ impl Rule {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn rule_view<'a>(
     rule: &'a IdWithIdentifier,
     show_and: bool,
@@ -487,7 +516,8 @@ fn rule_view<'a>(
     change_matching_strategy: impl Fn(MatchingStrategy) -> Message + 'a,
     change_id: impl Fn(String) -> Message + 'a,
     composing_add: Message,
-) -> Element<'a, Message> {
+    composing_remove: Option<Message>,
+) -> Row<'a, Message> {
     let kind: Element<_> = if edit {
         pick_list(
             &APPLICATION_IDENTIFIER_OPTIONS[..],
@@ -531,9 +561,7 @@ fn rule_view<'a>(
         .into()
     };
     let id: Element<_> = if edit {
-        container(text_input("", &rule.id).on_input(change_id).width(150))
-            .max_width(150)
-            .into()
+        text_input("", &rule.id).on_input(change_id).into()
     } else {
         container(text(&rule.id))
             .padding(5)
@@ -556,7 +584,7 @@ fn rule_view<'a>(
                     .spacing(5)
                     .align_y(Center),
             )
-            .padding(5)
+            .padding(padding::all(5).right(10).left(10))
             .into()
         })
         .or((!show_and && edit).then_some(
@@ -565,14 +593,26 @@ fn rule_view<'a>(
                     .spacing(5)
                     .align_y(Center),
             )
-            .padding(5)
+            .padding(padding::all(5).right(10).left(10))
             .into(),
         ));
+
+    let delete_rule_line_button: Option<Element<_>> = edit
+        .then_some(composing_remove.map(|m| {
+            button(icons::delete_icon())
+                .on_press(m)
+                .style(button::danger)
+                .into()
+        }))
+        .flatten()
+        .or_else(|| Some(Space::new(32, Shrink).into()));
+
     row![kind, matching_strategy, id]
         .push_maybe(composing_add_button)
+        .push_maybe(delete_rule_line_button)
         .spacing(10)
+        .width(550)
         .align_y(Center)
-        .into()
 }
 
 fn default_rule() -> IdWithIdentifier {
