@@ -1,13 +1,10 @@
 use super::rule::{self, Rule};
 
-use crate::{
-    widget::{self, opt_helpers},
-    BOLD_FONT,
-};
+use crate::{widget::opt_helpers, BOLD_FONT};
 
 use iced::{
     padding,
-    widget::{button, column, container, horizontal_rule, row, scrollable, text},
+    widget::{button, column, container, horizontal_rule, row, scrollable, text, Column},
     Element, Fill, Task,
 };
 use komorebi::{config_generation::MatchingRule, StaticConfig};
@@ -134,20 +131,16 @@ impl Rules {
         if let Some((rule, screen)) = &self.rule_screen {
             let title = row![
                 nav_button(text!("{}", self.title()), Message::SetMainRulesScreen),
-                text!(" > {}", screen).size(20).font(*BOLD_FONT)
+                text!(" > {}:", screen).size(20).font(*BOLD_FONT)
             ];
             let rules = get_rules_from_config(config, screen);
-            let content = rule
-                .view(rules.as_ref())
-                .map(Message::Rule);
+            let content = rule.view(rules.as_ref()).map(Message::Rule);
             column![
                 title,
                 horizontal_rule(2.0),
-                scrollable(
-                    container(content)
-                        .width(Fill)
-                        .padding(padding::top(10).bottom(10).right(20))
-                )
+                container(content)
+                    .width(Fill)
+                    .padding(padding::top(10).bottom(10))
             ]
             .spacing(10)
             .into()
@@ -226,19 +219,27 @@ impl Rules {
                 Message::SetScreen(Screen::BorderOverflowApplications),
                 Message::BorderOverflowApplicationsHover,
             );
-            widget::opt_helpers::section_view(
-                self.title(),
-                [
-                    ignore_rules_button,
-                    floating_applications_button,
-                    manage_rules_button,
-                    tray_and_multi_window_applications_button,
-                    object_name_change_apps_button,
-                    slow_application_identifiers_button,
-                    layered_applications_button,
-                    border_overflow_applications_button,
-                ],
-            )
+            column![
+                text!("{}:", self.title()).size(20).font(*BOLD_FONT),
+                horizontal_rule(2.0),
+                scrollable(
+                    Column::with_children([
+                        ignore_rules_button,
+                        floating_applications_button,
+                        manage_rules_button,
+                        tray_and_multi_window_applications_button,
+                        object_name_change_apps_button,
+                        slow_application_identifiers_button,
+                        layered_applications_button,
+                        border_overflow_applications_button,
+                    ])
+                    .spacing(10)
+                    .width(Fill)
+                    .padding(padding::top(10).bottom(10).right(20))
+                )
+            ]
+            .spacing(10)
+            .into()
         }
     }
 

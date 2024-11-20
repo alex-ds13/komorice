@@ -2,7 +2,9 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 
 use iced::{
     padding,
-    widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
+    widget::{
+        button, column, container, horizontal_rule, pick_list, row, text, text_input, Row, Space,
+    },
     Center, Element, Fill, Right, Shrink, Task, Top,
 };
 use komorebi::{
@@ -312,10 +314,7 @@ impl Rule {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(
-        &'a self,
-        rules: Option<&'a Vec<MatchingRule>>,
-    ) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, rules: Option<&'a Vec<MatchingRule>>) -> Element<'a, Message> {
         let add_new_rule_button =
             widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
                 .on_press(Message::ToggleShowNewRule)
@@ -433,9 +432,13 @@ impl Rule {
             Space::new(Shrink, Shrink).into()
         };
 
-        column![add_new_rule_button, new_rule, rls]
-            .spacing(10)
-            .into()
+        column![
+            add_new_rule_button,
+            new_rule,
+            opt_helpers::section_view("Rules:", [rls])
+        ]
+        .spacing(10)
+        .into()
     }
 
     fn matching_rule_view<'a>(
@@ -449,13 +452,15 @@ impl Rule {
                     .padding(padding::right(170))
                     .into(),
                 column![row![]
-                    .push_maybe(self.rules_edit[idx].then_some(
+                    .push_maybe(
+                        self.rules_edit[idx].then_some(
                             button(icons::check_icon())
                                 .on_press(Message::ToggleRuleEdit(idx, false))
                                 .style(button::primary),
                         )
                     )
-                    .push_maybe(self.rules_edit[idx].then_some(
+                    .push_maybe(
+                        self.rules_edit[idx].then_some(
                             button(icons::delete_icon())
                                 .on_press(Message::RemoveRule(idx))
                                 .style(button::danger),
@@ -470,7 +475,8 @@ impl Rule {
                 .into(),
             ]),
             column![row![]
-                .push_maybe((!self.rules_edit[idx]).then_some(
+                .push_maybe(
+                    (!self.rules_edit[idx]).then_some(
                         button(icons::edit_icon())
                             .on_press(Message::ToggleRuleEdit(idx, true))
                             .style(button::secondary),

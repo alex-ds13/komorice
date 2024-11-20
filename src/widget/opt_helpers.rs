@@ -64,7 +64,9 @@ pub fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
     }
 }
 
-pub fn opt_box<'a, Message: 'a>(element: impl Into<Element<'a, Message>>) -> Container<'a, Message> {
+pub fn opt_box<'a, Message: 'a>(
+    element: impl Into<Element<'a, Message>>,
+) -> Container<'a, Message> {
     container(element).padding(10).style(opt_box_style)
 }
 
@@ -806,6 +808,7 @@ pub fn section_view<'a, Message: 'a>(
             Column::with_children(contents)
                 .padding(padding::top(10).bottom(10).right(20))
                 .spacing(10)
+                .width(Fill)
         )
     ]
     .spacing(10)
