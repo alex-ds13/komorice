@@ -1,11 +1,11 @@
 use super::rule::{self, Rule};
 
-use crate::{widget::opt_helpers, BOLD_FONT};
+use crate::{widget::opt_helpers, BOLD_FONT, ITALIC_FONT};
 
 use iced::{
     padding,
     widget::{button, column, container, horizontal_rule, row, scrollable, text, Column},
-    Element, Fill, Task,
+    Center, Element, Fill, Task,
 };
 use komorebi::{config_generation::MatchingRule, StaticConfig};
 
@@ -227,6 +227,17 @@ impl Rules {
                         ignore_rules_button,
                         floating_applications_button,
                         manage_rules_button,
+                        row![
+                            text("Advanced Rules:").size(18).font(*BOLD_FONT),
+                            text("(You shouldn't need to mess with these ones...)")
+                                .size(12)
+                                .font(*ITALIC_FONT)
+                        ]
+                        .padding(padding::top(20))
+                        .spacing(5)
+                        .align_y(Center)
+                        .into(),
+                        horizontal_rule(2.0).into(),
                         tray_and_multi_window_applications_button,
                         object_name_change_apps_button,
                         slow_application_identifiers_button,
