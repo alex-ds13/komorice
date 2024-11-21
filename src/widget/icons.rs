@@ -101,3 +101,11 @@ pub fn level_down_icon<'a>() -> Text<'a> {
 pub fn edit_icon<'a>() -> Text<'a> {
     icon('\u{E80C}')
 }
+
+pub fn copy_icon<'a>() -> Text<'a> {
+    icon('\u{F0C5}')
+}
+
+pub fn paste_icon<'a>() -> Text<'a> {
+    icon('\u{F0EA}')
+}
