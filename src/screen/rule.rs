@@ -3,7 +3,7 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 use iced::{
     padding,
     widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
-    Center, Element, Fill, Right, Shrink, Task, Top,
+    Center, Element, Fill, Right, Shrink, Subscription, Task, Top,
 };
 use komorebi::{
     config_generation::{IdWithIdentifier, MatchingRule},
@@ -142,6 +142,7 @@ pub enum Message {
     CopyRule(usize),
     CopyNewRule,
     PasteRule,
+    ClipboardHasRule(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -154,6 +155,7 @@ pub struct Rule {
     pub show_new_rule: bool,
     pub new_rule: Vec<IdWithIdentifier>,
     pub rules_edit: Vec<bool>,
+    pub clipboard_has_rule: bool,
 }
 
 impl Rule {
@@ -165,6 +167,7 @@ impl Rule {
                 let count = rules.len();
                 vec![false; count]
             }),
+            clipboard_has_rule: false,
         }
     }
 
@@ -340,6 +343,9 @@ impl Rule {
                     }
                 }
             }
+            Message::ClipboardHasRule(has_rule) => {
+                self.clipboard_has_rule = has_rule;
+            }
         }
         (Action::None, Task::none())
     }
@@ -378,7 +384,7 @@ impl Rule {
                 .on_press_maybe((!self.new_rule[0].id.is_empty()).then_some(Message::CopyNewRule))
                 .style(button::secondary);
             let paste_button = button(icons::paste_icon())
-                .on_press(Message::PasteRule)
+                .on_press_maybe(self.clipboard_has_rule.then_some(Message::PasteRule))
                 .style(button::secondary);
             opt_helpers::opt_box(
                 row![
@@ -528,6 +534,17 @@ impl Rule {
             .width(Fill)
             .align_x(Right),
         )
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        iced::time::every(std::time::Duration::from_millis(250))
+            .map(|_| {
+                if let Ok(content) = clipboard_win::get_clipboard_string() {
+                    return serde_json::from_str::<MatchingRule>(&content).is_ok();
+                }
+                false
+            })
+            .map(Message::ClipboardHasRule)
     }
 }
 

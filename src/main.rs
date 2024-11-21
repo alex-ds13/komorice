@@ -293,7 +293,26 @@ impl Komofig {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([komorebi_connect::connect(), config::worker()])
+        let screen_subscription = match self.main_screen {
+            Screen::Monitor(_) => todo!(),
+            Screen::Workspaces(_) => todo!(),
+            Screen::Workspace(_, _) => todo!(),
+            Screen::Home
+            | Screen::General
+            | Screen::Border
+            | Screen::Stackbar
+            | Screen::Transparency
+            | Screen::Debug
+            | Screen::Settings => Subscription::none(),
+            Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
+            Screen::Rules => self.rules.subscription().map(Message::Rules),
+        };
+
+        Subscription::batch([
+            komorebi_connect::connect(),
+            config::worker(),
+            screen_subscription,
+        ])
     }
 
     pub fn theme(&self) -> Theme {

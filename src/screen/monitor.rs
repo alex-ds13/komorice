@@ -4,7 +4,7 @@ use crate::widget::opt_helpers;
 
 use std::collections::HashMap;
 
-use iced::{widget::{button, row, text}, Element, Task};
+use iced::{widget::{button, row, text}, Element, Subscription, Task};
 use komorebi::MonitorConfig;
 
 #[derive(Clone, Debug)]
@@ -396,6 +396,19 @@ impl Monitor {
             ].into(),
             [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
         )
+    }
+
+    pub fn subscription(&self) -> Subscription<(usize, usize, Message)> {
+        match self.sub_screen {
+            SubScreen::Monitor
+            | SubScreen::Workspaces
+            | SubScreen::Workspace(_) => Subscription::none(),
+            SubScreen::WorkspaceRules(ws_idx)
+            | SubScreen::InitialWorkspaceRules(ws_idx) => {
+                let workspace = &self.workspaces[&ws_idx];
+                workspace.subscription().with(self.index).map(|(m_idx, (ws_idx, m))| (m_idx, ws_idx, Message::Workspace(ws_idx, m)))
+            }
+        }
     }
 }
 

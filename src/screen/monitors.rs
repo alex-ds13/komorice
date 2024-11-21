@@ -13,7 +13,7 @@ use iced::{
     Alignment::Center,
     Element,
     Length::{Fill, Shrink},
-    Task,
+    Subscription, Task,
 };
 
 #[derive(Clone, Debug)]
@@ -58,7 +58,7 @@ impl Monitors {
                                 .workspaces
                                 .iter()
                                 .enumerate()
-                                .map(|(i, _)| (i, workspace::Workspace::default()))
+                                .map(|(i, _)| (i, workspace::Workspace::new(i)))
                                 .collect(),
                         },
                     )
@@ -179,5 +179,16 @@ impl Monitors {
         column![title, horizontal_rule(2.0), monitors,]
             .spacing(10)
             .into()
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        if let Some(monitor) = self
+            .monitor_to_config
+            .map(|idx| &self.monitors[&idx])
+        {
+            monitor.subscription().map(|(m_idx, _w_idx, m)| Message::MonitorConfigChanged(m_idx, m))
+        } else {
+            Subscription::none()
+        }
     }
 }

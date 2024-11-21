@@ -6,7 +6,7 @@ use crate::widget::{icons, opt_helpers};
 use std::collections::{BTreeMap, HashMap};
 
 use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
-use iced::{Center, Element, Fill, Shrink, Task};
+use iced::{Center, Element, Fill, Shrink, Subscription, Task};
 use komorebi::config_generation::MatchingRule;
 use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
 use komorebi_client::DefaultLayout;
@@ -94,6 +94,7 @@ pub enum Screen {
 }
 
 pub struct Workspace {
+    pub index: usize,
     pub screen: Screen,
     pub rule: rule::Rule,
     pub is_hovered: bool,
@@ -108,6 +109,7 @@ pub struct Workspace {
 impl Default for Workspace {
     fn default() -> Self {
         Self {
+            index: Default::default(),
             screen: Screen::Workspace,
             rule: Default::default(),
             is_hovered: Default::default(),
@@ -272,6 +274,13 @@ impl WorkspaceScreen for WorkspaceConfig {
 }
 
 impl Workspace {
+    pub fn new(index: usize) -> Self {
+        Self {
+            index,
+            ..Default::default()
+        }
+    }
+
     fn workspace_view<'a>(&'a self, ws_config: &'a WorkspaceConfig) -> Element<'a, Message> {
         let name = opt_helpers::input(
             "Name",
@@ -410,6 +419,16 @@ impl Workspace {
         ]
         .spacing(10)
         .into()
+    }
+
+    pub fn subscription(&self) -> Subscription<(usize, Message)> {
+        match self.screen {
+            Screen::Workspace => Subscription::none(),
+            Screen::WorkspaceRules
+            | Screen::InitialWorkspaceRules => {
+                self.rule.subscription().with(self.index).map(|(w_idx, m)| (w_idx, Message::Rule(m)))
+            }
+        }
     }
 }
 

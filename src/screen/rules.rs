@@ -5,7 +5,7 @@ use crate::{widget::opt_helpers, BOLD_FONT, ITALIC_FONT};
 use iced::{
     padding,
     widget::{button, column, container, horizontal_rule, row, scrollable, text, Column},
-    Center, Element, Fill, Task,
+    Center, Element, Fill, Subscription, Task,
 };
 use komorebi::{config_generation::MatchingRule, StaticConfig};
 
@@ -256,6 +256,13 @@ impl Rules {
 
     pub fn title(&self) -> &str {
         "Rules"
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        match &self.rule_screen {
+            Some((rule, _)) => rule.subscription().map(Message::Rule),
+            None => Subscription::none(),
+        }
     }
 }
 
