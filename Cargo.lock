@@ -2784,6 +2784,7 @@ name = "komofig"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "clipboard-win",
  "dirs 5.0.1",
  "iced",
  "iced_aw",

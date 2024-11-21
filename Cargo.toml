@@ -14,6 +14,7 @@ serde_json = { package = "serde_json_lenient", version = "0.2" }
 dirs = "5"
 notify-debouncer-mini = "*"
 lazy_static = "1"
+clipboard-win= "5"
 
 [patch.crates-io]
 iced = { git = "https://github.com/iced-rs/iced.git", branch = "master" }

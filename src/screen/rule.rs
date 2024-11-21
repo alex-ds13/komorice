@@ -138,6 +138,10 @@ pub enum Message {
     ComposingRemoveFromRule(usize, usize),
 
     RemoveRule(usize),
+
+    CopyRule(usize),
+    CopyNewRule,
+    PasteRule,
 }
 
 #[derive(Clone, Debug)]
@@ -308,6 +312,34 @@ impl Rule {
                     }
                 }
             }
+            Message::CopyRule(idx) => {
+                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
+                    if let Ok(rule_str) = serde_json::to_string_pretty(&rule) {
+                        let _ = clipboard_win::set_clipboard_string(&rule_str);
+                    }
+                }
+            }
+            Message::CopyNewRule => {
+                let rule = if self.new_rule.len() == 1 {
+                    MatchingRule::Simple(self.new_rule[0].clone())
+                } else {
+                    MatchingRule::Composite(self.new_rule.clone())
+                };
+
+                if let Ok(rule_str) = serde_json::to_string_pretty(&rule) {
+                    let _ = clipboard_win::set_clipboard_string(&rule_str);
+                }
+            }
+            Message::PasteRule => {
+                if let Ok(content) = clipboard_win::get_clipboard_string() {
+                    if let Ok(rule) = serde_json::from_str::<MatchingRule>(&content) {
+                        match rule {
+                            MatchingRule::Simple(rule) => self.new_rule = vec![rule],
+                            MatchingRule::Composite(rls) => self.new_rule = rls,
+                        }
+                    }
+                }
+            }
         }
         (Action::None, Task::none())
     }
@@ -341,11 +373,19 @@ impl Rule {
                     });
             let add_rule_button = button_with_icon(icons::plus_icon(), "Add")
                 .on_press(Message::AddNewRule)
-                .width(75);
+                .width(77);
+            let copy_button = button(icons::copy_icon())
+                .on_press_maybe((!self.new_rule[0].id.is_empty()).then_some(Message::CopyNewRule))
+                .style(button::secondary);
+            let paste_button = button(icons::paste_icon())
+                .on_press(Message::PasteRule)
+                .style(button::secondary);
             opt_helpers::opt_box(
                 row![
                     column!["Match any window where:", rls].spacing(10),
-                    add_rule_button
+                    column![add_rule_button, row![copy_button, paste_button].spacing(5)]
+                        .align_x(Right)
+                        .spacing(10),
                 ]
                 .spacing(10)
                 .align_y(Top),
@@ -471,6 +511,13 @@ impl Rule {
                     (!self.rules_edit[idx]).then_some(
                         button(icons::edit_icon())
                             .on_press(Message::ToggleRuleEdit(idx, true))
+                            .style(button::secondary),
+                    )
+                )
+                .push_maybe(
+                    (!self.rules_edit[idx]).then_some(
+                        button(icons::copy_icon())
+                            .on_press(Message::CopyRule(idx))
                             .style(button::secondary),
                     )
                 )
