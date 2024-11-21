@@ -51,6 +51,7 @@ pub enum ConfigChange {
     GlobalWorkAreaOffsetLeft(i32),
     MouseFollowsFocus(bool),
     ResizeDelta(i32),
+    SlowApplicationCompensationTime(i32),
     Transparency(bool),
     TransparencyAlpha(i32),
     UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
@@ -171,6 +172,11 @@ impl General {
                 }
                 ConfigChange::ResizeDelta(value) => {
                     config.resize_delta = Some(value);
+                }
+                ConfigChange::SlowApplicationCompensationTime(value) => {
+                    if let Ok(value) = value.try_into() {
+                        config.slow_application_compensation_time = Some(value);
+                    }
                 }
                 ConfigChange::Transparency(value) => {
                     config.transparency = Some(value);
@@ -308,6 +314,15 @@ impl General {
                         Some("Delta to resize windows by (default 50)"),
                         config.resize_delta.unwrap_or(50),
                         |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
+                    ),
+                    opt_helpers::number(
+                        "Slow Application Compensation Time",
+                        Some("How long to wait when compensating for slow applications, \
+                        in milliseconds (default: 20)\n\n\
+                        Value must be greater or equal to 0."
+                        ),
+                        config.slow_application_compensation_time.and_then(|v| v.try_into().ok()).unwrap_or(20),
+                        |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
                     ),
                     opt_helpers::toggle(
                         "Transparency",
