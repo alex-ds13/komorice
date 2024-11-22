@@ -133,13 +133,20 @@ impl WorkspaceScreen for WorkspaceConfig {
     fn update(&mut self, workspace: &mut Workspace, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::SetScreen(screen) => {
-                if matches!(screen, Screen::WorkspaceRules | Screen::InitialWorkspaceRules) {
+                if matches!(
+                    screen,
+                    Screen::WorkspaceRules | Screen::InitialWorkspaceRules
+                ) {
                     let rules = get_rules_from_config_mut(self, &screen);
                     workspace.rule = rule::Rule::new(rules);
                     workspace.screen = screen.clone();
-                    return (Action::ScreenChange(screen), Task::none());
+                    let task = iced::widget::scrollable::scroll_to(
+                        iced::widget::scrollable::Id::new("monitors_scrollable"),
+                        iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                    );
+                    return (Action::ScreenChange(screen), task);
                 }
-            },
+            }
             Message::ConfigChange(change) => match change {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
                     self.apply_window_based_work_area_offset = value
@@ -248,7 +255,10 @@ impl WorkspaceScreen for WorkspaceConfig {
                 workspace.initial_workspace_rules_hovered = hover;
             }
             Message::Rule(message) => {
-                if matches!(workspace.screen, Screen::WorkspaceRules | Screen::InitialWorkspaceRules) {
+                if matches!(
+                    workspace.screen,
+                    Screen::WorkspaceRules | Screen::InitialWorkspaceRules
+                ) {
                     let rules = get_rules_from_config_mut(self, &workspace.screen);
                     let (action, task) = workspace.rule.update(rules, message);
                     let action_task = match action {
@@ -267,8 +277,10 @@ impl WorkspaceScreen for WorkspaceConfig {
     fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message> {
         match workspace.screen {
             Screen::Workspace => workspace.workspace_view(self),
-            Screen::WorkspaceRules |
-            Screen::InitialWorkspaceRules => workspace.rule.view(get_rules_from_config(self, &workspace.screen)).map(Message::Rule)
+            Screen::WorkspaceRules | Screen::InitialWorkspaceRules => workspace
+                .rule
+                .view(get_rules_from_config(self, &workspace.screen))
+                .map(Message::Rule),
         }
     }
 }
@@ -424,10 +436,11 @@ impl Workspace {
     pub fn subscription(&self) -> Subscription<(usize, Message)> {
         match self.screen {
             Screen::Workspace => Subscription::none(),
-            Screen::WorkspaceRules
-            | Screen::InitialWorkspaceRules => {
-                self.rule.subscription().with(self.index).map(|(w_idx, m)| (w_idx, Message::Rule(m)))
-            }
+            Screen::WorkspaceRules | Screen::InitialWorkspaceRules => self
+                .rule
+                .subscription()
+                .with(self.index)
+                .map(|(w_idx, m)| (w_idx, Message::Rule(m))),
         }
     }
 }

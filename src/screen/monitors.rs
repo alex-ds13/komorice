@@ -172,7 +172,9 @@ impl Monitors {
                         ])
                     });
             }
-            scrollable(col).into()
+            scrollable(col)
+                .id(scrollable::Id::new("monitors_scrollable"))
+                .into()
         } else {
             Space::new(Shrink, Shrink).into()
         };
@@ -182,11 +184,10 @@ impl Monitors {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        if let Some(monitor) = self
-            .monitor_to_config
-            .map(|idx| &self.monitors[&idx])
-        {
-            monitor.subscription().map(|(m_idx, _w_idx, m)| Message::MonitorConfigChanged(m_idx, m))
+        if let Some(monitor) = self.monitor_to_config.map(|idx| &self.monitors[&idx]) {
+            monitor
+                .subscription()
+                .map(|(m_idx, _w_idx, m)| Message::MonitorConfigChanged(m_idx, m))
         } else {
             Subscription::none()
         }

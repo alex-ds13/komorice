@@ -201,14 +201,26 @@ impl Monitor {
             },
             Message::SetSubScreenMonitor => {
                 self.sub_screen = SubScreen::Monitor;
+                return iced::widget::scrollable::scroll_to(
+                    iced::widget::scrollable::Id::new("monitors_scrollable"),
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                );
             },
             Message::SetSubScreenWorkspaces => {
                 self.sub_screen = SubScreen::Workspaces;
                 self.workspaces_button_hovered = false;
+                return iced::widget::scrollable::scroll_to(
+                    iced::widget::scrollable::Id::new("monitors_scrollable"),
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                );
             },
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
                 self.workspaces.entry(idx).and_modify(|ws| ws.is_hovered = false).or_default().screen = workspace::Screen::Workspace;
+                return iced::widget::scrollable::scroll_to(
+                    iced::widget::scrollable::Id::new("monitors_scrollable"),
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                );
             },
             Message::ToggleWorkspacesHover(hover) => {
                 self.workspaces_button_hovered = hover;
