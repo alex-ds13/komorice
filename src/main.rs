@@ -6,7 +6,7 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::screen::{general, monitors, rules, sidebar, Screen};
+use crate::screen::{general, monitors, rules, sidebar, transparency, Screen};
 
 use std::sync::Arc;
 
@@ -32,7 +32,7 @@ lazy_static! {
         f
     };
     static ref NONE_STR: Arc<str> = Arc::from("");
-    static ref SCREENS_TO_RESET: [Screen; 1] = [Screen::Rules,];
+    static ref SCREENS_TO_RESET: [Screen; 2] = [Screen::Rules, Screen::Transparency];
 }
 
 fn main() -> iced::Result {
@@ -56,6 +56,7 @@ enum Message {
     Monitors(monitors::Message),
     Rules(rules::Message),
     Sidebar(sidebar::Message),
+    Transparency(transparency::Message),
 
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
@@ -71,6 +72,7 @@ struct Komofig {
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
     general: general::General,
+    transparency: transparency::Transparency,
     rules: rules::Rules,
     config: Option<komorebi_client::StaticConfig>,
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
@@ -115,6 +117,15 @@ impl Komofig {
                 };
                 return Task::batch([task.map(Message::Monitors), action_task]);
             }
+            Message::Transparency(message) => {
+                if let Some(config) = &mut self.config {
+                    let (action, task) = self.transparency.update(message, config);
+                    let action_task = match action {
+                        transparency::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::Transparency), action_task]);
+                }
+            }
             Message::Rules(message) => {
                 if let Some(c) = &mut self.config {
                     let (action, task) = self.rules.update(c, message);
@@ -129,8 +140,12 @@ impl Komofig {
                 let action_task = match action {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::UpdateMainScreen(screen) => {
-                        if SCREENS_TO_RESET.contains(&screen) && matches!(screen, Screen::Rules) {
-                            self.rules = rules::Rules::default();
+                        if SCREENS_TO_RESET.contains(&screen) {
+                            if matches!(screen, Screen::Rules) {
+                                self.rules = rules::Rules::default();
+                            } else if matches!(screen, Screen::Transparency) {
+                                self.transparency = transparency::Transparency::default();
+                            }
                         }
                         self.main_screen = screen;
                         Task::none()
@@ -224,8 +239,10 @@ impl Komofig {
             Screen::Workspace(_, _) => todo!(),
             Screen::Border => center(text("Border").size(50)).into(),
             Screen::Stackbar => center(text("Stackbar").size(50)).into(),
-            Screen::Transparency => center(text("Transparency").size(50)).into(),
-            // Screen::Rules => center(text("Rules").size(50)).into(),
+            Screen::Transparency => self
+                .transparency
+                .view(&self.config)
+                .map(Message::Transparency),
             Screen::Rules => {
                 if let Some(config) = &self.config {
                     self.rules.view(config).map(Message::Rules)
@@ -301,10 +318,10 @@ impl Komofig {
             | Screen::General
             | Screen::Border
             | Screen::Stackbar
-            | Screen::Transparency
             | Screen::Debug
             | Screen::Settings => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
+            Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
             Screen::Rules => self.rules.subscription().map(Message::Rules),
         };
 

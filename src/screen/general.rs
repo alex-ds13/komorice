@@ -52,8 +52,6 @@ pub enum ConfigChange {
     MouseFollowsFocus(bool),
     ResizeDelta(i32),
     SlowApplicationCompensationTime(i32),
-    Transparency(bool),
-    TransparencyAlpha(i32),
     UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
     WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
     WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
@@ -177,12 +175,6 @@ impl General {
                     if let Ok(value) = value.try_into() {
                         config.slow_application_compensation_time = Some(value);
                     }
-                }
-                ConfigChange::Transparency(value) => {
-                    config.transparency = Some(value);
-                }
-                ConfigChange::TransparencyAlpha(value) => {
-                    config.transparency_alpha = Some(value.try_into().unwrap_or(0));
                 }
                 ConfigChange::UnmanagedWindowBehaviour(value) => {
                     config.unmanaged_window_operation_behaviour = Some(value);
@@ -323,19 +315,6 @@ impl General {
                         ),
                         config.slow_application_compensation_time.and_then(|v| v.try_into().ok()).unwrap_or(20),
                         |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
-                    ),
-                    opt_helpers::toggle(
-                        "Transparency",
-                        Some("Add transparency to unfocused windows (default: false)"),
-                        config.transparency.unwrap_or_default(),
-                        |value| Message::ConfigChange(ConfigChange::Transparency(value))
-                    ),
-                    opt_helpers::number(
-                        "Transparency Alpha",
-                        Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
-                            Value must be greater or equal to 0.0"),
-                            config.transparency_alpha.unwrap_or(200).into(),
-                            |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
                     ),
                     opt_helpers::choose(
                         "Unmanaged Window Behaviour",
