@@ -537,14 +537,18 @@ impl Rule {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(std::time::Duration::from_millis(250))
-            .map(|_| {
-                if let Ok(content) = clipboard_win::get_clipboard_string() {
-                    return serde_json::from_str::<MatchingRule>(&content).is_ok();
-                }
-                false
-            })
+        if self.show_new_rule {
+            iced::time::every(std::time::Duration::from_millis(250))
+                .map(|_| {
+                    if let Ok(content) = clipboard_win::get_clipboard_string() {
+                        return serde_json::from_str::<MatchingRule>(&content).is_ok();
+                    }
+                    false
+                })
             .map(Message::ClipboardHasRule)
+        } else {
+            Subscription::none()
+        }
     }
 }
 
