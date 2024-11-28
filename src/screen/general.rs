@@ -327,7 +327,7 @@ impl General {
                         "Window Container Behaviour",
                         Some("Determine what happens when a new window is opened (default: Create)"),
                         [WindowContainerBehaviour::Create, WindowContainerBehaviour::Append],
-                        config.window_container_behaviour,
+                        Some(config.window_container_behaviour.unwrap_or(WindowContainerBehaviour::Create)),
                         |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
                     ),
                     opt_helpers::choose(
