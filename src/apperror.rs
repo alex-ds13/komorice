@@ -1,5 +1,5 @@
 #[derive(Debug, Clone)]
-pub struct AppError{
+pub struct AppError {
     pub title: String,
     pub description: Option<String>,
     pub kind: AppErrorKind,

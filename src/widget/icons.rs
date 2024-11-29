@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use iced::{Center, Color, Font};
 use iced::widget::Text;
+use iced::{Center, Color, Font};
 use lazy_static::lazy_static;
 
 pub const ICONS: Font = Font::with_name("icons");
@@ -11,9 +11,7 @@ lazy_static! {
 }
 
 pub fn icon<'a>(unicode: char) -> Text<'a> {
-    Text::new(unicode.to_string())
-        .font(ICONS)
-        .align_x(Center)
+    Text::new(unicode.to_string()).font(ICONS).align_x(Center)
 }
 
 pub fn down_chevron_icon<'a>() -> Text<'a> {
@@ -108,4 +106,36 @@ pub fn copy_icon<'a>() -> Text<'a> {
 
 pub fn paste_icon<'a>() -> Text<'a> {
     icon('\u{F0EA}')
+}
+
+pub fn bsp_icon<'a>() -> Text<'a> {
+    icon('\u{E82B}')
+}
+
+pub fn vstack_icon<'a>() -> Text<'a> {
+    icon('\u{E82C}')
+}
+
+pub fn rmvstack_icon<'a>() -> Text<'a> {
+    icon('\u{E82D}')
+}
+
+pub fn grid_icon<'a>() -> Text<'a> {
+    icon('\u{E82E}')
+}
+
+pub fn hstack<'a>() -> Text<'a> {
+    icon('\u{E82F}')
+}
+
+pub fn uwvstack_icon<'a>() -> Text<'a> {
+    icon('\u{E830}')
+}
+
+pub fn columns_icon<'a>() -> Text<'a> {
+    icon('\u{E831}')
+}
+
+pub fn rows_icon<'a>() -> Text<'a> {
+    icon('\u{E832}')
 }

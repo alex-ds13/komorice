@@ -134,7 +134,7 @@ where
                         // })
                     },
                 ); //,
-                // println!("{:#?}", &n);
+                   // println!("{:#?}", &n);
                 if r.x + 2.0 * Self::DEFAULT_PADDING < origin_point.x {
                     origin_point.x += n.bounds().width;
                 }
@@ -151,24 +151,26 @@ where
             .iter_mut()
             .zip(rects)
             .map(|(node, r)| {
-                let x_offset = if r.x + 2.0 * Self::DEFAULT_PADDING + node.bounds().width < origin_point.x {
-                    // println!("Negative Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
-                    - 2.0 * Self::DEFAULT_PADDING
-                } else if r.x > origin_point.x {
-                    // println!("Positive Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
-                    2.0 * Self::DEFAULT_PADDING
-                } else {
-                    0.0
-                };
-                let y_offset = if r.y + 2.0 * Self::DEFAULT_PADDING + node.bounds().height < origin_point.y {
-                    // println!("Negative Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
-                    - 2.0 * Self::DEFAULT_PADDING
-                } else if r.y > origin_point.y {
-                    // println!("Positive Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
-                    2.0 * Self::DEFAULT_PADDING
-                } else {
-                    0.0
-                };
+                let x_offset =
+                    if r.x + 2.0 * Self::DEFAULT_PADDING + node.bounds().width < origin_point.x {
+                        // println!("Negative Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
+                        -2.0 * Self::DEFAULT_PADDING
+                    } else if r.x > origin_point.x {
+                        // println!("Positive Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
+                        2.0 * Self::DEFAULT_PADDING
+                    } else {
+                        0.0
+                    };
+                let y_offset =
+                    if r.y + 2.0 * Self::DEFAULT_PADDING + node.bounds().height < origin_point.y {
+                        // println!("Negative Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
+                        -2.0 * Self::DEFAULT_PADDING
+                    } else if r.y > origin_point.y {
+                        // println!("Positive Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
+                        2.0 * Self::DEFAULT_PADDING
+                    } else {
+                        0.0
+                    };
                 let n = node.clone().translate(iced::Vector {
                     x: origin_point.x + x_offset + r.x,
                     y: origin_point.y + y_offset + r.y,
@@ -333,4 +335,3 @@ impl<'a, Message: 'a> From<Monitors<'a, Message>> for Element<'a, Message> {
         Element::new(value)
     }
 }
-

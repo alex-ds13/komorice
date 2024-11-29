@@ -4,7 +4,10 @@ use crate::widget::opt_helpers;
 
 use std::collections::HashMap;
 
-use iced::{widget::{button, row, text}, Element, Subscription, Task};
+use iced::{
+    widget::{button, row, text},
+    Element, Subscription, Task,
+};
 use komorebi::MonitorConfig;
 
 #[derive(Clone, Debug)]
@@ -115,7 +118,8 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetLimit(limit) => {
-                    self.config.window_based_work_area_offset_limit = Some(limit.try_into().unwrap_or_default());
+                    self.config.window_based_work_area_offset_limit =
+                        Some(limit.try_into().unwrap_or_default());
                 }
                 ConfigChange::WorkAreaOffset(rect) => {
                     self.config.work_area_offset = rect;
@@ -170,65 +174,75 @@ impl Monitor {
                 }
             },
             Message::ToggleWindowBasedWorkAreaOffsetExpand => {
-                self.window_based_work_area_offset_expanded = !self.window_based_work_area_offset_expanded;
-            },
+                self.window_based_work_area_offset_expanded =
+                    !self.window_based_work_area_offset_expanded;
+            }
             Message::ToggleWindowBasedWorkAreaOffsetHover(hover) => {
                 self.window_based_work_area_offset_hovered = hover;
-            },
+            }
             Message::ToggleWorkAreaOffsetExpand => {
                 self.work_area_offset_expanded = !self.work_area_offset_expanded;
-            },
+            }
             Message::ToggleWorkAreaOffsetHover(hover) => {
                 self.work_area_offset_hovered = hover;
-            },
+            }
             Message::Workspace(idx, message) => {
-                if let (Some(workspace_config), Some(workspace)) =
-                    (self.config.workspaces.get_mut(idx), self.workspaces.get_mut(&idx))
-                {
+                if let (Some(workspace_config), Some(workspace)) = (
+                    self.config.workspaces.get_mut(idx),
+                    self.workspaces.get_mut(&idx),
+                ) {
                     let (action, task) = workspace_config.update(workspace, message);
                     match action {
-                        workspace::Action::None => {},
-                        workspace::Action::ScreenChange(ws_screen) => {
-                            match ws_screen {
-                                workspace::Screen::Workspace => self.sub_screen = SubScreen::Workspace(idx),
-                                workspace::Screen::WorkspaceRules => self.sub_screen = SubScreen::WorkspaceRules(idx),
-                                workspace::Screen::InitialWorkspaceRules => self.sub_screen = SubScreen::InitialWorkspaceRules(idx),
+                        workspace::Action::None => {}
+                        workspace::Action::ScreenChange(ws_screen) => match ws_screen {
+                            workspace::Screen::Workspace => {
+                                self.sub_screen = SubScreen::Workspace(idx)
                             }
-                        }
+                            workspace::Screen::WorkspaceRules => {
+                                self.sub_screen = SubScreen::WorkspaceRules(idx)
+                            }
+                            workspace::Screen::InitialWorkspaceRules => {
+                                self.sub_screen = SubScreen::InitialWorkspaceRules(idx)
+                            }
+                        },
                     }
                     return task.map(move |m| Message::Workspace(idx, m));
                 }
-            },
+            }
             Message::SetSubScreenMonitor => {
                 self.sub_screen = SubScreen::Monitor;
                 return iced::widget::scrollable::scroll_to(
                     iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
-            },
+            }
             Message::SetSubScreenWorkspaces => {
                 self.sub_screen = SubScreen::Workspaces;
                 self.workspaces_button_hovered = false;
                 return iced::widget::scrollable::scroll_to(
                     iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
-            },
+            }
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
-                self.workspaces.entry(idx).and_modify(|ws| ws.is_hovered = false).or_default().screen = workspace::Screen::Workspace;
+                self.workspaces
+                    .entry(idx)
+                    .and_modify(|ws| ws.is_hovered = false)
+                    .or_default()
+                    .screen = workspace::Screen::Workspace;
                 return iced::widget::scrollable::scroll_to(
                     iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0},
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
-            },
+            }
             Message::ToggleWorkspacesHover(hover) => {
                 self.workspaces_button_hovered = hover;
-            },
+            }
             Message::ToggleWorkspaceHover(idx, hover) => {
                 let ws = self.workspaces.entry(idx).or_default();
                 ws.is_hovered = hover;
-            },
+            }
         }
         Task::none()
     }
@@ -295,7 +309,6 @@ impl Monitor {
                     1,
                     move |value| {
                         Message::ConfigChange(
-                            
                             ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
                         )
                     },
@@ -356,74 +369,120 @@ impl Monitor {
     pub fn workspaces_view(&self) -> Element<Message> {
         opt_helpers::sub_section_view(
             row![
-                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
                 text("> Workspaces").size(18)
-            ].into(),
-            self.config.workspaces
-                .iter()
-                .enumerate().
-                map(|(i, w)| {
-                    let title = text!("Workspace [{}] - \"{}\":", i, w.name);
-                    opt_helpers::opt_button(
-                        title,
-                        None,
-                        self.workspaces[&i].is_hovered,
-                        Message::SetSubScreenWorkspace(i),
-                        |v| Message::ToggleWorkspaceHover(i, v),
-                    )
-                }),
+            ]
+            .into(),
+            self.config.workspaces.iter().enumerate().map(|(i, w)| {
+                let title = text!("Workspace [{}] - \"{}\":", i, w.name);
+                opt_helpers::opt_button(
+                    title,
+                    None,
+                    self.workspaces[&i].is_hovered,
+                    Message::SetSubScreenWorkspace(i),
+                    |v| Message::ToggleWorkspaceHover(i, v),
+                )
+            }),
         )
     }
 
     pub fn workspace_view(&self, idx: usize) -> Element<Message> {
         opt_helpers::sub_section_view(
             row![
-                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name).size(18),
-            ].into(),
-            [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+                text!(
+                    " > Workspace [{}] - \"{}\"",
+                    idx,
+                    self.config.workspaces[idx].name
+                )
+                .size(18),
+            ]
+            .into(),
+            [self.config.workspaces[idx]
+                .view(&self.workspaces[&idx])
+                .map(move |m| Message::Workspace(idx, m))],
         )
     }
 
     pub fn workspace_rules_view(&self, idx: usize) -> Element<Message> {
         opt_helpers::sub_section_view(
             row![
-                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                nav_button(text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name), Message::SetSubScreenWorkspace(idx)),
+                nav_button(
+                    text!(
+                        " > Workspace [{}] - \"{}\"",
+                        idx,
+                        self.config.workspaces[idx].name
+                    ),
+                    Message::SetSubScreenWorkspace(idx)
+                ),
                 text("> Workspace Rules").size(18),
-            ].into(),
-            [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+            ]
+            .into(),
+            [self.config.workspaces[idx]
+                .view(&self.workspaces[&idx])
+                .map(move |m| Message::Workspace(idx, m))],
         )
     }
 
     pub fn initial_workspace_rules_view(&self, idx: usize) -> Element<Message> {
         opt_helpers::sub_section_view(
             row![
-                nav_button(text!("Monitor [{}] ", self.index), Message::SetSubScreenMonitor),
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                nav_button(text!(" > Workspace [{}] - \"{}\"", idx, self.config.workspaces[idx].name), Message::SetSubScreenWorkspace(idx)),
+                nav_button(
+                    text!(
+                        " > Workspace [{}] - \"{}\"",
+                        idx,
+                        self.config.workspaces[idx].name
+                    ),
+                    Message::SetSubScreenWorkspace(idx)
+                ),
                 text("> Initial Workspace Rules").size(18),
-            ].into(),
-            [self.config.workspaces[idx].view(&self.workspaces[&idx]).map(move |m| Message::Workspace(idx, m))],
+            ]
+            .into(),
+            [self.config.workspaces[idx]
+                .view(&self.workspaces[&idx])
+                .map(move |m| Message::Workspace(idx, m))],
         )
     }
 
     pub fn subscription(&self) -> Subscription<(usize, usize, Message)> {
         match self.sub_screen {
-            SubScreen::Monitor
-            | SubScreen::Workspaces
-            | SubScreen::Workspace(_) => Subscription::none(),
-            SubScreen::WorkspaceRules(ws_idx)
-            | SubScreen::InitialWorkspaceRules(ws_idx) => {
+            SubScreen::Monitor | SubScreen::Workspaces | SubScreen::Workspace(_) => {
+                Subscription::none()
+            }
+            SubScreen::WorkspaceRules(ws_idx) | SubScreen::InitialWorkspaceRules(ws_idx) => {
                 let workspace = &self.workspaces[&ws_idx];
-                workspace.subscription().with(self.index).map(|(m_idx, (ws_idx, m))| (m_idx, ws_idx, Message::Workspace(ws_idx, m)))
+                workspace
+                    .subscription()
+                    .with(self.index)
+                    .map(|(m_idx, (ws_idx, m))| (m_idx, ws_idx, Message::Workspace(ws_idx, m)))
             }
         }
     }
 }
 
-fn nav_button<'a>(content: impl Into<iced::widget::Text<'a>>, on_press: Message) -> iced::widget::Button<'a, Message> {
-    button(content.into().size(18)).on_press(on_press).padding(0).style(button::text)
+fn nav_button<'a>(
+    content: impl Into<iced::widget::Text<'a>>,
+    on_press: Message,
+) -> iced::widget::Button<'a, Message> {
+    button(content.into().size(18))
+        .on_press(on_press)
+        .padding(0)
+        .style(button::text)
 }

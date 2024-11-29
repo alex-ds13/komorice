@@ -545,7 +545,7 @@ impl Rule {
                     }
                     false
                 })
-            .map(Message::ClipboardHasRule)
+                .map(Message::ClipboardHasRule)
         } else {
             Subscription::none()
         }
