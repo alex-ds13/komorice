@@ -1,6 +1,6 @@
 mod apperror;
 mod config;
-mod komorebi_connect;
+mod komo_interop;
 mod screen;
 mod utils;
 mod widget;
@@ -31,7 +31,7 @@ lazy_static! {
         f.weight = iced::font::Weight::Bold;
         f
     };
-    static ref NONE_STR: Arc<str> = Arc::from("");
+    static ref NONE_STR: Arc<str> = Arc::from("[None]");
     static ref SCREENS_TO_RESET: [Screen; 2] = [Screen::Rules, Screen::Transparency];
 }
 
@@ -259,15 +259,16 @@ impl Komofig {
                         })
                         .spacing(10)
                         .width(Fill)
-                        .padding(padding::all(5).right(20)),
+                        .padding(padding::top(10).bottom(10).right(20)),
                 );
                 column![
-                    text("Notifications:").font(*BOLD_FONT).size(30),
+                    text("Notifications:").size(20).font(*BOLD_FONT),
                     horizontal_rule(2.0),
                     notifications,
                 ]
                 .spacing(10)
-                .padding(20)
+                .width(Fill)
+                .height(Fill)
                 .into()
             }
             Screen::Settings => {
@@ -326,7 +327,7 @@ impl Komofig {
         };
 
         Subscription::batch([
-            komorebi_connect::connect(),
+            komo_interop::connect(),
             config::worker(),
             screen_subscription,
         ])

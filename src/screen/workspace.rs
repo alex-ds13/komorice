@@ -1,6 +1,10 @@
 use super::rule;
 
+use crate::komo_interop::layout::{Layout, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE};
 use crate::utils::DisplayOptionCustom as DisplayOption;
+use crate::widget::icons::ICONS;
+use crate::widget::opt_helpers::description_text as t;
+use crate::widget::opt_helpers::to_description_text as td;
 use crate::widget::{icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
@@ -10,37 +14,6 @@ use iced::{Center, Element, Fill, Shrink, Subscription, Task};
 use komorebi::config_generation::MatchingRule;
 use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
 use komorebi_client::DefaultLayout;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref DEFAULT_LAYOUT_OPTIONS: [DisplayOption<DefaultLayout>; 9] = [
-        DisplayOption(None, "[None] (Floating)"),
-        DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)"),
-        DisplayOption(Some(DefaultLayout::VerticalStack), "[None] (Floating)"),
-        DisplayOption(
-            Some(DefaultLayout::RightMainVerticalStack),
-            "[None] (Floating)"
-        ),
-        DisplayOption(
-            Some(DefaultLayout::UltrawideVerticalStack),
-            "[None] (Floating)"
-        ),
-        DisplayOption(Some(DefaultLayout::HorizontalStack), "[None] (Floating)"),
-        DisplayOption(Some(DefaultLayout::Rows), "[None] (Floating)"),
-        DisplayOption(Some(DefaultLayout::Columns), "[None] (Floating)"),
-        DisplayOption(Some(DefaultLayout::Grid), "[None] (Floating)"),
-    ];
-    static ref DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE: [DefaultLayout; 8] = [
-        DefaultLayout::BSP,
-        DefaultLayout::VerticalStack,
-        DefaultLayout::RightMainVerticalStack,
-        DefaultLayout::UltrawideVerticalStack,
-        DefaultLayout::HorizontalStack,
-        DefaultLayout::Rows,
-        DefaultLayout::Columns,
-        DefaultLayout::Grid,
-    ];
-}
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -50,7 +23,7 @@ pub enum Message {
     ToggleLayoutRulesExpand,
     LayoutRulesHover(bool),
     ChangeNewLayoutRuleLimit(i32),
-    ChangeNewLayoutRuleLayout(DefaultLayout),
+    ChangeNewLayoutRuleLayout(Layout),
     AddNewLayoutRule,
     RemoveLayoutRule(usize),
     WorkspaceRulesHover(bool),
@@ -69,10 +42,10 @@ pub enum ConfigChange {
     ApplyWindowBasedWorkAreaOffset(Option<bool>),
     ContainerPadding(Option<i32>),
     FloatOverride(Option<bool>),
-    Layout(Option<DefaultLayout>),
+    Layout(Option<Layout>),
     LayoutRules(Option<HashMap<usize, DefaultLayout>>),
     LayoutRuleLimit((usize, i32)),
-    LayoutRuleLayout((usize, DefaultLayout)),
+    LayoutRuleLayout((usize, Layout)),
     Name(String),
     WindowContainerBehaviour(Option<komorebi::WindowContainerBehaviour>),
     WorkspacePadding(Option<i32>),
@@ -101,7 +74,7 @@ pub struct Workspace {
     pub layout_rules_expanded: bool,
     pub layout_rules_hovered: bool,
     pub new_layout_rule_limit: usize,
-    pub new_layout_rule_layout: DefaultLayout,
+    pub new_layout_rule_layout: Layout,
     pub workspace_rules_hovered: bool,
     pub initial_workspace_rules_hovered: bool,
 }
@@ -116,7 +89,7 @@ impl Default for Workspace {
             layout_rules_expanded: Default::default(),
             layout_rules_hovered: Default::default(),
             new_layout_rule_limit: Default::default(),
-            new_layout_rule_layout: DefaultLayout::BSP,
+            new_layout_rule_layout: Layout::BSP,
             workspace_rules_hovered: Default::default(),
             initial_workspace_rules_hovered: Default::default(),
         }
@@ -153,9 +126,9 @@ impl WorkspaceScreen for WorkspaceConfig {
                 }
                 ConfigChange::ContainerPadding(value) => self.container_padding = value,
                 ConfigChange::FloatOverride(value) => self.float_override = value,
-                ConfigChange::Layout(value) => self.layout = value,
+                ConfigChange::Layout(value) => self.layout = value.map(Into::into),
                 ConfigChange::LayoutRules(value) => {
-                    self.layout_rules = value;
+                    self.layout_rules = value.map(Into::into);
                 }
                 ConfigChange::LayoutRuleLimit((previous_limit, new_limit)) => {
                     if let Ok(new_limit) = new_limit.try_into() {
@@ -171,7 +144,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::LayoutRuleLayout((limit, new_layout)) => {
                     if let Some(layout_rules) = &mut self.layout_rules {
                         let rule_layout = layout_rules.entry(limit).or_insert(DefaultLayout::BSP);
-                        *rule_layout = new_layout;
+                        *rule_layout = new_layout.into();
                     }
                 }
                 ConfigChange::Name(value) => self.name = value,
@@ -229,18 +202,18 @@ impl WorkspaceScreen for WorkspaceConfig {
                     if let std::collections::hash_map::Entry::Vacant(e) =
                         layout_rules.entry(workspace.new_layout_rule_limit)
                     {
-                        e.insert(workspace.new_layout_rule_layout);
+                        e.insert(workspace.new_layout_rule_layout.into());
                         workspace.new_layout_rule_limit = 0;
-                        workspace.new_layout_rule_layout = DefaultLayout::BSP;
+                        workspace.new_layout_rule_layout = Layout::BSP;
                     }
                 } else {
                     let rules = HashMap::from([(
                         workspace.new_layout_rule_limit,
-                        workspace.new_layout_rule_layout,
+                        workspace.new_layout_rule_layout.into(),
                     )]);
                     self.layout_rules = Some(rules);
                     workspace.new_layout_rule_limit = 0;
-                    workspace.new_layout_rule_layout = DefaultLayout::BSP;
+                    workspace.new_layout_rule_layout = Layout::BSP;
                 }
             }
             Message::RemoveLayoutRule(limit) => {
@@ -305,10 +278,14 @@ impl Workspace {
         let layout = opt_helpers::choose_with_disable_default(
             "Layout",
             Some("Layout (default: BSP)"),
-            &DEFAULT_LAYOUT_OPTIONS[..],
-            Some(DisplayOption(ws_config.layout, "[None] (Floating)")),
+            layout_options_descriptions(),
+            &LAYOUT_OPTIONS[..],
+            Some(DisplayOption(
+                ws_config.layout.map(Into::into),
+                "[None] (Floating)",
+            )),
             |s| Message::ConfigChange(ConfigChange::Layout(s.and_then(|s| s.0))),
-            Some(DisplayOption(Some(DefaultLayout::BSP), "[None] (Floating)")),
+            Some(DisplayOption(Some(Layout::BSP), "[None] (Floating)")),
             None,
         );
         let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
@@ -371,6 +348,11 @@ impl Workspace {
         let window_container_behaviour = opt_helpers::choose_with_disable_default(
             "Window Container Behaviour",
             Some("Determine what happens when a new window is opened (default: global)"),
+            vec![
+                t("Selected: 'Create' -> Create a new container for each new window").into(),
+                t("Selected: 'Append' -> Append new windows to the focused window container")
+                    .into(),
+            ],
             [
                 WindowContainerBehaviour::Create,
                 WindowContainerBehaviour::Append,
@@ -469,17 +451,21 @@ fn get_rules_from_config_mut<'a>(
 
 fn layout_rule<'a>(
     limit: usize,
-    layout: DefaultLayout,
+    layout: Layout,
     limit_message: impl Fn(i32) -> Message + Copy + 'static,
-    layout_message: impl Fn(DefaultLayout) -> Message + 'a,
+    layout_message: impl Fn(Layout) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
     let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
-    let choose = container(pick_list(
-        &DEFAULT_LAYOUT_OPTIONS_WITHOUT_NONE[..],
-        Some(layout),
-        layout_message,
-    ))
+    let choose = container(
+        pick_list(
+            &LAYOUT_OPTIONS_WITHOUT_NONE[..],
+            Some(layout),
+            layout_message,
+        )
+        .font(ICONS)
+        .text_shaping(text::Shaping::Advanced),
+    )
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
@@ -537,7 +523,7 @@ fn layout_rules_children<'a>(
                 let layout = *layout;
                 layout_rule(
                     limit,
-                    layout,
+                    layout.into(),
                     move |new_limit| {
                         Message::ConfigChange(ConfigChange::LayoutRuleLimit((limit, new_limit)))
                     },
@@ -561,4 +547,18 @@ fn layout_rules_children<'a>(
     children.push(horizontal_rule(2.0).into());
     children.extend(rules);
     children
+}
+
+fn layout_options_descriptions<'a>() -> Vec<Element<'a, Message>> {
+    vec![
+        row![t("Selected: '[None] (Floating)' layout -> This workspace will behave as a floating workspace, like normal Windows does!")].spacing(5).into(),
+        row![t("Selected: "), td(icons::bsp_icon()), t("'BSP' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::vstack_icon()), t("Vertical Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rmvstack_icon()), t("Right Main Vertical Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::uwvstack_icon()), t("Ultra Wide Vertical Stack' layout -> recommended if using and ultrawide monitor")].spacing(5).into(),
+        row![t("Selected: "), td(icons::hstack()), t("Horizontal Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rows_icon()), t("Rows' layout -> recommended if using a vertical monitor")].spacing(5).into(),
+        row![t("Selected: "), td(icons::columns_icon()), t("Columns' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::grid_icon()), t("Grid' layout -> If you like the grid layout in LeftWM this is almost exactly the same!\n\nThe 'Grid' layout does not suppot resizing windows.")].spacing(5).into(),
+    ]
 }

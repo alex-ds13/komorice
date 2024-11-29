@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use super::icons::ICONS;
+
 use crate::{widget, BOLD_FONT, EMOJI_FONT};
 
 use iced::{
@@ -134,6 +136,35 @@ fn num_input_style(
     }
 }
 
+pub fn to_description_text(t: Text) -> Text {
+    t.style(|t: &iced::Theme| {
+        let palette = t.extended_palette();
+        let color = if palette.is_dark {
+            Some(palette.secondary.strong.color)
+        } else {
+            Some(palette.background.base.text.scale_alpha(0.75))
+        };
+        text::Style { color }
+    })
+    .size(13)
+    .wrapping(text::Wrapping::WordOrGlyph)
+}
+
+pub fn description_text(s: &str) -> Text {
+    text(s)
+        .style(|t: &iced::Theme| {
+            let palette = t.extended_palette();
+            let color = if palette.is_dark {
+                Some(palette.secondary.strong.color)
+            } else {
+                Some(palette.background.base.text.scale_alpha(0.75))
+            };
+            text::Style { color }
+        })
+        .size(13)
+        .wrapping(text::Wrapping::WordOrGlyph)
+}
+
 ///Creates a column with a label element and a description
 ///
 ///If `Some(description)` is given, it adds the description below the name.
@@ -142,21 +173,7 @@ pub fn label_element_with_description<'a, Message: 'a>(
     description: Option<&'a str>,
 ) -> Element<'a, Message> {
     column![label_el.into()]
-        .push_maybe(description.map(|d| {
-            text(d)
-                .style(|t: &iced::Theme| {
-                    let palette = t.extended_palette();
-                    let color = if palette.is_dark {
-                        Some(palette.secondary.strong.color)
-                    } else {
-                        Some(palette.background.base.text.scale_alpha(0.75))
-                    };
-                    text::Style { color }
-                })
-                .size(13)
-                .width(Fill)
-                .wrapping(text::Wrapping::WordOrGlyph)
-        }))
+        .push_maybe(description.map(description_text))
         .width(Fill)
         .spacing(5)
         .into()
@@ -602,9 +619,11 @@ where
 ///checkbox which allows toggling the choose on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
 pub fn choose_with_disable_default<'a, T, V, L, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
+    options_descriptions: Vec<Element<'a, Message>>,
     options: L,
     selected: Option<V>,
     on_selected: impl Fn(Option<T>) -> Message + 'a,
@@ -630,11 +649,38 @@ where
     } else {
         row![name].height(30).align_y(Center)
     };
-    let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(pick_list(options, selected, move |v| on_selected(Some(v))))
-        .spacing(10)
-        .align_y(Center);
+    let selected_description: Element<'a, Message> = (|| {
+        if !options_descriptions.is_empty() {
+            if let Some(ref selected) = selected {
+                if let Some(i) = (options.borrow() as &[T])
+                    .iter()
+                    .position(|v| v == selected.borrow())
+                {
+                    if let Some((_, d)) = options_descriptions
+                        .into_iter()
+                        .enumerate()
+                        .find(|(idx, _)| i == *idx)
+                    {
+                        return d;
+                    }
+                }
+            }
+        }
+        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+    })();
+    let element = row![column![
+        label_element_with_description(label, description),
+        selected_description
+    ]
+    .spacing(10)]
+    .push_maybe(disable_checkbox(disable_args))
+    .push(
+        pick_list(options, selected, move |v| on_selected(Some(v)))
+            .font(ICONS)
+            .text_shaping(text::Shaping::Advanced),
+    )
+    .spacing(10)
+    .align_y(Center);
     opt_box(element).into()
 }
 
