@@ -9,8 +9,9 @@ use iced::{
         button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
         scrollable, text, text_input, toggler, Button, Column, Container, Row, Text,
     },
-    Center, Element, Fill,
+    Center, Color, Element, Fill,
 };
+use iced_aw::core::color::HexString;
 
 pub struct DisableArgs<'a, Message> {
     pub disable: bool,
@@ -432,6 +433,83 @@ pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
                 .style(num_button_style)
                 .input_style(num_input_style(should_disable)),
         )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
+///Creates a row with a label with `name` and a `colo_picker`
+///using the remainder parameters for it.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn color_picker_simple<'a, Message: 'a + Clone, F>(
+    show_picker: bool,
+    color: Color,
+    underlay: Element<'a, Message>,
+    on_cancel: Message,
+    on_submit: F,
+) -> iced_aw::ColorPicker<'a, Message>
+where
+    F: 'static + Fn(Color) -> Message,
+{
+    iced_aw::color_picker(show_picker, color, underlay, on_cancel, on_submit)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn color<'a, Message: 'a + Clone + 'static, F>(
+    name: &'a str,
+    description: Option<&'a str>,
+    show_picker: bool,
+    color: Option<Color>,
+    default_color: Option<Color>,
+    on_toggle: impl Fn(bool) -> Message,
+    on_submit: F,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message>
+where
+    F: 'static + Fn(Option<Color>) -> Message,
+{
+    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let default_color_internal = default_color.unwrap_or_default();
+    let color_internal = color.unwrap_or(default_color_internal);
+    let is_dirty = ((color_internal != default_color_internal)
+        || (default_color.is_none() && color.is_some()))
+        && !should_disable;
+    let label = if is_dirty {
+        row![name, reset_button(on_submit(default_color))]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let on_press = if should_disable {
+        None
+    } else {
+        Some(on_toggle(true))
+    };
+    let on_submit_internal = move |v| on_submit(Some(v));
+    let underlay = button(text(color_internal.as_hex_string()))
+        .on_press_maybe(on_press)
+        .style(move |t, s| button::Style {
+            background: Some(color_internal.into()),
+            text_color: if color_internal.r.max(color_internal.g.max(color_internal.b)) < 0.5 {
+                Color::WHITE
+            } else {
+                Color::BLACK
+            },
+            ..button::secondary(t, s)
+        })
+        .into();
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(color_picker_simple(
+            show_picker,
+            color_internal,
+            underlay,
+            on_toggle(false),
+            on_submit_internal,
+        ))
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
