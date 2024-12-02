@@ -272,6 +272,43 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
+///Creates a row with a label with `name`, a `text_input` and a disable checkbox which allows
+///toggling the input on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
+pub fn input_with_disable_default<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    placeholder: &'a str,
+    value: &'a str,
+    default_value: String,
+    on_change: impl Fn(String) -> Message + 'a + Clone,
+    on_submit: Option<Message>,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let is_dirty = value != default_value && !should_disable;
+    let label = if is_dirty {
+        row![name, reset_button(on_change(default_value))]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let on_input_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(
+            widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates a row with a label with `name` and a `number_input`
 ///using the remainder parameters for it.
 ///
