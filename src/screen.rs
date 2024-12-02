@@ -4,6 +4,7 @@ pub mod monitors;
 pub mod rule;
 pub mod rules;
 pub mod sidebar;
+pub mod stackbar;
 pub mod transparency;
 pub mod workspace;
 

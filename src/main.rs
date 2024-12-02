@@ -6,7 +6,7 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::screen::{general, monitors, rules, sidebar, transparency, Screen};
+use crate::screen::{general, monitors, rules, sidebar, stackbar, transparency, Screen};
 
 use std::sync::Arc;
 
@@ -56,6 +56,7 @@ enum Message {
     Monitors(monitors::Message),
     Rules(rules::Message),
     Sidebar(sidebar::Message),
+    Stackbar(stackbar::Message),
     Transparency(transparency::Message),
 
     // Komorebi related Messages
@@ -72,6 +73,7 @@ struct Komofig {
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
     general: general::General,
+    stackbar: stackbar::Stackbar,
     transparency: transparency::Transparency,
     rules: rules::Rules,
     config: Option<komorebi_client::StaticConfig>,
@@ -116,6 +118,20 @@ impl Komofig {
                     monitors::Action::None => Task::none(),
                 };
                 return Task::batch([task.map(Message::Monitors), action_task]);
+            }
+            Message::Stackbar(message) => {
+                if let Some(config) = self.config.as_mut() {
+                    if config.stackbar.is_none() {
+                        config.stackbar = Some(stackbar::default_stackbar_config());
+                    }
+                    if let Some(stackbar_config) = config.stackbar.as_mut() {
+                        let (action, task) = self.stackbar.update(stackbar_config, message);
+                        let action_task = match action {
+                            stackbar::Action::None => Task::none(),
+                        };
+                        return Task::batch([task.map(Message::Stackbar), action_task]);
+                    }
+                }
             }
             Message::Transparency(message) => {
                 if let Some(config) = &mut self.config {
@@ -238,7 +254,15 @@ impl Komofig {
             Screen::Workspaces(_) => todo!(),
             Screen::Workspace(_, _) => todo!(),
             Screen::Border => center(text("Border").size(50)).into(),
-            Screen::Stackbar => center(text("Stackbar").size(50)).into(),
+            Screen::Stackbar => {
+                if let Some(config) = self.config.as_ref() {
+                    self.stackbar
+                        .view(config.stackbar.as_ref())
+                        .map(Message::Stackbar)
+                } else {
+                    Space::new(Shrink, Shrink).into()
+                }
+            }
             Screen::Transparency => self
                 .transparency
                 .view(&self.config)
