@@ -1,4 +1,4 @@
-use crate::widget::opt_helpers::{self, DisableArgs};
+use crate::widget::opt_helpers;
 
 use iced::{
     widget::{column, container, horizontal_space, row, text},
@@ -77,11 +77,12 @@ impl Stackbar {
                     config.mode = Some(mode);
                 }
                 ConfigChange::FontSize(size) => {
+                    let size = if size <= 0 { None } else { Some(size) };
                     if let Some(tabs) = &mut config.tabs {
-                        tabs.font_size = Some(size);
+                        tabs.font_size = size;
                     } else {
                         let mut tabs = default_tabs_config();
-                        tabs.font_size = Some(size);
+                        tabs.font_size = size;
                         config.tabs = Some(tabs);
                     }
                 }
@@ -147,53 +148,75 @@ impl Stackbar {
         opt_helpers::section_view(
             "Stackbar:",
             [
-                opt_helpers::number(
+                opt_helpers::number_with_disable_default(
                     "Stackbar Height",
                     Some("Stackbar height. (default: 40)"),
                     config.height.unwrap_or(40),
+                    40,
                     |value| Message::ConfigChange(ConfigChange::Height(value)),
+                    None,
                 ),
-                opt_helpers::choose(
+                opt_helpers::choose_with_disable_default(
                     "Stackbar Label",
                     Some("Stackbar label. (default: \"Process\")"),
+                    vec![],
                     [StackbarLabel::Process, StackbarLabel::Title],
                     Some(config.label.unwrap_or(StackbarLabel::Process)),
-                    |selected| Message::ConfigChange(ConfigChange::Label(selected)),
+                    |selected| {
+                        Message::ConfigChange(ConfigChange::Label(
+                            selected.unwrap_or(StackbarLabel::Process),
+                        ))
+                    },
+                    Some(StackbarLabel::Process),
+                    None,
                 ),
-                opt_helpers::choose(
+                opt_helpers::choose_with_disable_default(
                     "Stackbar Mode",
                     Some("Stackbar mode. (default \"OnStack\")"),
+                    vec![],
                     [
                         StackbarMode::OnStack,
                         StackbarMode::Always,
                         StackbarMode::Never,
                     ],
                     Some(config.mode.unwrap_or(StackbarMode::OnStack)),
-                    |selected| Message::ConfigChange(ConfigChange::Mode(selected)),
+                    |selected| {
+                        Message::ConfigChange(ConfigChange::Mode(
+                            selected.unwrap_or(StackbarMode::OnStack),
+                        ))
+                    },
+                    Some(StackbarMode::OnStack),
+                    None,
                 ),
-                opt_helpers::number(
+                opt_helpers::number_with_disable_default(
                     "Stackbar Tabs Width",
                     Some("Tabs width. (default: 200)"),
                     config.tabs.as_ref().and_then(|t| t.width).unwrap_or(200),
+                    200,
                     |value| Message::ConfigChange(ConfigChange::Width(value)),
+                    None,
                 ),
-                opt_helpers::input(
+                opt_helpers::input_with_disable_default(
                     "Stackbar Font Family",
-                    Some("Tabs font family name. (default: None)\n\nWhen 'None' use system font."),
+                    Some("Tabs font family name. (default: empty string)\n\nWhen empty use system font."),
                     "",
                     config
                         .tabs
                         .as_ref()
                         .map(|t| t.font_family.as_ref().map_or("", |v| v))
                         .unwrap_or(""),
+                    String::from(""),
                     |value| Message::ConfigChange(ConfigChange::FontFamily(value)),
                     None,
+                    None,
                 ),
-                opt_helpers::number(
+                opt_helpers::number_with_disable_default(
                     "Stackbar Font Size",
                     Some("Tabs font size. (default: '0')\n\nWhen '0' use system font size."),
                     config.tabs.as_ref().and_then(|t| t.font_size).unwrap_or(0),
+                    0,
                     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
+                    None,
                 ),
                 opt_helpers::color(
                     "Stackbar Background Color",
@@ -203,25 +226,10 @@ impl Stackbar {
                         .tabs
                         .as_ref()
                         .and_then(|t| t.background.map(into_color)),
-                    None,
+                    Some(iced::color!(0x333333)),
                     Message::ToggleBackgroundPicker,
                     |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
-                    Some(DisableArgs {
-                        disable: config
-                            .tabs
-                            .as_ref()
-                            .map_or(true, |t| t.background.is_none()),
-                        label: Some("None"),
-                        on_toggle: |v| {
-                            if v {
-                                Message::ConfigChange(ConfigChange::BackgroundColor(None))
-                            } else {
-                                Message::ConfigChange(ConfigChange::BackgroundColor(Some(
-                                    iced::color!(0x333333),
-                                )))
-                            }
-                        },
-                    }),
+                    None,
                 ),
                 opt_helpers::color(
                     "Stackbar Focused Text Color",
@@ -231,25 +239,10 @@ impl Stackbar {
                         .tabs
                         .as_ref()
                         .and_then(|t| t.focused_text.map(into_color)),
-                    None,
+                    Some(iced::color!(0xffffff)),
                     Message::ToggleFocusedTextPicker,
                     |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
-                    Some(DisableArgs {
-                        disable: config
-                            .tabs
-                            .as_ref()
-                            .map_or(true, |t| t.focused_text.is_none()),
-                        label: Some("None"),
-                        on_toggle: |v| {
-                            if v {
-                                Message::ConfigChange(ConfigChange::FocusedTextColor(None))
-                            } else {
-                                Message::ConfigChange(ConfigChange::FocusedTextColor(Some(
-                                    iced::color!(0xffffff),
-                                )))
-                            }
-                        },
-                    }),
+                    None,
                 ),
                 opt_helpers::color(
                     "Stackbar Unfocused Text Color",
@@ -259,25 +252,10 @@ impl Stackbar {
                         .tabs
                         .as_ref()
                         .and_then(|t| t.unfocused_text.map(into_color)),
-                    None,
+                    Some(iced::color!(0xb3b3b3)),
                     Message::ToggleUnfocusedTextPicker,
                     |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
-                    Some(DisableArgs {
-                        disable: config
-                            .tabs
-                            .as_ref()
-                            .map_or(true, |t| t.unfocused_text.is_none()),
-                        label: Some("None"),
-                        on_toggle: |v| {
-                            if v {
-                                Message::ConfigChange(ConfigChange::UnfocusedTextColor(None))
-                            } else {
-                                Message::ConfigChange(ConfigChange::UnfocusedTextColor(Some(
-                                    iced::color!(0xb3b3b3),
-                                )))
-                            }
-                        },
-                    }),
+                    None,
                 ),
                 tabs_demo(config),
             ],
