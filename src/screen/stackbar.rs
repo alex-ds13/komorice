@@ -149,20 +149,20 @@ impl Stackbar {
             [
                 opt_helpers::number(
                     "Stackbar Height",
-                    Some(""),
+                    Some("Stackbar height. (default: 40)"),
                     config.height.unwrap_or(40),
                     |value| Message::ConfigChange(ConfigChange::Height(value)),
                 ),
                 opt_helpers::choose(
                     "Stackbar Label",
-                    Some(""),
+                    Some("Stackbar label. (default: \"Process\")"),
                     [StackbarLabel::Process, StackbarLabel::Title],
                     Some(config.label.unwrap_or(StackbarLabel::Process)),
                     |selected| Message::ConfigChange(ConfigChange::Label(selected)),
                 ),
                 opt_helpers::choose(
                     "Stackbar Mode",
-                    Some(""),
+                    Some("Stackbar mode. (default \"OnStack\")"),
                     [
                         StackbarMode::OnStack,
                         StackbarMode::Always,
@@ -173,13 +173,13 @@ impl Stackbar {
                 ),
                 opt_helpers::number(
                     "Stackbar Tabs Width",
-                    Some(""),
+                    Some("Tabs width. (default: 200)"),
                     config.tabs.as_ref().and_then(|t| t.width).unwrap_or(200),
                     |value| Message::ConfigChange(ConfigChange::Width(value)),
                 ),
                 opt_helpers::input(
                     "Stackbar Font Family",
-                    Some(""),
+                    Some("Tabs font family name. (default: None)\n\nWhen 'None' use system font."),
                     "",
                     config
                         .tabs
@@ -191,13 +191,13 @@ impl Stackbar {
                 ),
                 opt_helpers::number(
                     "Stackbar Font Size",
-                    Some(""),
+                    Some("Tabs font size. (default: '0')\n\nWhen '0' use system font size."),
                     config.tabs.as_ref().and_then(|t| t.font_size).unwrap_or(0),
                     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
                 ),
                 opt_helpers::color(
                     "Stackbar Background Color",
-                    Some(""),
+                    Some("Tab background color. (default: '0x333333')"),
                     self.show_background_picker,
                     config
                         .tabs
@@ -225,7 +225,7 @@ impl Stackbar {
                 ),
                 opt_helpers::color(
                     "Stackbar Focused Text Color",
-                    Some(""),
+                    Some("Focused Tab text color. (default: '0xFFFFFF')"),
                     self.show_focused_text_picker,
                     config
                         .tabs
@@ -253,7 +253,7 @@ impl Stackbar {
                 ),
                 opt_helpers::color(
                     "Stackbar Unfocused Text Color",
-                    Some(""),
+                    Some("Unfocused Tab text color. (default: '0xB3B3B3')"),
                     self.show_unfocused_text_picker,
                     config
                         .tabs
