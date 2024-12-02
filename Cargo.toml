@@ -20,3 +20,7 @@ clipboard-win= "5"
 iced = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
 iced_core = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
 iced_aw = { path = "../iced_aw/" }
+
+[patch.'https://github.com/LGUG2Z/komorebi.git']
+komorebi = { path = "C:/Projects/repos/github/komorebi/komorebi/" }
+komorebi-client = { path = "C:/Projects/repos/github/komorebi/komorebi-client/" }
