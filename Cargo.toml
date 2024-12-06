@@ -22,5 +22,5 @@ iced_core = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
 iced_aw = { path = "../iced_aw/" }
 
 [patch.'https://github.com/LGUG2Z/komorebi.git']
-komorebi = { path = "C:/Projects/repos/github/komorebi/komorebi/" }
-komorebi-client = { path = "C:/Projects/repos/github/komorebi/komorebi-client/" }
+komorebi = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/derives" }
+komorebi-client = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/derives" }
