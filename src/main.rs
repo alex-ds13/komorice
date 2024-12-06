@@ -6,7 +6,7 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
-use crate::screen::{general, monitors, rules, sidebar, stackbar, transparency, Screen};
+use crate::screen::{border, general, monitors, rules, sidebar, stackbar, transparency, Screen};
 
 use std::sync::Arc;
 
@@ -52,6 +52,7 @@ enum Message {
     ThemeChanged(Theme),
 
     // View/Screen related Messages
+    Border(border::Message),
     General(general::Message),
     Monitors(monitors::Message),
     Rules(rules::Message),
@@ -72,6 +73,7 @@ struct Komofig {
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
     monitors: monitors::Monitors,
+    border: border::Border,
     general: general::General,
     stackbar: stackbar::Stackbar,
     transparency: transparency::Transparency,
@@ -102,6 +104,15 @@ impl Komofig {
             }
             Message::ThemeChanged(theme) => {
                 self.theme = Some(theme);
+            }
+            Message::Border(message) => {
+                if let Some(config) = &mut self.config {
+                    let (action, task) = self.border.update(message, config);
+                    let action_task = match action {
+                        border::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::Border), action_task]);
+                }
             }
             Message::General(message) => {
                 if let Some(config) = &mut self.config {
@@ -253,7 +264,10 @@ impl Komofig {
             Screen::Monitor(_) => todo!(),
             Screen::Workspaces(_) => todo!(),
             Screen::Workspace(_, _) => todo!(),
-            Screen::Border => center(text("Border").size(50)).into(),
+            // Screen::Border => center(text("Border").size(50)).into(),
+            Screen::Border => {
+                self.border.view(self.config.as_ref()).map(Message::Border)
+            }
             Screen::Stackbar => {
                 if let Some(config) = self.config.as_ref() {
                     self.stackbar

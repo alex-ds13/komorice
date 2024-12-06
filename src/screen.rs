@@ -1,3 +1,4 @@
+pub mod border;
 pub mod general;
 pub mod monitor;
 pub mod monitors;

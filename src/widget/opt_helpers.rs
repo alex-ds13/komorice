@@ -640,6 +640,43 @@ pub fn toggle_with_disable<'a, Message: 'a + Clone>(
 ///toggling the toggler on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
+pub fn toggle_with_disable_default_no_option<'a, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    value: bool,
+    default_value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a + Clone,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let on_toggle_c = on_toggle.clone();
+    let on_toggle_maybe = (!matches!(&disable_args, Some(args) if args.disable))
+        .then_some(move |v| on_toggle(v));
+    let is_dirty = value != default_value;
+    let label = if is_dirty {
+        let on_default = (on_toggle_c)(default_value);
+        row![name, reset_button(on_default)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(
+            toggler(value)
+                .label(if value { "On" } else { "Off" })
+                .on_toggle_maybe(on_toggle_maybe),
+        )
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
+
+///Creates a `toggler` with `name` as label and a disable checkbox which allows
+///toggling the toggler on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
 pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,

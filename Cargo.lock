@@ -2807,6 +2807,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.31"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#d0dfdcd2ebfaae969e252eaad8d58bc3146b468d"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2840,7 +2841,6 @@ dependencies = [
  "tracing-subscriber",
  "uds_windows",
  "which",
- "widestring",
  "win32-display-data",
  "windows 0.58.0",
  "windows-core 0.58.0",
@@ -2853,6 +2853,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.31"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#d0dfdcd2ebfaae969e252eaad8d58bc3146b468d"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2862,6 +2863,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.31"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#d0dfdcd2ebfaae969e252eaad8d58bc3146b468d"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
