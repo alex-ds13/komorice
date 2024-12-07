@@ -17,8 +17,8 @@ lazy_static = "1"
 clipboard-win= "5"
 
 [patch.crates-io]
-iced = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
-iced_core = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "42a2cb6d4f78343f43d6a68a28e5502d9426ed2c" }
+iced_core = { git = "https://github.com/iced-rs/iced.git", rev = "42a2cb6d4f78343f43d6a68a28e5502d9426ed2c" }
 iced_aw = { path = "../iced_aw/" }
 
 [patch.'https://github.com/LGUG2Z/komorebi.git']
