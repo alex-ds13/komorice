@@ -1,11 +1,8 @@
 use crate::widget::opt_helpers::description_text as t;
-use crate::{utils::DisplayOption, widget::opt_helpers};
+use crate::widget::opt_helpers;
 
 use iced::{Element, Task};
-use komorebi::{
-    border_manager::ZOrder, BorderColours, BorderImplementation, BorderStyle, Colour, Rgb,
-    StaticConfig,
-};
+use komorebi::{BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig};
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -24,7 +21,6 @@ pub enum ConfigChange {
     BorderOffset(i32),
     BorderStyle(BorderStyle),
     BorderImplementation(BorderImplementation),
-    BorderZOrder(Option<ZOrder>),
     SingleColor(Option<iced::Color>),
     MonocleColor(Option<iced::Color>),
     UnfocusedColor(Option<iced::Color>),
@@ -54,7 +50,6 @@ pub struct BorderConfig<'a> {
     pub border_style: Option<&'a BorderStyle>,
     pub border_width: Option<&'a i32>,
     pub border_offset: Option<&'a i32>,
-    pub border_z_order: Option<&'a ZOrder>,
 }
 
 #[derive(Debug)]
@@ -65,7 +60,6 @@ pub struct BorderConfigMut<'a> {
     pub border_style: &'a mut Option<BorderStyle>,
     pub border_width: &'a mut Option<i32>,
     pub border_offset: &'a mut Option<i32>,
-    pub border_z_order: &'a mut Option<ZOrder>,
 }
 
 // impl Default for BorderConfig {
@@ -112,9 +106,6 @@ impl Border {
                     }
                     ConfigChange::BorderImplementation(border_implementation) => {
                         *config.border_implementation = Some(border_implementation)
-                    }
-                    ConfigChange::BorderZOrder(zorder) => {
-                        *config.border_z_order = zorder;
                     }
                     ConfigChange::SingleColor(color) => {
                         if let Some(colours) = config.border_colours {
@@ -278,26 +269,6 @@ impl Border {
                     Some(BorderImplementation::Komorebi),
                     None,
                 ),
-                opt_helpers::choose_with_disable_default(
-                    "Border Z Order",
-                    Some("Active window border z-order (default: None (uses System value))"),
-                    vec![],
-                    [
-                        DisplayOption(None),
-                        DisplayOption(Some(ZOrder::Top)),
-                        DisplayOption(Some(ZOrder::Bottom)),
-                        DisplayOption(Some(ZOrder::TopMost)),
-                        DisplayOption(Some(ZOrder::NoTopMost)),
-                    ],
-                    Some(config.border_z_order.map_or(DisplayOption(None), |bi| DisplayOption(Some(*bi)))),
-                    |selected| {
-                        Message::ConfigChange(ConfigChange::BorderZOrder(
-                            selected.and_then(|s| s.0),
-                        ))
-                    },
-                    Some(DisplayOption(None)),
-                    None,
-                ),
                 opt_helpers::color(
                     "Focused Window Border Color",
                     Some("Border colour when the container contains a single window and is focused"),
@@ -376,7 +347,6 @@ fn border_config_from_static(config: &StaticConfig) -> BorderConfig {
         border_style: config.border_style.as_ref(),
         border_width: config.border_width.as_ref(),
         border_offset: config.border_offset.as_ref(),
-        border_z_order: config.border_z_order.as_ref(),
     }
 }
 
@@ -388,7 +358,6 @@ fn border_config_from_static_mut(config: &mut StaticConfig) -> BorderConfigMut {
         border_style: &mut config.border_style,
         border_width: &mut config.border_width,
         border_offset: &mut config.border_offset,
-        border_z_order: &mut config.border_z_order,
     }
 }
 
@@ -400,7 +369,6 @@ pub fn default_border_config() -> BorderConfig<'static> {
         border_style: None,
         border_width: None,
         border_offset: None,
-        border_z_order: None,
     }
 }
 
