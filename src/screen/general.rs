@@ -1,29 +1,19 @@
 use crate::{utils::DisplayOption, widget::opt_helpers};
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 
-use iced::{widget::Space, Element, Length::Shrink, Task};
-use komorebi::{
+use iced::{Element, Task};
+use komorebi_client::{
     CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
-    OperationBehaviour, WindowContainerBehaviour,
+    OperationBehaviour, Rect, StaticConfig, WindowContainerBehaviour,
 };
-use komorebi_client::StaticConfig;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref CROSS_BOUNDARY_BEHAVIOUR_OPTIONS: [Arc<str>; 2] = [
-        Arc::from(CrossBoundaryBehaviour::Monitor.to_string()),
-        Arc::from(CrossBoundaryBehaviour::Workspace.to_string()),
-    ];
     static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
         DisplayOption(None),
         DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
         DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi)),
-    ];
-    static ref HIDING_BEHAVIOUR_OPTIONS: [Arc<str>; 3] = [
-        Arc::from(HidingBehaviour::Cloak.to_string()),
-        Arc::from(HidingBehaviour::Hide.to_string()),
-        Arc::from(HidingBehaviour::Minimize.to_string()),
     ];
 }
 
@@ -37,14 +27,14 @@ pub enum Message {
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
     AppSpecificConfigurationPath(Option<PathBuf>),
-    CrossBoundaryBehaviour(Arc<str>), // maps komorebi::CrossBoundaryBehaviour to String on GlobalConfigStrs
-    CrossMonitorMoveBehaviour(komorebi::MoveBehaviour),
+    CrossBoundaryBehaviour(CrossBoundaryBehaviour),
+    CrossMonitorMoveBehaviour(MoveBehaviour),
     DefaultContainerPadding(i32),
     DefaultWorkspacePadding(i32),
     DisplayIndexPreferences(HashMap<usize, String>),
     FloatOverride(bool),
-    FocusFollowsMouse(Option<komorebi::FocusFollowsMouseImplementation>),
-    GlobalWorkAreaOffset(komorebi::Rect),
+    FocusFollowsMouse(Option<FocusFollowsMouseImplementation>),
+    GlobalWorkAreaOffset(Rect),
     GlobalWorkAreaOffsetTop(i32),
     GlobalWorkAreaOffsetBottom(i32),
     GlobalWorkAreaOffsetRight(i32),
@@ -52,9 +42,9 @@ pub enum ConfigChange {
     MouseFollowsFocus(bool),
     ResizeDelta(i32),
     SlowApplicationCompensationTime(i32),
-    UnmanagedWindowBehaviour(komorebi::OperationBehaviour),
-    WindowContainerBehaviour(komorebi::WindowContainerBehaviour),
-    WindowHidingBehaviour(Arc<str>), // maps komorebi::HidingBehaviour to String on GlobalConfigStrs
+    UnmanagedWindowBehaviour(OperationBehaviour),
+    WindowContainerBehaviour(WindowContainerBehaviour),
+    WindowHidingBehaviour(HidingBehaviour),
 }
 
 #[derive(Clone, Debug)]
@@ -66,8 +56,6 @@ pub enum Action {
 pub struct General {
     pub global_work_area_offset_expanded: bool,
     pub global_work_area_offset_hovered: bool,
-    pub cross_boundary_behaviour: Arc<str>,
-    pub window_hiding_behaviour: Arc<str>,
 }
 
 impl General {
@@ -82,19 +70,7 @@ impl General {
                     config.app_specific_configuration_path = path;
                 }
                 ConfigChange::CrossBoundaryBehaviour(value) => {
-                    let behaviour = match value {
-                        ref s if **s == *komorebi::CrossBoundaryBehaviour::Monitor.to_string() => {
-                            Some(komorebi::CrossBoundaryBehaviour::Monitor)
-                        }
-                        ref s
-                            if **s == *komorebi::CrossBoundaryBehaviour::Workspace.to_string() =>
-                        {
-                            Some(komorebi::CrossBoundaryBehaviour::Workspace)
-                        }
-                        _ => None,
-                    };
-                    config.cross_boundary_behaviour = behaviour;
-                    self.cross_boundary_behaviour = value;
+                    config.cross_boundary_behaviour = Some(value);
                 }
                 ConfigChange::CrossMonitorMoveBehaviour(value) => {
                     config.cross_monitor_move_behaviour = Some(value);
@@ -183,20 +159,7 @@ impl General {
                     config.window_container_behaviour = Some(value);
                 }
                 ConfigChange::WindowHidingBehaviour(value) => {
-                    let behaviour = match value {
-                        ref s if **s == *komorebi::HidingBehaviour::Cloak.to_string() => {
-                            Some(komorebi::HidingBehaviour::Cloak)
-                        }
-                        ref s if **s == *komorebi::HidingBehaviour::Hide.to_string() => {
-                            Some(komorebi::HidingBehaviour::Hide)
-                        }
-                        ref s if **s == *komorebi::HidingBehaviour::Minimize.to_string() => {
-                            Some(komorebi::HidingBehaviour::Minimize)
-                        }
-                        _ => None,
-                    };
-                    config.window_hiding_behaviour = behaviour;
-                    self.window_hiding_behaviour = value;
+                    config.window_hiding_behaviour = Some(value);
                 }
             },
             Message::ToggleGlobalWorkAreaOffsetExpand => {
@@ -209,138 +172,134 @@ impl General {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: &'a Option<StaticConfig>) -> Element<'a, Message> {
-        if let Some(config) = config {
-            opt_helpers::section_view(
-                "General:",
-                [
-                    opt_helpers::input(
-                        "App Specific Configuration Path",
-                        Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
-                        "",
-                        config.app_specific_configuration_path.as_ref().map_or("", |p| p.to_str().unwrap_or_default()),
-                        |value| Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(Some(PathBuf::from(value)))),
-                        None
-                    ),
-                    opt_helpers::choose(
-                        "Cross Boundary Behaviour",
-                        Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
-                        &CROSS_BOUNDARY_BEHAVIOUR_OPTIONS[..],
-                        Some(&self.cross_boundary_behaviour),
-                        |selected| Message::ConfigChange(ConfigChange::CrossBoundaryBehaviour(selected)),
-                    ),
-                    opt_helpers::choose(
-                        "Cross Monitor Move Behaviour",
-                        Some("Determine what happens when a window is moved across a monitor boundary (default: Swap)"),
-                        [MoveBehaviour::Swap, MoveBehaviour::Insert, MoveBehaviour::NoOp],
-                        config.cross_monitor_move_behaviour,
-                        |selected| Message::ConfigChange(ConfigChange::CrossMonitorMoveBehaviour(selected)),
-                    ),
-                    opt_helpers::number(
-                        "Default Container Padding",
-                        Some("Global default container padding (default: 10)"),
-                        config.default_container_padding.unwrap_or(10),
-                        |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
-                    ),
-                    opt_helpers::number(
-                        "Default Workspace Padding",
-                        Some("Global default workspace padding (default: 10)"),
-                        config.default_workspace_padding.unwrap_or(10),
-                        |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
-                    ),
-                    opt_helpers::toggle(
-                        "Float Override",
-                        Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
-                        config.float_override.unwrap_or_default(),
-                        |value| Message::ConfigChange(ConfigChange::FloatOverride(value))
-                    ),
-                    opt_helpers::choose(
-                        "Focus Follows Mouse",
-                        Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
-                        &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
-                        Some(DisplayOption(config.focus_follows_mouse)),
-                        |selected| Message::ConfigChange(ConfigChange::FocusFollowsMouse(selected.0)),
-                    ),
-                    opt_helpers::expandable(
-                        "Global Work Area Offset",
-                        None,
-                        [
-                            opt_helpers::number(
-                                "left",
-                                None,
-                                config.global_work_area_offset.map_or(0, |r| r.left),
-                                |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value)),
-                            ),
-                            opt_helpers::number(
-                                "top",
-                                None,
-                                config.global_work_area_offset.map_or(0, |r| r.top),
-                                |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
-                            ),
-                            opt_helpers::number(
-                                "bottom",
-                                None,
-                                config.global_work_area_offset.map_or(0, |r| r.bottom),
-                                |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value)),
-                            ),
-                            opt_helpers::number(
-                                "right",
-                                None,
-                                config.global_work_area_offset.map_or(0, |r| r.right),
-                                |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
-                            ),
-                        ],
-                        self.global_work_area_offset_expanded,
-                        self.global_work_area_offset_hovered,
-                        Message::ToggleGlobalWorkAreaOffsetExpand,
-                        Message::ToggleGlobalWorkAreaOffsetHover,
-                    ),
-                    opt_helpers::toggle(
-                        "Mouse Follows Focus",
-                        Some("Enable or disable mouse follows focus (default: true)"),
-                        config.mouse_follows_focus.unwrap_or(true),
-                        |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value))
-                    ),
-                    opt_helpers::number(
-                        "Resize Delta",
-                        Some("Delta to resize windows by (default 50)"),
-                        config.resize_delta.unwrap_or(50),
-                        |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
-                    ),
-                    opt_helpers::number(
-                        "Slow Application Compensation Time",
-                        Some("How long to wait when compensating for slow applications, \
-                        in milliseconds (default: 20)\n\n\
-                        Value must be greater or equal to 0."
+    pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
+        opt_helpers::section_view(
+            "General:",
+            [
+                opt_helpers::input(
+                    "App Specific Configuration Path",
+                    Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
+                    "",
+                    config.app_specific_configuration_path.as_ref().map_or("", |p| p.to_str().unwrap_or_default()),
+                    |value| Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(Some(PathBuf::from(value)))),
+                    None
+                ),
+                opt_helpers::choose(
+                    "Cross Boundary Behaviour",
+                    Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
+                    [CrossBoundaryBehaviour::Monitor, CrossBoundaryBehaviour::Workspace],
+                    config.cross_boundary_behaviour,
+                    |selected| Message::ConfigChange(ConfigChange::CrossBoundaryBehaviour(selected)),
+                ),
+                opt_helpers::choose(
+                    "Cross Monitor Move Behaviour",
+                    Some("Determine what happens when a window is moved across a monitor boundary (default: Swap)"),
+                    [MoveBehaviour::Swap, MoveBehaviour::Insert, MoveBehaviour::NoOp],
+                    config.cross_monitor_move_behaviour,
+                    |selected| Message::ConfigChange(ConfigChange::CrossMonitorMoveBehaviour(selected)),
+                ),
+                opt_helpers::number(
+                    "Default Container Padding",
+                    Some("Global default container padding (default: 10)"),
+                    config.default_container_padding.unwrap_or(10),
+                    |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
+                ),
+                opt_helpers::number(
+                    "Default Workspace Padding",
+                    Some("Global default workspace padding (default: 10)"),
+                    config.default_workspace_padding.unwrap_or(10),
+                    |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
+                ),
+                opt_helpers::toggle(
+                    "Float Override",
+                    Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
+                    config.float_override.unwrap_or_default(),
+                    |value| Message::ConfigChange(ConfigChange::FloatOverride(value))
+                ),
+                opt_helpers::choose(
+                    "Focus Follows Mouse",
+                    Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)"),
+                    &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
+                    Some(DisplayOption(config.focus_follows_mouse)),
+                    |selected| Message::ConfigChange(ConfigChange::FocusFollowsMouse(selected.0)),
+                ),
+                opt_helpers::expandable(
+                    "Global Work Area Offset",
+                    None,
+                    [
+                        opt_helpers::number(
+                            "left",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.left),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value)),
                         ),
-                        config.slow_application_compensation_time.and_then(|v| v.try_into().ok()).unwrap_or(20),
-                        |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
+                        opt_helpers::number(
+                            "top",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.top),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
+                        ),
+                        opt_helpers::number(
+                            "bottom",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.bottom),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value)),
+                        ),
+                        opt_helpers::number(
+                            "right",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.right),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
+                        ),
+                    ],
+                    self.global_work_area_offset_expanded,
+                    self.global_work_area_offset_hovered,
+                    Message::ToggleGlobalWorkAreaOffsetExpand,
+                    Message::ToggleGlobalWorkAreaOffsetHover,
+                ),
+                opt_helpers::toggle(
+                    "Mouse Follows Focus",
+                    Some("Enable or disable mouse follows focus (default: true)"),
+                    config.mouse_follows_focus.unwrap_or(true),
+                    |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value))
+                ),
+                opt_helpers::number(
+                    "Resize Delta",
+                    Some("Delta to resize windows by (default 50)"),
+                    config.resize_delta.unwrap_or(50),
+                    |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
+                ),
+                opt_helpers::number(
+                    "Slow Application Compensation Time",
+                    Some("How long to wait when compensating for slow applications, \
+                    in milliseconds (default: 20)\n\n\
+                    Value must be greater or equal to 0."
                     ),
-                    opt_helpers::choose(
-                        "Unmanaged Window Behaviour",
-                        Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
-                        [OperationBehaviour::Op, OperationBehaviour::NoOp],
-                        Some(config.unmanaged_window_operation_behaviour.unwrap_or(OperationBehaviour::Op)),
-                        |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
-                    ),
-                    opt_helpers::choose(
-                        "Window Container Behaviour",
-                        Some("Determine what happens when a new window is opened (default: Create)"),
-                        [WindowContainerBehaviour::Create, WindowContainerBehaviour::Append],
-                        Some(config.window_container_behaviour.unwrap_or(WindowContainerBehaviour::Create)),
-                        |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
-                    ),
-                    opt_helpers::choose(
-                        "Window Hiding Behaviour",
-                        Some("Which Windows signal to use when hiding windows (default: Cloak)"),
-                        &HIDING_BEHAVIOUR_OPTIONS[..],
-                        Some(&self.window_hiding_behaviour),
-                        |selected| Message::ConfigChange(ConfigChange::WindowHidingBehaviour(selected)),
-                    ),
-                ],
-            )
-        } else {
-            Space::new(Shrink, Shrink).into()
-        }
+                    config.slow_application_compensation_time.and_then(|v| v.try_into().ok()).unwrap_or(20),
+                    |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
+                ),
+                opt_helpers::choose(
+                    "Unmanaged Window Behaviour",
+                    Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
+                    [OperationBehaviour::Op, OperationBehaviour::NoOp],
+                    Some(config.unmanaged_window_operation_behaviour.unwrap_or(OperationBehaviour::Op)),
+                    |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
+                ),
+                opt_helpers::choose(
+                    "Window Container Behaviour",
+                    Some("Determine what happens when a new window is opened (default: Create)"),
+                    [WindowContainerBehaviour::Create, WindowContainerBehaviour::Append],
+                    Some(config.window_container_behaviour.unwrap_or(WindowContainerBehaviour::Create)),
+                    |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
+                ),
+                opt_helpers::choose(
+                    "Window Hiding Behaviour",
+                    Some("Which Windows signal to use when hiding windows (default: Cloak)"),
+                    [HidingBehaviour::Cloak, HidingBehaviour::Hide, HidingBehaviour::Minimize],
+                    config.window_hiding_behaviour,
+                    |selected| Message::ConfigChange(ConfigChange::WindowHidingBehaviour(selected)),
+                ),
+            ],
+        )
     }
 }

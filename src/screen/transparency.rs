@@ -4,8 +4,8 @@ use crate::{widget::opt_helpers, BOLD_FONT};
 
 use iced::{
     padding,
-    widget::{button, column, container, horizontal_rule, row, text, Space},
-    Element, Fill, Shrink, Subscription, Task,
+    widget::{button, column, container, horizontal_rule, row, text},
+    Element, Fill, Subscription, Task,
 };
 use komorebi::config_generation::MatchingRule;
 use komorebi_client::StaticConfig;
@@ -91,33 +91,29 @@ impl Transparency {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: &'a Option<StaticConfig>) -> Element<'a, Message> {
-        if let Some(config) = config {
-            match self.screen {
-                Screen::Transparency => self.view_transparency(config),
-                Screen::TransparencyIgnoreRules => {
-                    let title = row![
-                        nav_button(
-                            text("Transparency"),
-                            Message::SetScreen(Screen::Transparency)
-                        ),
-                        text!(" > {}:", self.screen).size(20).font(*BOLD_FONT)
-                    ];
-                    let rules = get_rules_from_config(config);
-                    let content = self.rule.view(rules.as_ref()).map(Message::Rule);
-                    column![
-                        title,
-                        horizontal_rule(2.0),
-                        container(content)
-                            .width(Fill)
-                            .padding(padding::top(10).bottom(10))
-                    ]
-                    .spacing(10)
-                    .into()
-                }
+    pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
+        match self.screen {
+            Screen::Transparency => self.view_transparency(config),
+            Screen::TransparencyIgnoreRules => {
+                let title = row![
+                    nav_button(
+                        text("Transparency"),
+                        Message::SetScreen(Screen::Transparency)
+                    ),
+                    text!(" > {}:", self.screen).size(20).font(*BOLD_FONT)
+                ];
+                let rules = get_rules_from_config(config);
+                let content = self.rule.view(rules.as_ref()).map(Message::Rule);
+                column![
+                    title,
+                    horizontal_rule(2.0),
+                    container(content)
+                        .width(Fill)
+                        .padding(padding::top(10).bottom(10))
+                ]
+                .spacing(10)
+                .into()
             }
-        } else {
-            Space::new(Shrink, Shrink).into()
         }
     }
 

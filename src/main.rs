@@ -6,15 +6,16 @@ mod utils;
 mod widget;
 
 use crate::apperror::AppError;
+use crate::config::DEFAULT_CONFIG;
 use crate::screen::{border, general, monitors, rules, sidebar, stackbar, transparency, Screen};
 
 use std::sync::Arc;
 
-use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space, Space};
+use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
 use iced::{
     padding,
     widget::{column, container, horizontal_rule, row, scrollable, text, vertical_rule},
-    Center, Element, Fill, Font, Shrink, Subscription, Task, Theme,
+    Center, Element, Fill, Font, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
 
@@ -66,7 +67,6 @@ enum Message {
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
 }
 
-#[derive(Default)]
 struct Komofig {
     sidebar: sidebar::Sidebar,
     main_screen: Screen,
@@ -78,11 +78,34 @@ struct Komofig {
     stackbar: stackbar::Stackbar,
     transparency: transparency::Transparency,
     rules: rules::Rules,
-    config: Option<komorebi_client::StaticConfig>,
+    config: komorebi_client::StaticConfig,
+    has_loaded_config: bool,
     // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     theme: Option<Theme>,
+}
+
+impl Default for Komofig {
+    fn default() -> Self {
+        Self {
+            sidebar: Default::default(),
+            main_screen: Default::default(),
+            notifications: Default::default(),
+            komorebi_state: Default::default(),
+            monitors: monitors::Monitors::new(&DEFAULT_CONFIG, &None),
+            border: Default::default(),
+            general: Default::default(),
+            stackbar: Default::default(),
+            transparency: Default::default(),
+            rules: Default::default(),
+            config: DEFAULT_CONFIG.clone(),
+            has_loaded_config: Default::default(),
+            config_watcher_tx: Default::default(),
+            errors: Default::default(),
+            theme: Default::default(),
+        }
+    }
 }
 
 impl Komofig {
@@ -106,22 +129,18 @@ impl Komofig {
                 self.theme = Some(theme);
             }
             Message::Border(message) => {
-                if let Some(config) = &mut self.config {
-                    let (action, task) = self.border.update(message, config);
-                    let action_task = match action {
-                        border::Action::None => Task::none(),
-                    };
-                    return Task::batch([task.map(Message::Border), action_task]);
-                }
+                let (action, task) = self.border.update(message, &mut self.config);
+                let action_task = match action {
+                    border::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::General(message) => {
-                if let Some(config) = &mut self.config {
-                    let (action, task) = self.general.update(message, config);
-                    let action_task = match action {
-                        general::Action::None => Task::none(),
-                    };
-                    return Task::batch([task.map(Message::General), action_task]);
-                }
+                let (action, task) = self.general.update(message, &mut self.config);
+                let action_task = match action {
+                    general::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::General), action_task]);
             }
             Message::Monitors(message) => {
                 let (action, task) = self.monitors.update(message, &self.komorebi_state);
@@ -131,36 +150,30 @@ impl Komofig {
                 return Task::batch([task.map(Message::Monitors), action_task]);
             }
             Message::Stackbar(message) => {
-                if let Some(config) = self.config.as_mut() {
-                    if config.stackbar.is_none() {
-                        config.stackbar = Some(stackbar::default_stackbar_config());
-                    }
-                    if let Some(stackbar_config) = config.stackbar.as_mut() {
-                        let (action, task) = self.stackbar.update(stackbar_config, message);
-                        let action_task = match action {
-                            stackbar::Action::None => Task::none(),
-                        };
-                        return Task::batch([task.map(Message::Stackbar), action_task]);
-                    }
+                if self.config.stackbar.is_none() {
+                    self.config.stackbar = Some(stackbar::default_stackbar_config());
+                }
+                if let Some(stackbar_config) = self.config.stackbar.as_mut() {
+                    let (action, task) = self.stackbar.update(stackbar_config, message);
+                    let action_task = match action {
+                        stackbar::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::Stackbar), action_task]);
                 }
             }
             Message::Transparency(message) => {
-                if let Some(config) = &mut self.config {
-                    let (action, task) = self.transparency.update(message, config);
-                    let action_task = match action {
-                        transparency::Action::None => Task::none(),
-                    };
-                    return Task::batch([task.map(Message::Transparency), action_task]);
-                }
+                let (action, task) = self.transparency.update(message, &mut self.config);
+                let action_task = match action {
+                    transparency::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Transparency), action_task]);
             }
             Message::Rules(message) => {
-                if let Some(c) = &mut self.config {
-                    let (action, task) = self.rules.update(c, message);
-                    let action_task = match action {
-                        rules::Action::None => Task::none(),
-                    };
-                    return Task::batch([task.map(Message::Rules), action_task]);
-                }
+                let (action, task) = self.rules.update(&mut self.config, message);
+                let action_task = match action {
+                    rules::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
@@ -184,6 +197,7 @@ impl Komofig {
                 if let Some(notification) = Arc::into_inner(notification) {
                     self.notifications.push(Arc::from(notification.event));
                     self.komorebi_state = Some(Arc::from(notification.state));
+                    self.populate_monitors();
                 } else {
                     self.errors.push(AppError {
                         title: "Failed to get notification properly.".into(),
@@ -197,12 +211,9 @@ impl Komofig {
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
                     println!("Config Loaded: {config:#?}");
-                    // self.loaded_config = Some(Arc::new(config));
-                    if self.config.is_none() {
-                        self.populate_config_strs(&config);
-                        self.populate_monitors(&config);
-                        self.config = Some(config);
-                    }
+                    self.config = config;
+                    self.populate_monitors();
+                    self.has_loaded_config = true;
                     //TODO: show message on app to load external changes
                 }
             }
@@ -238,7 +249,7 @@ impl Komofig {
                         container(
                             text!(
                                 "Config was {} loaded from \"{}\"!",
-                                if self.config.is_some() {
+                                if self.has_loaded_config {
                                     "successfully"
                                 } else {
                                     "not"
@@ -265,29 +276,16 @@ impl Komofig {
             Screen::Workspaces(_) => todo!(),
             Screen::Workspace(_, _) => todo!(),
             // Screen::Border => center(text("Border").size(50)).into(),
-            Screen::Border => {
-                self.border.view(self.config.as_ref()).map(Message::Border)
-            }
-            Screen::Stackbar => {
-                if let Some(config) = self.config.as_ref() {
-                    self.stackbar
-                        .view(config.stackbar.as_ref())
-                        .map(Message::Stackbar)
-                } else {
-                    Space::new(Shrink, Shrink).into()
-                }
-            }
+            Screen::Border => self.border.view(&self.config).map(Message::Border),
+            Screen::Stackbar => self
+                .stackbar
+                .view(self.config.stackbar.as_ref())
+                .map(Message::Stackbar),
             Screen::Transparency => self
                 .transparency
                 .view(&self.config)
                 .map(Message::Transparency),
-            Screen::Rules => {
-                if let Some(config) = &self.config {
-                    self.rules.view(config).map(Message::Rules)
-                } else {
-                    Space::new(Shrink, Shrink).into()
-                }
-            }
+            Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
             Screen::Debug => {
                 let notifications = scrollable(
                     self.notifications
@@ -378,25 +376,7 @@ impl Komofig {
         }
     }
 
-    fn populate_config_strs(&mut self, config: &komorebi::StaticConfig) {
-        let general = general::General {
-            global_work_area_offset_expanded: false,
-            global_work_area_offset_hovered: false,
-            cross_boundary_behaviour: config
-                .cross_boundary_behaviour
-                .unwrap_or(komorebi::CrossBoundaryBehaviour::Monitor)
-                .to_string()
-                .into(),
-            window_hiding_behaviour: config
-                .window_hiding_behaviour
-                .unwrap_or(komorebi::HidingBehaviour::Cloak)
-                .to_string()
-                .into(),
-        };
-        self.general = general;
-    }
-
-    fn populate_monitors(&mut self, config: &komorebi::StaticConfig) {
-        self.monitors = monitors::Monitors::new(config);
+    fn populate_monitors(&mut self) {
+        self.monitors = monitors::Monitors::new(&self.config, &self.komorebi_state);
     }
 }

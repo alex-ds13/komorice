@@ -1,5 +1,5 @@
-use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers;
+use crate::widget::opt_helpers::description_text as t;
 
 use iced::{Element, Task};
 use komorebi::{BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig};
@@ -198,12 +198,8 @@ impl Border {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: Option<&'a StaticConfig>) -> Element<'a, Message> {
-        let config = if let Some(config) = config {
-            border_config_from_static(config)
-        } else {
-            default_border_config()
-        };
+    pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
+        let config = border_config_from_static(config);
         opt_helpers::section_view(
             "Border:",
             [
@@ -358,17 +354,6 @@ fn border_config_from_static_mut(config: &mut StaticConfig) -> BorderConfigMut {
         border_style: &mut config.border_style,
         border_width: &mut config.border_width,
         border_offset: &mut config.border_offset,
-    }
-}
-
-pub fn default_border_config() -> BorderConfig<'static> {
-    BorderConfig {
-        border: None,
-        border_colours: None,
-        border_implementation: None,
-        border_style: None,
-        border_width: None,
-        border_offset: None,
     }
 }
 
