@@ -150,7 +150,7 @@ pub enum Action {
     None,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Rule {
     pub show_new_rule: bool,
     pub new_rule: Vec<IdWithIdentifier>,
