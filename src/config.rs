@@ -7,13 +7,88 @@ use std::time::Duration;
 use async_std::channel::{self, Receiver};
 use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
-use komorebi::{MonitorConfig, WorkspaceConfig};
-use komorebi_client::StaticConfig;
+use komorebi_client::{
+    AnimationStyle, AnimationsConfig, BorderColours, BorderImplementation, BorderStyle, Colour,
+    CrossBoundaryBehaviour, HidingBehaviour, MonitorConfig, MoveBehaviour, OperationBehaviour,
+    PerAnimationPrefixConfig, Rgb, StackbarConfig, StackbarLabel, StackbarMode, StaticConfig,
+    TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
+};
 use notify_debouncer_mini::{
     new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
+use lazy_static::lazy_static;
+
+lazy_static!{
+    pub static ref DEFAULT_CONFIG: StaticConfig = StaticConfig {
+        invisible_borders: None,
+        minimum_window_width: None,
+        minimum_window_height: None,
+        resize_delta: Some(50),
+        window_container_behaviour: Some(WindowContainerBehaviour::Create),
+        float_override: Some(false),
+        cross_monitor_move_behaviour: Some(MoveBehaviour::Swap),
+        cross_boundary_behaviour: Some(CrossBoundaryBehaviour::Monitor),
+        unmanaged_window_operation_behaviour: Some(OperationBehaviour::Op),
+        focus_follows_mouse: None,
+        mouse_follows_focus: Some(true),
+        app_specific_configuration_path: None,
+        border_width: Some(8),
+        border_offset: Some(-1),
+        border: Some(false),
+        border_colours: Some(BorderColours {
+            single: Some(Colour::Rgb(Rgb::new(66, 165, 245))),
+            stack: Some(Colour::Rgb(Rgb::new(0, 165, 66))),
+            monocle: Some(Colour::Rgb(Rgb::new(255, 51, 153))),
+            floating: Some(Colour::Rgb(Rgb::new(245, 245, 165))),
+            unfocused: Some(Colour::Rgb(Rgb::new(128, 128, 128))),
+        }),
+        border_style: Some(BorderStyle::default()),
+        border_z_order: None,
+        border_implementation: Some(BorderImplementation::default()),
+        transparency: Some(false),
+        transparency_alpha: Some(200),
+        transparency_ignore_rules: None,
+        default_workspace_padding: Some(10),
+        default_container_padding: Some(10),
+        monitors: Some(Vec::new()),
+        window_hiding_behaviour: Some(HidingBehaviour::Cloak),
+        global_work_area_offset: None,
+        ignore_rules: None,
+        manage_rules: None,
+        floating_applications: None,
+        border_overflow_applications: None,
+        tray_and_multi_window_applications: None,
+        layered_applications: None,
+        object_name_change_applications: None,
+        monitor_index_preferences: None,
+        display_index_preferences: None,
+        stackbar: Some(StackbarConfig {
+            height: Some(40),
+            label: Some(StackbarLabel::Process),
+            mode: Some(StackbarMode::OnStack),
+            tabs: Some(TabsConfig {
+                width: Some(200),
+                focused_text: Some(Colour::Rgb(Rgb::new(0xFF, 0xFF, 0xFF))),
+                unfocused_text: Some(Colour::Rgb(Rgb::new(0xB3, 0xB3, 0xB3))),
+                background: Some(Colour::Rgb(Rgb::new(0x33, 0x33, 0x33))),
+                font_family: None,
+                font_size: Some(0),
+            }),
+        }),
+        animation: Some(AnimationsConfig {
+            enabled: PerAnimationPrefixConfig::Global(false),
+            duration: Some(PerAnimationPrefixConfig::Global(250)),
+            style: Some(PerAnimationPrefixConfig::Global(AnimationStyle::Linear)),
+            fps: Some(60),
+        }),
+        theme: None,
+        slow_application_identifiers: None,
+        slow_application_compensation_time: Some(20),
+        bar_configurations: None,
+    };
+}
 
 trait ChangeConfig {
     fn change_config(&mut self, mut f: impl FnMut(&mut Self)) {
