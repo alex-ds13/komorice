@@ -59,13 +59,15 @@ pub enum OverrideConfig {
     WorkspacePadding(bool),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum Screen {
+    #[default]
     Workspace,
     WorkspaceRules,
     InitialWorkspaceRules,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Workspace {
     pub index: usize,
     pub screen: Screen,
@@ -77,23 +79,6 @@ pub struct Workspace {
     pub new_layout_rule_layout: Layout,
     pub workspace_rules_hovered: bool,
     pub initial_workspace_rules_hovered: bool,
-}
-
-impl Default for Workspace {
-    fn default() -> Self {
-        Self {
-            index: Default::default(),
-            screen: Screen::Workspace,
-            rule: Default::default(),
-            is_hovered: Default::default(),
-            layout_rules_expanded: Default::default(),
-            layout_rules_hovered: Default::default(),
-            new_layout_rule_limit: Default::default(),
-            new_layout_rule_layout: Layout::BSP,
-            workspace_rules_hovered: Default::default(),
-            initial_workspace_rules_hovered: Default::default(),
-        }
-    }
 }
 
 pub trait WorkspaceScreen {
