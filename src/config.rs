@@ -74,7 +74,7 @@ lazy_static!{
                 unfocused_text: Some(Colour::Rgb(Rgb::new(0xB3, 0xB3, 0xB3))),
                 background: Some(Colour::Rgb(Rgb::new(0x33, 0x33, 0x33))),
                 font_family: None,
-                font_size: Some(0),
+                font_size: None,
             }),
         }),
         animation: Some(AnimationsConfig {
