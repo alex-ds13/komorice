@@ -196,8 +196,12 @@ impl Komofig {
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
                     self.notifications.push(Arc::from(notification.event));
+                    let should_update_monitors = notification.state.monitors.elements().len()
+                        != self.monitors.monitors.len();
                     self.komorebi_state = Some(Arc::from(notification.state));
-                    self.populate_monitors();
+                    if should_update_monitors {
+                        self.populate_monitors();
+                    }
                 } else {
                     self.errors.push(AppError {
                         title: "Failed to get notification properly.".into(),
