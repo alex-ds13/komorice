@@ -30,8 +30,9 @@ lazy_static! {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Layout {
+    #[default]
     BSP,
     VerticalStack,
     RightMainVerticalStack,
