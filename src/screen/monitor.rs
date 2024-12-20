@@ -8,7 +8,12 @@ use iced::{
     widget::{button, row, text},
     Element, Subscription, Task,
 };
-use komorebi::MonitorConfig;
+use komorebi_client::{DefaultLayout, MonitorConfig, WorkspaceConfig};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref DEFAULT_MONITOR: Monitor = Default::default();
+}
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -50,6 +55,7 @@ pub enum SubScreen {
     InitialWorkspaceRules(usize),
 }
 
+#[derive(Clone, Debug)]
 pub struct Monitor {
     pub index: usize,
     pub sub_screen: SubScreen,
@@ -60,6 +66,40 @@ pub struct Monitor {
     pub work_area_offset_hovered: bool,
     pub workspaces_button_hovered: bool,
     pub workspaces: HashMap<usize, workspace::Workspace>,
+}
+
+impl Default for Monitor {
+    fn default() -> Self {
+        Self {
+            index: Default::default(),
+            sub_screen: Default::default(),
+            config: MonitorConfig {
+                workspaces: vec![WorkspaceConfig {
+                    name: String::new(),
+                    layout: Some(DefaultLayout::BSP),
+                    custom_layout: None,
+                    layout_rules: None,
+                    custom_layout_rules: None,
+                    container_padding: None,
+                    workspace_padding: None,
+                    initial_workspace_rules: None,
+                    workspace_rules: None,
+                    apply_window_based_work_area_offset: None,
+                    window_container_behaviour: None,
+                    float_override: None,
+                }],
+                work_area_offset: None,
+                window_based_work_area_offset: None,
+                window_based_work_area_offset_limit: None,
+            },
+            window_based_work_area_offset_expanded: Default::default(),
+            window_based_work_area_offset_hovered: Default::default(),
+            work_area_offset_expanded: Default::default(),
+            work_area_offset_hovered: Default::default(),
+            workspaces_button_hovered: Default::default(),
+            workspaces: HashMap::from([(0, workspace::Workspace::new(0))]),
+        }
+    }
 }
 
 impl Monitor {
