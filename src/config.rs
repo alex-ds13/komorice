@@ -13,14 +13,14 @@ use komorebi_client::{
     PerAnimationPrefixConfig, Rgb, StackbarConfig, StackbarLabel, StackbarMode, StaticConfig,
     TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
 };
+use lazy_static::lazy_static;
 use notify_debouncer_mini::{
     new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
-use lazy_static::lazy_static;
 
-lazy_static!{
+lazy_static! {
     pub static ref DEFAULT_CONFIG: StaticConfig = StaticConfig {
         invisible_borders: None,
         minimum_window_width: None,

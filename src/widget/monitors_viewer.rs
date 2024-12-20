@@ -21,10 +21,10 @@ pub struct Monitors<'a, Message> {
 }
 
 impl<'a, Message> Monitors<'a, Message> {
-    /// The default size of a [`Checkbox`].
+    ///// The default size of a [`Checkbox`].
     // const DEFAULT_SIZE: f32 = 16.0;
 
-    /// The default spacing of a [`Checkbox`].
+    ///// The default spacing of a [`Checkbox`].
     // const DEFAULT_SPACING: f32 = 8.0;
 
     /// The default padding of a monitor rectangle
@@ -76,7 +76,7 @@ impl<'a, Message> Monitors<'a, Message> {
 //     origin_point: Point,
 // }
 
-impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Monitors<'a, Message>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Monitors<'_, Message>
 where
     Renderer: iced::advanced::text::Renderer,
     // Renderer: iced::advanced::Renderer,

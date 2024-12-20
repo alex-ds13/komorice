@@ -649,8 +649,8 @@ pub fn toggle_with_disable_default_no_option<'a, Message: 'a + Clone>(
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_c = on_toggle.clone();
-    let on_toggle_maybe = (!matches!(&disable_args, Some(args) if args.disable))
-        .then_some(move |v| on_toggle(v));
+    let on_toggle_maybe =
+        (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
     let is_dirty = value != default_value;
     let label = if is_dirty {
         let on_default = (on_toggle_c)(default_value);
