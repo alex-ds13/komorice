@@ -15,6 +15,7 @@ use iced::{
     Length::{Fill, Shrink},
     Subscription, Task,
 };
+use komorebi_client::MonitorConfig;
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -51,7 +52,6 @@ impl Monitors {
                         monitor::Monitor {
                             index,
                             sub_screen: monitor::SubScreen::Monitor,
-                            config: m.clone(),
                             window_based_work_area_offset_expanded: false,
                             window_based_work_area_offset_hovered: false,
                             work_area_offset_expanded: false,
@@ -87,6 +87,7 @@ impl Monitors {
         &mut self,
         message: Message,
         komorebi_state: &Option<Arc<komorebi_client::State>>,
+        monitors_config: &mut [MonitorConfig],
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
@@ -104,10 +105,12 @@ impl Monitors {
                 }
             }
             Message::MonitorConfigChanged(idx, message) => {
-                if let Some(m) = self.monitors.get_mut(&idx) {
+                if let (Some(m), Some(m_config)) =
+                    (self.monitors.get_mut(&idx), monitors_config.get_mut(idx))
+                {
                     return (
                         Action::None,
-                        m.update(message)
+                        m.update(message, m_config)
                             .map(move |message| Message::MonitorConfigChanged(idx, message)),
                     );
                 }
@@ -128,6 +131,7 @@ impl Monitors {
     pub fn view<'a>(
         &'a self,
         komorebi_state: &'a Option<Arc<komorebi_client::State>>,
+        monitors_config: &'a [MonitorConfig],
     ) -> Element<'a, Message> {
         let title = text("Monitors:").size(20).font(*BOLD_FONT);
         let monitors: Element<Message> =
@@ -147,13 +151,18 @@ impl Monitors {
                     .style(container::rounded_box);
                 col = col.push(m);
 
-                if let Some((Some(device), Some(monitor))) = self
-                    .monitor_to_config
-                    .map(|idx| (state.monitors.elements().get(idx), self.monitors.get(&idx)))
+                if let Some((Some(device), Some(monitor), Some(m_config))) =
+                    self.monitor_to_config.map(|idx| {
+                        (
+                            state.monitors.elements().get(idx),
+                            self.monitors.get(&idx),
+                            monitors_config.get(idx),
+                        )
+                    })
                 {
                     let monitor_idx = self.monitor_to_config.expect("unreachable");
                     col =
-                        col.push(monitor.view().map(move |message| {
+                        col.push(monitor.view(m_config).map(move |message| {
                             Message::MonitorConfigChanged(monitor_idx, message)
                         }));
                     col = col.push(horizontal_rule(2.0));

@@ -64,6 +64,7 @@ enum Message {
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
+    FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
 }
 
@@ -114,7 +115,7 @@ impl Komofig {
             Self::default(),
             Task::perform(config::load(), |res| match res {
                 Ok(config) => Message::LoadedConfig(Arc::new(config)),
-                Err(apperror) => Message::AppError(apperror),
+                Err(apperror) => Message::FailedToLoadConfig(apperror),
             }),
         )
     }
@@ -143,11 +144,15 @@ impl Komofig {
                 return Task::batch([task.map(Message::General), action_task]);
             }
             Message::Monitors(message) => {
-                let (action, task) = self.monitors.update(message, &self.komorebi_state);
-                let action_task = match action {
-                    monitors::Action::None => Task::none(),
-                };
-                return Task::batch([task.map(Message::Monitors), action_task]);
+                if let Some(monitors_config) = &mut self.config.monitors {
+                    let (action, task) =
+                        self.monitors
+                            .update(message, &self.komorebi_state, monitors_config);
+                    let action_task = match action {
+                        monitors::Action::None => Task::none(),
+                    };
+                    return Task::batch([task.map(Message::Monitors), action_task]);
+                }
             }
             Message::Stackbar(message) => {
                 if self.config.stackbar.is_none() {
@@ -221,6 +226,13 @@ impl Komofig {
                     //TODO: show message on app to load external changes
                 }
             }
+            Message::FailedToLoadConfig(apperror) => {
+                // We still need to populate the monitors config according to the actual physical
+                // amount of monitors.
+                self.populate_monitors();
+                println!("Received AppError: {apperror:#?}");
+                self.errors.push(apperror);
+            }
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }
@@ -272,10 +284,15 @@ impl Komofig {
                 .into()
             }
             Screen::General => self.general.view(&self.config).map(Message::General),
-            Screen::Monitors => self
-                .monitors
-                .view(&self.komorebi_state)
-                .map(Message::Monitors),
+            Screen::Monitors => {
+                if let Some(monitors_config) = &self.config.monitors {
+                    self.monitors
+                        .view(&self.komorebi_state, monitors_config)
+                        .map(Message::Monitors)
+                } else {
+                    iced::widget::horizontal_space().into()
+                }
+            }
             Screen::Monitor(_) => todo!(),
             Screen::Workspaces(_) => todo!(),
             Screen::Workspace(_, _) => todo!(),
@@ -380,7 +397,42 @@ impl Komofig {
         }
     }
 
+    /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
+    /// in case the loaded config doesn't have it already.
     fn populate_monitors(&mut self) {
+        if self.config.monitors.is_none() {
+            self.config.monitors = self
+                .komorebi_state
+                .as_ref()
+                .map_or(Some(Vec::new()), |state| {
+                    Some(
+                        state
+                            .monitors
+                            .elements()
+                            .iter()
+                            .map(|_| komorebi_client::MonitorConfig {
+                                workspaces: vec![komorebi_client::WorkspaceConfig {
+                                    name: String::new(),
+                                    layout: Some(komorebi_client::DefaultLayout::BSP),
+                                    custom_layout: None,
+                                    layout_rules: None,
+                                    custom_layout_rules: None,
+                                    container_padding: None,
+                                    workspace_padding: None,
+                                    initial_workspace_rules: None,
+                                    workspace_rules: None,
+                                    apply_window_based_work_area_offset: None,
+                                    window_container_behaviour: None,
+                                    float_override: None,
+                                }],
+                                work_area_offset: None,
+                                window_based_work_area_offset: None,
+                                window_based_work_area_offset_limit: None,
+                            })
+                            .collect(),
+                    )
+                });
+        }
         self.monitors = monitors::Monitors::new(&self.config, &self.komorebi_state);
     }
 }

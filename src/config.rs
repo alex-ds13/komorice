@@ -52,7 +52,7 @@ lazy_static! {
         transparency_ignore_rules: None,
         default_workspace_padding: Some(10),
         default_container_padding: Some(10),
-        monitors: Some(Vec::new()),
+        monitors: None,
         window_hiding_behaviour: Some(HidingBehaviour::Cloak),
         global_work_area_offset: None,
         ignore_rules: None,

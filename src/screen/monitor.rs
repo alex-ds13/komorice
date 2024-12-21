@@ -8,7 +8,7 @@ use iced::{
     widget::{button, row, text},
     Element, Subscription, Task,
 };
-use komorebi_client::{DefaultLayout, MonitorConfig, WorkspaceConfig};
+use komorebi_client::{MonitorConfig, WorkspaceConfig};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -55,11 +55,10 @@ pub enum SubScreen {
     InitialWorkspaceRules(usize),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Monitor {
     pub index: usize,
     pub sub_screen: SubScreen,
-    pub config: MonitorConfig,
     pub window_based_work_area_offset_expanded: bool,
     pub window_based_work_area_offset_hovered: bool,
     pub work_area_offset_expanded: bool,
@@ -68,52 +67,18 @@ pub struct Monitor {
     pub workspaces: HashMap<usize, workspace::Workspace>,
 }
 
-impl Default for Monitor {
-    fn default() -> Self {
-        Self {
-            index: Default::default(),
-            sub_screen: Default::default(),
-            config: MonitorConfig {
-                workspaces: vec![WorkspaceConfig {
-                    name: String::new(),
-                    layout: Some(DefaultLayout::BSP),
-                    custom_layout: None,
-                    layout_rules: None,
-                    custom_layout_rules: None,
-                    container_padding: None,
-                    workspace_padding: None,
-                    initial_workspace_rules: None,
-                    workspace_rules: None,
-                    apply_window_based_work_area_offset: None,
-                    window_container_behaviour: None,
-                    float_override: None,
-                }],
-                work_area_offset: None,
-                window_based_work_area_offset: None,
-                window_based_work_area_offset_limit: None,
-            },
-            window_based_work_area_offset_expanded: Default::default(),
-            window_based_work_area_offset_hovered: Default::default(),
-            work_area_offset_expanded: Default::default(),
-            work_area_offset_hovered: Default::default(),
-            workspaces_button_hovered: Default::default(),
-            workspaces: HashMap::from([(0, workspace::Workspace::new(0))]),
-        }
-    }
-}
-
 impl Monitor {
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    pub fn update(&mut self, message: Message, config: &mut MonitorConfig) -> Task<Message> {
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::WindowBasedWorkAreaOffset(rect) => {
-                    self.config.window_based_work_area_offset = rect;
+                    config.window_based_work_area_offset = rect;
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetTop(value) => {
-                    if let Some(offset) = &mut self.config.window_based_work_area_offset {
+                    if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.top = value;
                     } else {
-                        self.config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: value,
                             right: 0,
@@ -122,10 +87,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetBottom(value) => {
-                    if let Some(offset) = &mut self.config.window_based_work_area_offset {
+                    if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.bottom = value;
                     } else {
-                        self.config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: 0,
                             right: 0,
@@ -134,10 +99,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetRight(value) => {
-                    if let Some(offset) = &mut self.config.window_based_work_area_offset {
+                    if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.right = value;
                     } else {
-                        self.config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: 0,
                             right: value,
@@ -146,10 +111,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetLeft(value) => {
-                    if let Some(offset) = &mut self.config.window_based_work_area_offset {
+                    if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.left = value;
                     } else {
-                        self.config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(komorebi::Rect {
                             left: value,
                             top: 0,
                             right: 0,
@@ -158,17 +123,17 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WindowBasedWorkAreaOffsetLimit(limit) => {
-                    self.config.window_based_work_area_offset_limit =
+                    config.window_based_work_area_offset_limit =
                         Some(limit.try_into().unwrap_or_default());
                 }
                 ConfigChange::WorkAreaOffset(rect) => {
-                    self.config.work_area_offset = rect;
+                    config.work_area_offset = rect;
                 }
                 ConfigChange::WorkAreaOffsetTop(value) => {
-                    if let Some(offset) = &mut self.config.work_area_offset {
+                    if let Some(offset) = &mut config.work_area_offset {
                         offset.top = value;
                     } else {
-                        self.config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: value,
                             right: 0,
@@ -177,10 +142,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WorkAreaOffsetBottom(value) => {
-                    if let Some(offset) = &mut self.config.work_area_offset {
+                    if let Some(offset) = &mut config.work_area_offset {
                         offset.bottom = value;
                     } else {
-                        self.config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: 0,
                             right: 0,
@@ -189,10 +154,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WorkAreaOffsetRight(value) => {
-                    if let Some(offset) = &mut self.config.work_area_offset {
+                    if let Some(offset) = &mut config.work_area_offset {
                         offset.right = value;
                     } else {
-                        self.config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(komorebi::Rect {
                             left: 0,
                             top: 0,
                             right: value,
@@ -201,10 +166,10 @@ impl Monitor {
                     }
                 }
                 ConfigChange::WorkAreaOffsetLeft(value) => {
-                    if let Some(offset) = &mut self.config.work_area_offset {
+                    if let Some(offset) = &mut config.work_area_offset {
                         offset.left = value;
                     } else {
-                        self.config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(komorebi::Rect {
                             left: value,
                             top: 0,
                             right: 0,
@@ -228,7 +193,7 @@ impl Monitor {
             }
             Message::Workspace(idx, message) => {
                 if let (Some(workspace_config), Some(workspace)) = (
-                    self.config.workspaces.get_mut(idx),
+                    config.workspaces.get_mut(idx),
                     self.workspaces.get_mut(&idx),
                 ) {
                     let (action, task) = workspace_config.update(workspace, message);
@@ -287,17 +252,21 @@ impl Monitor {
         Task::none()
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view<'a>(&'a self, config: &'a MonitorConfig) -> Element<'a, Message> {
         match self.sub_screen {
-            SubScreen::Monitor => self.monitor_view(),
-            SubScreen::Workspaces => self.workspaces_view(),
-            SubScreen::Workspace(idx) => self.workspace_view(idx),
-            SubScreen::WorkspaceRules(idx) => self.workspace_rules_view(idx),
-            SubScreen::InitialWorkspaceRules(idx) => self.initial_workspace_rules_view(idx),
+            SubScreen::Monitor => self.monitor_view(config),
+            SubScreen::Workspaces => self.workspaces_view(&config.workspaces),
+            SubScreen::Workspace(idx) => self.workspace_view(idx, &config.workspaces[idx]),
+            SubScreen::WorkspaceRules(idx) => {
+                self.workspace_rules_view(idx, &config.workspaces[idx])
+            }
+            SubScreen::InitialWorkspaceRules(idx) => {
+                self.initial_workspace_rules_view(idx, &config.workspaces[idx])
+            }
         }
     }
 
-    pub fn monitor_view(&self) -> Element<Message> {
+    pub fn monitor_view(&self, config: &MonitorConfig) -> Element<Message> {
         opt_helpers::sub_section_view(
             text!("Monitor [{}]:", self.index).size(18).into(),
             [
@@ -308,25 +277,25 @@ impl Monitor {
                         opt_helpers::number(
                             "left",
                             None,
-                            self.config.window_based_work_area_offset.map_or(0, |r| r.left),
+                            config.window_based_work_area_offset.map_or(0, |r| r.left),
                             move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
                         ),
                         opt_helpers::number(
                             "top",
                             None,
-                            self.config.window_based_work_area_offset.map_or(0, |r| r.top),
+                            config.window_based_work_area_offset.map_or(0, |r| r.top),
                             move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
                         ),
                         opt_helpers::number(
                             "bottom",
                             None,
-                            self.config.window_based_work_area_offset.map_or(0, |r| r.bottom),
+                            config.window_based_work_area_offset.map_or(0, |r| r.bottom),
                             move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
                         ),
                         opt_helpers::number(
                             "right",
                             None,
-                            self.config.window_based_work_area_offset.map_or(0, |r| r.right),
+                            config.window_based_work_area_offset.map_or(0, |r| r.right),
                             move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
                         ),
                     ],
@@ -334,10 +303,10 @@ impl Monitor {
                     self.window_based_work_area_offset_hovered,
                     Message::ToggleWindowBasedWorkAreaOffsetExpand,
                     Message::ToggleWindowBasedWorkAreaOffsetHover,
-                    self.config.window_based_work_area_offset.is_some(),
+                    config.window_based_work_area_offset.is_some(),
                     Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
                     Some(opt_helpers::DisableArgs {
-                        disable: self.config.window_based_work_area_offset.is_none(),
+                        disable: config.window_based_work_area_offset.is_none(),
                         label: Some("Global"),
                         on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
                     }),
@@ -345,7 +314,7 @@ impl Monitor {
                 opt_helpers::number_with_disable_default(
                     "Window Based Work Area Offset Limit",
                     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
-                    self.config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+                    config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
                     1,
                     move |value| {
                         Message::ConfigChange(
@@ -361,25 +330,25 @@ impl Monitor {
                         opt_helpers::number(
                             "left",
                             None,
-                            self.config.work_area_offset.map_or(0, |r| r.left),
+                            config.work_area_offset.map_or(0, |r| r.left),
                             move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetLeft(value)),
                         ),
                         opt_helpers::number(
                             "top",
                             None,
-                            self.config.work_area_offset.map_or(0, |r| r.top),
+                            config.work_area_offset.map_or(0, |r| r.top),
                             move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetTop(value)),
                         ),
                         opt_helpers::number(
                             "bottom",
                             None,
-                            self.config.work_area_offset.map_or(0, |r| r.bottom),
+                            config.work_area_offset.map_or(0, |r| r.bottom),
                             move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetBottom(value)),
                         ),
                         opt_helpers::number(
                             "right",
                             None,
-                            self.config.work_area_offset.map_or(0, |r| r.right),
+                            config.work_area_offset.map_or(0, |r| r.right),
                             move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
                         ),
                     ],
@@ -387,10 +356,10 @@ impl Monitor {
                     self.work_area_offset_hovered,
                     Message::ToggleWorkAreaOffsetExpand,
                     Message::ToggleWorkAreaOffsetHover,
-                    self.config.work_area_offset.is_some(),
+                    config.work_area_offset.is_some(),
                     Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
                     Some(opt_helpers::DisableArgs {
-                        disable: self.config.work_area_offset.is_none(),
+                        disable: config.work_area_offset.is_none(),
                         label: Some("Global"),
                         on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
                     }),
@@ -406,7 +375,7 @@ impl Monitor {
         )
     }
 
-    pub fn workspaces_view(&self) -> Element<Message> {
+    pub fn workspaces_view(&self, workspaces: &[WorkspaceConfig]) -> Element<Message> {
         opt_helpers::sub_section_view(
             row![
                 nav_button(
@@ -416,7 +385,7 @@ impl Monitor {
                 text("> Workspaces").size(18)
             ]
             .into(),
-            self.config.workspaces.iter().enumerate().map(|(i, w)| {
+            workspaces.iter().enumerate().map(|(i, w)| {
                 let title = text!("Workspace [{}] - \"{}\":", i, w.name);
                 opt_helpers::opt_button(
                     title,
@@ -429,7 +398,11 @@ impl Monitor {
         )
     }
 
-    pub fn workspace_view(&self, idx: usize) -> Element<Message> {
+    pub fn workspace_view<'a>(
+        &'a self,
+        idx: usize,
+        workspace: &'a WorkspaceConfig,
+    ) -> Element<'a, Message> {
         opt_helpers::sub_section_view(
             row![
                 nav_button(
@@ -437,21 +410,20 @@ impl Monitor {
                     Message::SetSubScreenMonitor
                 ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                text!(
-                    " > Workspace [{}] - \"{}\"",
-                    idx,
-                    self.config.workspaces[idx].name
-                )
-                .size(18),
+                text!(" > Workspace [{}] - \"{}\"", idx, workspace.name).size(18),
             ]
             .into(),
-            [self.config.workspaces[idx]
+            [workspace
                 .view(&self.workspaces[&idx])
                 .map(move |m| Message::Workspace(idx, m))],
         )
     }
 
-    pub fn workspace_rules_view(&self, idx: usize) -> Element<Message> {
+    pub fn workspace_rules_view<'a>(
+        &'a self,
+        idx: usize,
+        workspace: &'a WorkspaceConfig,
+    ) -> Element<'a, Message> {
         opt_helpers::sub_section_view(
             row![
                 nav_button(
@@ -460,23 +432,23 @@ impl Monitor {
                 ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
                 nav_button(
-                    text!(
-                        " > Workspace [{}] - \"{}\"",
-                        idx,
-                        self.config.workspaces[idx].name
-                    ),
+                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.name),
                     Message::SetSubScreenWorkspace(idx)
                 ),
                 text("> Workspace Rules").size(18),
             ]
             .into(),
-            [self.config.workspaces[idx]
+            [workspace
                 .view(&self.workspaces[&idx])
                 .map(move |m| Message::Workspace(idx, m))],
         )
     }
 
-    pub fn initial_workspace_rules_view(&self, idx: usize) -> Element<Message> {
+    pub fn initial_workspace_rules_view<'a>(
+        &'a self,
+        idx: usize,
+        workspace: &'a WorkspaceConfig,
+    ) -> Element<'a, Message> {
         opt_helpers::sub_section_view(
             row![
                 nav_button(
@@ -485,17 +457,13 @@ impl Monitor {
                 ),
                 nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
                 nav_button(
-                    text!(
-                        " > Workspace [{}] - \"{}\"",
-                        idx,
-                        self.config.workspaces[idx].name
-                    ),
+                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.name),
                     Message::SetSubScreenWorkspace(idx)
                 ),
                 text("> Initial Workspace Rules").size(18),
             ]
             .into(),
-            [self.config.workspaces[idx]
+            [workspace
                 .view(&self.workspaces[&idx])
                 .map(move |m| Message::Workspace(idx, m))],
         )
