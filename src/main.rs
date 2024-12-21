@@ -66,6 +66,10 @@ enum Message {
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
+
+    // Config related Messages
+    DiscardChanges,
+    Save,
 }
 
 struct Komofig {
@@ -81,7 +85,8 @@ struct Komofig {
     rules: rules::Rules,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
-    // loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
+    loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
+    is_dirty: bool,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     theme: Option<Theme>,
@@ -102,6 +107,8 @@ impl Default for Komofig {
             rules: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
+            loaded_config: Default::default(),
+            is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
             errors: Default::default(),
             theme: Default::default(),
@@ -134,6 +141,7 @@ impl Komofig {
                 let action_task = match action {
                     border::Action::None => Task::none(),
                 };
+                self.check_changes();
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::General(message) => {
@@ -141,6 +149,7 @@ impl Komofig {
                 let action_task = match action {
                     general::Action::None => Task::none(),
                 };
+                self.check_changes();
                 return Task::batch([task.map(Message::General), action_task]);
             }
             Message::Monitors(message) => {
@@ -151,6 +160,7 @@ impl Komofig {
                     let action_task = match action {
                         monitors::Action::None => Task::none(),
                     };
+                    self.check_changes();
                     return Task::batch([task.map(Message::Monitors), action_task]);
                 }
             }
@@ -163,6 +173,7 @@ impl Komofig {
                     let action_task = match action {
                         stackbar::Action::None => Task::none(),
                     };
+                    self.check_changes();
                     return Task::batch([task.map(Message::Stackbar), action_task]);
                 }
             }
@@ -171,6 +182,7 @@ impl Komofig {
                 let action_task = match action {
                     transparency::Action::None => Task::none(),
                 };
+                self.check_changes();
                 return Task::batch([task.map(Message::Transparency), action_task]);
             }
             Message::Rules(message) => {
@@ -178,6 +190,7 @@ impl Komofig {
                 let action_task = match action {
                     rules::Action::None => Task::none(),
                 };
+                self.check_changes();
                 return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
@@ -220,9 +233,11 @@ impl Komofig {
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
                     println!("Config Loaded: {config:#?}");
-                    self.config = config;
+                    self.config = config.clone();
                     self.populate_monitors();
                     self.has_loaded_config = true;
+                    self.loaded_config = Some(Arc::new(config));
+                    self.is_dirty = false;
                     //TODO: show message on app to load external changes
                 }
             }
@@ -235,6 +250,20 @@ impl Komofig {
             }
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
+            }
+            Message::Save => {
+                return Task::future(config::save(self.config.clone()))
+                    .map(|res| res.err())
+                    .and_then(|err| Task::done(Message::AppError(err)));
+            }
+            Message::DiscardChanges => {
+                if let Some(loaded) = &self.loaded_config {
+                    self.config = (**loaded).clone();
+                } else {
+                    self.config = DEFAULT_CONFIG.clone();
+                }
+                self.populate_monitors();
+                self.is_dirty = false;
             }
         }
         Task::none()
@@ -349,8 +378,9 @@ impl Komofig {
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
         let save_buttons = row![
             horizontal_space(),
-            button("Save"),
-            button("Discard Changes"),
+            button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save)),
+            button("Discard Changes")
+                .on_press_maybe(self.is_dirty.then_some(Message::DiscardChanges)),
         ]
         .spacing(10)
         .width(Fill);
@@ -434,5 +464,13 @@ impl Komofig {
                 });
         }
         self.monitors = monitors::Monitors::new(&self.config, &self.komorebi_state);
+    }
+
+    fn check_changes(&mut self) {
+        if let Some(loaded) = &self.loaded_config {
+            self.is_dirty = **loaded != self.config;
+        } else {
+            self.is_dirty = *DEFAULT_CONFIG != self.config;
+        }
     }
 }

@@ -107,7 +107,7 @@ dependencies = [
  "accesskit_unix",
  "accesskit_windows",
  "raw-window-handle",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "base16-egui-themes"
 version = "0.1.0"
-source = "git+https://github.com/LGUG2Z/base16-egui-themes?rev=24362c4#24362c44459dc8e42c7c6080529c4cc719803d30"
+source = "git+https://github.com/alex-ds13/base16-egui-themes?rev=2fd6292#2fd6292a01f34a60efac7e48054cba5aeb4c77f2"
 dependencies = [
  "egui",
  "schemars",
@@ -667,18 +667,18 @@ checksum = "64fa3c856b712db6612c019f14756e64e4bcea13337a6b33b696333a9eaa2d06"
 
 [[package]]
 name = "bytemuck"
-version = "1.20.0"
+version = "1.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b37c88a63ffd85d15b406896cc343916d7cf57838a847b3a6f2ca5d39a5695a"
+checksum = "ef657dfab802224e671f5818e9a4935f9b1957ed18e58292690cc39e7a4092a3"
 dependencies = [
  "bytemuck_derive",
 ]
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcfcc3cd946cb52f0bbfdbbcfa2f4e24f75ebb6c0e1002f7c25904fada18b9ec"
+checksum = "3fa76293b4f7bb636ab88fd78228235b5248b4d05cc589aed610f954af5d7c7a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1408,7 +1408,7 @@ dependencies = [
  "web-time",
  "winapi",
  "windows-sys 0.59.0",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -1443,7 +1443,7 @@ dependencies = [
  "type-map",
  "web-time",
  "wgpu",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -1462,7 +1462,7 @@ dependencies = [
  "smithay-clipboard",
  "web-time",
  "webbrowser",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -1480,7 +1480,7 @@ dependencies = [
  "profiling",
  "wasm-bindgen",
  "web-sys",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -2026,7 +2026,7 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "glutin",
  "raw-window-handle",
- "winit 0.30.5",
+ "winit 0.30.6",
 ]
 
 [[package]]
@@ -2740,7 +2740,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#bec451138b4a076c395b803c0dbbc04d5cee8dde"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2786,7 +2786,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#bec451138b4a076c395b803c0dbbc04d5cee8dde"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#bec451138b4a076c395b803c0dbbc04d5cee8dde"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
@@ -4839,9 +4839,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "445e881f4f6d382d5f27c034e25eb92edd7c784ceab92a0937db7f2e9471b938"
+checksum = "022db8904dfa342efe721985167e9fcd16c29b226db4397ed752a761cfce81e8"
 dependencies = [
  "tinyvec_macros",
 ]
@@ -5993,9 +5993,9 @@ dependencies = [
 
 [[package]]
 name = "winit"
-version = "0.30.5"
+version = "0.30.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be9e76a1f1077e04a411f0b989cbd3c93339e1771cb41e71ac4aee95bfd2c67"
+checksum = "7c3d72dfa0f47e429290cd0d236884ca02f22dbd5dd33a43ad2b8bf4d79b6c18"
 dependencies = [
  "ahash 0.8.11",
  "android-activity",
