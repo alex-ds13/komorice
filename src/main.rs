@@ -336,10 +336,6 @@ impl Komofig {
                     iced::widget::horizontal_space().into()
                 }
             }
-            Screen::Monitor(_) => todo!(),
-            Screen::Workspaces(_) => todo!(),
-            Screen::Workspace(_, _) => todo!(),
-            // Screen::Border => center(text("Border").size(50)).into(),
             Screen::Border => self.border.view(&self.config).map(Message::Border),
             Screen::Stackbar => self
                 .stackbar
@@ -413,9 +409,6 @@ impl Komofig {
 
     pub fn subscription(&self) -> Subscription<Message> {
         let screen_subscription = match self.main_screen {
-            Screen::Monitor(_) => todo!(),
-            Screen::Workspaces(_) => todo!(),
-            Screen::Workspace(_, _) => todo!(),
             Screen::Home
             | Screen::General
             | Screen::Border
