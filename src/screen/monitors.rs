@@ -15,7 +15,7 @@ use iced::{
     Length::{Fill, Shrink},
     Subscription, Task,
 };
-use komorebi_client::MonitorConfig;
+use komorebi_client::{MonitorConfig, Rect};
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -216,4 +216,52 @@ impl Monitors {
             Subscription::none()
         }
     }
+}
+
+pub fn get_display_information() -> HashMap<String, Rect> {
+    win32_display_data::connected_displays_all().flatten().map(|display| {
+        let path = display.device_path.clone();
+
+        let (_device, device_id) = if path.is_empty() {
+            (String::from("UNKNOWN"), String::from("UNKNOWN"))
+        } else {
+            let mut split: Vec<_> = path.split('#').collect();
+            split.remove(0);
+            split.remove(split.len() - 1);
+            let device = split[0].to_string();
+            let device_id = split.join("-");
+            (device, device_id)
+        };
+
+        (device_id, display.size.into())
+    }).collect()
+}
+
+pub fn get_displays() -> Vec<komorebi_client::Monitor> {
+    win32_display_data::connected_displays_all().flatten().map(|display| {
+        let path = display.device_path.clone();
+
+        let (device, device_id) = if path.is_empty() {
+            (String::from("UNKNOWN"), String::from("UNKNOWN"))
+        } else {
+            let mut split: Vec<_> = path.split('#').collect();
+            split.remove(0);
+            split.remove(split.len() - 1);
+            let device = split[0].to_string();
+            let device_id = split.join("-");
+            (device, device_id)
+        };
+
+        let name = display.device_name.trim_start_matches(r"\\.\").to_string();
+        let name = name.split('\\').collect::<Vec<_>>()[0].to_string();
+
+        komorebi::monitor::new(
+            display.hmonitor,
+            display.size.into(),
+            display.work_area_size.into(),
+            name,
+            device,
+            device_id,
+        )
+    }).collect()
 }
