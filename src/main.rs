@@ -99,7 +99,7 @@ impl Default for Komofig {
             main_screen: Default::default(),
             notifications: Default::default(),
             komorebi_state: Default::default(),
-            monitors: monitors::Monitors::new(&DEFAULT_CONFIG, &None),
+            monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
             general: Default::default(),
             stackbar: Default::default(),
@@ -429,7 +429,7 @@ impl Komofig {
     /// in case the loaded config doesn't have it already.
     fn populate_monitors(&mut self) {
         config::fill_monitors(&mut self.config);
-        self.monitors = monitors::Monitors::new(&self.config, &self.komorebi_state);
+        self.monitors = monitors::Monitors::new(&self.config);
     }
 
     fn check_changes(&mut self) {

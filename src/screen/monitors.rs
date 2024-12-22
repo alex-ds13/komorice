@@ -40,9 +40,8 @@ pub struct Monitors {
 impl Monitors {
     pub fn new(
         config: &komorebi_client::StaticConfig,
-        state: &Option<Arc<komorebi_client::State>>,
     ) -> Self {
-        let mut monitors = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
+        let monitors = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
             monitors
                 .iter()
                 .enumerate()
@@ -68,14 +67,6 @@ impl Monitors {
                 })
                 .collect()
         });
-
-        // If there are more monitors physically than on the config, then we will create a default
-        // config for each one of them so that the user can change it if they want to.
-        if let Some(state) = state {
-            while monitors.len() < state.monitors.elements().len() {
-                monitors.insert(monitors.len(), monitor::DEFAULT_MONITOR.clone());
-            }
-        }
 
         Monitors {
             monitors,
