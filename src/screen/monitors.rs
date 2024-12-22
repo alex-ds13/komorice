@@ -9,11 +9,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use iced::{
     padding,
-    widget::{checkbox, column, container, horizontal_rule, row, scrollable, text, Space},
-    Alignment::Center,
-    Element,
-    Length::{Fill, Shrink},
-    Subscription, Task,
+    widget::{checkbox, column, container, horizontal_rule, row, scrollable, text},
+    Center, Element, Fill, Subscription, Task,
 };
 use komorebi_client::{MonitorConfig, Rect};
 
@@ -38,9 +35,7 @@ pub struct Monitors {
 }
 
 impl Monitors {
-    pub fn new(
-        config: &komorebi_client::StaticConfig,
-    ) -> Self {
+    pub fn new(config: &komorebi_client::StaticConfig) -> Self {
         let monitors = config.monitors.as_ref().map_or(HashMap::new(), |monitors| {
             monitors
                 .iter()
@@ -77,22 +72,19 @@ impl Monitors {
     pub fn update(
         &mut self,
         message: Message,
-        komorebi_state: &Option<Arc<komorebi_client::State>>,
+        display_info: &HashMap<usize, (String, Rect)>,
         monitors_config: &mut [MonitorConfig],
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
                     self.monitor_to_config = None;
-                } else if let Some(state) = komorebi_state {
-                    let monitors = state.monitors.elements();
-                    if let Some(monitor) = monitors.get(idx) {
-                        println!(
-                            "Go to ConfigMonitor screen for monitor {idx} with id: {}",
-                            monitor.device_id()
-                        );
-                        self.monitor_to_config = Some(idx);
-                    }
+                } else if let Some((device_id, _)) = display_info.get(&idx) {
+                    println!(
+                        "Go to ConfigMonitor screen for monitor {idx} with id: {}",
+                        device_id
+                    );
+                    self.monitor_to_config = Some(idx);
                 }
             }
             Message::MonitorConfigChanged(idx, message) => {
@@ -123,15 +115,16 @@ impl Monitors {
         &'a self,
         komorebi_state: &'a Option<Arc<komorebi_client::State>>,
         monitors_config: &'a [MonitorConfig],
+        display_info: &'a HashMap<usize, (String, Rect)>,
     ) -> Element<'a, Message> {
         let title = text("Monitors:").size(20).font(*BOLD_FONT);
         let monitors: Element<Message> =
-            if let Some(state) = &komorebi_state {
+            {
                 let mut col = column![]
                     .spacing(10)
                     .padding(padding::top(10).bottom(10).right(20));
 
-                let m = monitors_viewer::Monitors::new(state.monitors.elements().iter().collect())
+                let m = monitors_viewer::Monitors::new(display_info)
                     .selected(self.monitor_to_config)
                     .on_selected(Message::ConfigMonitor);
                 // let m = m.explain(color!(0x00aaff));
@@ -142,20 +135,23 @@ impl Monitors {
                     .style(container::rounded_box);
                 col = col.push(m);
 
-                if let Some((Some(device), Some(monitor), Some(m_config))) =
-                    self.monitor_to_config.map(|idx| {
-                        (
-                            state.monitors.elements().get(idx),
-                            self.monitors.get(&idx),
-                            monitors_config.get(idx),
-                        )
-                    })
+                if let Some((Some(monitor), Some(m_config))) = self
+                    .monitor_to_config
+                    .map(|idx| (self.monitors.get(&idx), monitors_config.get(idx)))
                 {
                     let monitor_idx = self.monitor_to_config.expect("unreachable");
                     col =
                         col.push(monitor.view(m_config).map(move |message| {
                             Message::MonitorConfigChanged(monitor_idx, message)
                         }));
+                }
+
+                if let Some(device) = self.monitor_to_config.and_then(|idx| {
+                    komorebi_state
+                        .as_ref()
+                        .and_then(|s| s.monitors.elements().get(idx))
+                }) {
+                    let monitor_idx = self.monitor_to_config.expect("unreachable");
                     col = col.push(horizontal_rule(2.0));
                     col = col.push(column![
                         text!("Monitor {}:", monitor_idx).size(16),
@@ -187,10 +183,9 @@ impl Monitors {
                 scrollable(col)
                     .id(scrollable::Id::new("monitors_scrollable"))
                     .into()
-            } else {
-                Space::new(Shrink, Shrink).into()
             };
-        column![title, horizontal_rule(2.0), monitors,]
+
+        column![title, horizontal_rule(2.0), monitors]
             .spacing(10)
             .into()
     }
@@ -209,50 +204,57 @@ impl Monitors {
     }
 }
 
-pub fn get_display_information() -> HashMap<String, Rect> {
-    win32_display_data::connected_displays_all().flatten().map(|display| {
-        let path = display.device_path.clone();
+pub fn get_display_information() -> HashMap<usize, (String, Rect)> {
+    win32_display_data::connected_displays_all()
+        .flatten()
+        .enumerate()
+        .map(|(i, display)| {
+            let path = display.device_path.clone();
 
-        let (_device, device_id) = if path.is_empty() {
-            (String::from("UNKNOWN"), String::from("UNKNOWN"))
-        } else {
-            let mut split: Vec<_> = path.split('#').collect();
-            split.remove(0);
-            split.remove(split.len() - 1);
-            let device = split[0].to_string();
-            let device_id = split.join("-");
-            (device, device_id)
-        };
+            let (_device, device_id) = if path.is_empty() {
+                (String::from("UNKNOWN"), String::from("UNKNOWN"))
+            } else {
+                let mut split: Vec<_> = path.split('#').collect();
+                split.remove(0);
+                split.remove(split.len() - 1);
+                let device = split[0].to_string();
+                let device_id = split.join("-");
+                (device, device_id)
+            };
 
-        (device_id, display.size.into())
-    }).collect()
+            (i, (device_id, display.size.into()))
+        })
+        .collect()
 }
 
 pub fn get_displays() -> Vec<komorebi_client::Monitor> {
-    win32_display_data::connected_displays_all().flatten().map(|display| {
-        let path = display.device_path.clone();
+    win32_display_data::connected_displays_all()
+        .flatten()
+        .map(|display| {
+            let path = display.device_path.clone();
 
-        let (device, device_id) = if path.is_empty() {
-            (String::from("UNKNOWN"), String::from("UNKNOWN"))
-        } else {
-            let mut split: Vec<_> = path.split('#').collect();
-            split.remove(0);
-            split.remove(split.len() - 1);
-            let device = split[0].to_string();
-            let device_id = split.join("-");
-            (device, device_id)
-        };
+            let (device, device_id) = if path.is_empty() {
+                (String::from("UNKNOWN"), String::from("UNKNOWN"))
+            } else {
+                let mut split: Vec<_> = path.split('#').collect();
+                split.remove(0);
+                split.remove(split.len() - 1);
+                let device = split[0].to_string();
+                let device_id = split.join("-");
+                (device, device_id)
+            };
 
-        let name = display.device_name.trim_start_matches(r"\\.\").to_string();
-        let name = name.split('\\').collect::<Vec<_>>()[0].to_string();
+            let name = display.device_name.trim_start_matches(r"\\.\").to_string();
+            let name = name.split('\\').collect::<Vec<_>>()[0].to_string();
 
-        komorebi::monitor::new(
-            display.hmonitor,
-            display.size.into(),
-            display.work_area_size.into(),
-            name,
-            device,
-            device_id,
-        )
-    }).collect()
+            komorebi::monitor::new(
+                display.hmonitor,
+                display.size.into(),
+                display.work_area_size.into(),
+                name,
+                device,
+                device_id,
+            )
+        })
+        .collect()
 }

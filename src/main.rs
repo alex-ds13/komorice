@@ -9,6 +9,7 @@ use crate::apperror::AppError;
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{border, general, monitors, rules, sidebar, stackbar, transparency, Screen};
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
@@ -77,6 +78,7 @@ struct Komofig {
     main_screen: Screen,
     notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     komorebi_state: Option<Arc<komorebi_client::State>>,
+    display_info: HashMap<usize, (String, komorebi_client::Rect)>,
     monitors: monitors::Monitors,
     border: border::Border,
     general: general::General,
@@ -99,6 +101,7 @@ impl Default for Komofig {
             main_screen: Default::default(),
             notifications: Default::default(),
             komorebi_state: Default::default(),
+            display_info: Default::default(),
             monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
             general: Default::default(),
@@ -118,7 +121,10 @@ impl Default for Komofig {
 
 impl Komofig {
     pub fn initialize() -> (Self, Task<Message>) {
-        let mut init = Self::default();
+        let mut init = Komofig {
+            display_info: monitors::get_display_information(),
+            ..Default::default()
+        };
         config::fill_monitors(Arc::make_mut(&mut init.loaded_config));
         init.populate_monitors();
         (
@@ -159,7 +165,7 @@ impl Komofig {
                 if let Some(monitors_config) = &mut self.config.monitors {
                     let (action, task) =
                         self.monitors
-                            .update(message, &self.komorebi_state, monitors_config);
+                            .update(message, &self.display_info, monitors_config);
                     let action_task = match action {
                         monitors::Action::None => Task::none(),
                     };
@@ -314,7 +320,7 @@ impl Komofig {
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
                     self.monitors
-                        .view(&self.komorebi_state, monitors_config)
+                        .view(&self.komorebi_state, monitors_config, &self.display_info)
                         .map(Message::Monitors)
                 } else {
                     iced::widget::horizontal_space().into()

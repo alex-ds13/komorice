@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use iced::{
     advanced::{
         graphics::core::{event, touch},
@@ -15,7 +17,7 @@ use iced::{
 use iced::{alignment, Length, Rectangle, Size};
 
 pub struct Monitors<'a, Message> {
-    monitors: Vec<&'a komorebi_client::Monitor>,
+    monitors: &'a HashMap<usize, (String, komorebi_client::Rect)>,
     selected: Option<usize>,
     on_selected: Option<Box<dyn Fn(usize) -> Message + 'a>>,
 }
@@ -30,7 +32,7 @@ impl<'a, Message> Monitors<'a, Message> {
     /// The default padding of a monitor rectangle
     const DEFAULT_PADDING: f32 = 5.0;
 
-    pub fn new(monitors: Vec<&'a komorebi_client::Monitor>) -> Self {
+    pub fn new(monitors: &'a HashMap<usize, (String, komorebi_client::Rect)>) -> Self {
         Monitors {
             monitors,
             selected: None,
@@ -54,8 +56,7 @@ impl<'a, Message> Monitors<'a, Message> {
     fn get_rects(&self) -> Vec<Rectangle<f32>> {
         self.monitors
             .iter()
-            .map(|monitor| {
-                let size = monitor.size();
+            .map(|(_, (_, size))| {
                 let x = size.left as f32 / 10.0;
                 let y = size.top as f32 / 10.0;
                 let width = size.right as f32 / 10.0;
@@ -200,23 +201,22 @@ where
         let border_color: iced::Color = iced::color!(0x000000);
         let hover_border_color: iced::Color = iced::color!(0x333333);
         let selected_border_color: iced::Color = iced::color!(0x45ccff);
-        for (((idx, monitor), rect), child_layout) in self
+        for (((idx, (device_id, _)), rect), child_layout) in self
             .monitors
             .iter()
-            .enumerate()
             .zip(self.get_rects())
             .zip(layout.children())
         {
             let bounds = child_layout.children().next().unwrap().bounds();
             let is_hover = _cursor.position_over(bounds).is_some();
-            let background = if matches!(self.selected, Some(i) if i == idx) {
+            let background = if matches!(self.selected, Some(i) if i == *idx) {
                 selected_background
             } else if is_hover {
                 hover_background
             } else {
                 background
             };
-            let border_color = if matches!(self.selected, Some(i) if i == idx) {
+            let border_color = if matches!(self.selected, Some(i) if i == *idx) {
                 selected_border_color
             } else if is_hover {
                 hover_border_color
@@ -247,7 +247,7 @@ where
             };
             renderer.fill_text(
                 iced::advanced::text::Text {
-                    content: monitor.device_id().to_string(),
+                    content: device_id.clone(),
                     bounds: bounds.size(),
                     horizontal_alignment: alignment::Horizontal::Center,
                     vertical_alignment: alignment::Vertical::Top,
@@ -295,14 +295,14 @@ where
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
                 for ((idx, _monitor), child_layout) in
-                    self.monitors.iter().enumerate().zip(layout.children())
+                    self.monitors.iter().zip(layout.children())
                 {
                     let bounds = child_layout.bounds();
                     let mouse_over = cursor.is_over(bounds);
 
                     if mouse_over {
                         if let Some(on_pressed) = &self.on_selected {
-                            shell.publish((on_pressed)(idx));
+                            shell.publish((on_pressed)(*idx));
                             return event::Status::Captured;
                         }
                     }
