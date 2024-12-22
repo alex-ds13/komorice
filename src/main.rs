@@ -261,7 +261,6 @@ impl Komofig {
             }
             Message::DiscardChanges => {
                 self.config = (*self.loaded_config).clone();
-                self.populate_monitors();
                 self.is_dirty = false;
             }
         }
