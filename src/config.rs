@@ -9,9 +9,9 @@ use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, BorderColours, BorderImplementation, BorderStyle, Colour,
-    CrossBoundaryBehaviour, HidingBehaviour, MonitorConfig, MoveBehaviour, OperationBehaviour,
-    PerAnimationPrefixConfig, Rgb, StackbarConfig, StackbarLabel, StackbarMode, StaticConfig,
-    TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
+    CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, MonitorConfig, MoveBehaviour,
+    OperationBehaviour, PerAnimationPrefixConfig, Rgb, StackbarConfig, StackbarLabel, StackbarMode,
+    StaticConfig, TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
 };
 use lazy_static::lazy_static;
 use notify_debouncer_mini::{
@@ -88,6 +88,63 @@ lazy_static! {
         slow_application_compensation_time: Some(20),
         bar_configurations: None,
     };
+}
+
+pub fn fill_monitors(config: &mut StaticConfig) {
+    let monitors = crate::monitors::get_displays();
+    if let Some(config_monitors) = &mut config.monitors {
+        let physical_monitors_len = monitors.len();
+        let config_monitors_len = config_monitors.len();
+        if physical_monitors_len <= config_monitors_len {
+            return;
+        }
+        for _ in 0..(physical_monitors_len - config_monitors_len) {
+            config_monitors.push(MonitorConfig {
+                workspaces: vec![WorkspaceConfig {
+                    name: String::new(),
+                    layout: Some(DefaultLayout::BSP),
+                    custom_layout: None,
+                    layout_rules: None,
+                    custom_layout_rules: None,
+                    container_padding: None,
+                    workspace_padding: None,
+                    initial_workspace_rules: None,
+                    workspace_rules: None,
+                    apply_window_based_work_area_offset: None,
+                    window_container_behaviour: None,
+                    float_override: None,
+                }],
+                work_area_offset: None,
+                window_based_work_area_offset: None,
+                window_based_work_area_offset_limit: None,
+            })
+        }
+    } else {
+        config.monitors = Some(
+            monitors
+            .iter()
+            .map(|_| komorebi_client::MonitorConfig {
+                workspaces: vec![komorebi_client::WorkspaceConfig {
+                    name: String::new(),
+                    layout: Some(komorebi_client::DefaultLayout::BSP),
+                    custom_layout: None,
+                    layout_rules: None,
+                    custom_layout_rules: None,
+                    container_padding: None,
+                    workspace_padding: None,
+                    initial_workspace_rules: None,
+                    workspace_rules: None,
+                    apply_window_based_work_area_offset: None,
+                    window_container_behaviour: None,
+                    float_override: None,
+                }],
+                work_area_offset: None,
+                window_based_work_area_offset: None,
+                window_based_work_area_offset_limit: None,
+            })
+        .collect(),
+        );
+    }
 }
 
 trait ChangeConfig {
