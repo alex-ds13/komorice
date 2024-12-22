@@ -71,6 +71,7 @@ enum Message {
     // Config related Messages
     DiscardChanges,
     Save,
+    Saved,
 }
 
 struct Komofig {
@@ -262,8 +263,17 @@ impl Komofig {
             }
             Message::Save => {
                 return Task::future(config::save(self.config.clone()))
-                    .map(|res| res.err())
-                    .and_then(|err| Task::done(Message::AppError(err)));
+                    .map(|res| match res {
+                        Ok(_) => Message::Saved,
+                        Err(apperror) => Message::AppError(apperror),
+                    });
+            }
+            Message::Saved => {
+                if let Some(sender) = &self.config_watcher_tx {
+                    let _ = sender.try_send(config::Input::IgnoreNextEvent);
+                }
+                self.loaded_config = Arc::new(self.config.clone());
+                self.is_dirty = false;
             }
             Message::DiscardChanges => {
                 self.config = (*self.loaded_config).clone();
