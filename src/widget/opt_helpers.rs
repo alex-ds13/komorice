@@ -152,18 +152,7 @@ pub fn to_description_text(t: Text) -> Text {
 }
 
 pub fn description_text(s: &str) -> Text {
-    text(s)
-        .style(|t: &iced::Theme| {
-            let palette = t.extended_palette();
-            let color = if palette.is_dark {
-                Some(palette.secondary.strong.color)
-            } else {
-                Some(palette.background.base.text.scale_alpha(0.75))
-            };
-            text::Style { color }
-        })
-        .size(13)
-        .wrapping(text::Wrapping::WordOrGlyph)
+    to_description_text(text(s))
 }
 
 ///Creates a column with a label element and a description
