@@ -85,7 +85,7 @@ struct Komofig {
     rules: rules::Rules,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
-    loaded_config: Option<Arc<komorebi_client::StaticConfig>>,
+    loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
@@ -107,7 +107,7 @@ impl Default for Komofig {
             rules: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
-            loaded_config: Default::default(),
+            loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
             errors: Default::default(),
@@ -118,8 +118,11 @@ impl Default for Komofig {
 
 impl Komofig {
     pub fn initialize() -> (Self, Task<Message>) {
+        let mut init = Self::default();
+        config::fill_monitors(Arc::make_mut(&mut init.loaded_config));
+        init.populate_monitors();
         (
-            Self::default(),
+            init,
             Task::perform(config::load(), |res| match res {
                 Ok(config) => Message::LoadedConfig(Arc::new(config)),
                 Err(apperror) => Message::FailedToLoadConfig(apperror),
@@ -236,7 +239,7 @@ impl Komofig {
                     self.config = config.clone();
                     self.populate_monitors();
                     self.has_loaded_config = true;
-                    self.loaded_config = Some(Arc::new(config));
+                    self.loaded_config = Arc::new(config);
                     self.is_dirty = false;
                     //TODO: show message on app to load external changes
                 }
@@ -257,11 +260,7 @@ impl Komofig {
                     .and_then(|err| Task::done(Message::AppError(err)));
             }
             Message::DiscardChanges => {
-                if let Some(loaded) = &self.loaded_config {
-                    self.config = (**loaded).clone();
-                } else {
-                    self.config = DEFAULT_CONFIG.clone();
-                }
+                self.config = (*self.loaded_config).clone();
                 self.populate_monitors();
                 self.is_dirty = false;
             }
@@ -430,47 +429,11 @@ impl Komofig {
     /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
     /// in case the loaded config doesn't have it already.
     fn populate_monitors(&mut self) {
-        if self.config.monitors.is_none() {
-            self.config.monitors = self
-                .komorebi_state
-                .as_ref()
-                .map_or(Some(Vec::new()), |state| {
-                    Some(
-                        state
-                            .monitors
-                            .elements()
-                            .iter()
-                            .map(|_| komorebi_client::MonitorConfig {
-                                workspaces: vec![komorebi_client::WorkspaceConfig {
-                                    name: String::new(),
-                                    layout: Some(komorebi_client::DefaultLayout::BSP),
-                                    custom_layout: None,
-                                    layout_rules: None,
-                                    custom_layout_rules: None,
-                                    container_padding: None,
-                                    workspace_padding: None,
-                                    initial_workspace_rules: None,
-                                    workspace_rules: None,
-                                    apply_window_based_work_area_offset: None,
-                                    window_container_behaviour: None,
-                                    float_override: None,
-                                }],
-                                work_area_offset: None,
-                                window_based_work_area_offset: None,
-                                window_based_work_area_offset_limit: None,
-                            })
-                            .collect(),
-                    )
-                });
-        }
+        config::fill_monitors(&mut self.config);
         self.monitors = monitors::Monitors::new(&self.config, &self.komorebi_state);
     }
 
     fn check_changes(&mut self) {
-        if let Some(loaded) = &self.loaded_config {
-            self.is_dirty = **loaded != self.config;
-        } else {
-            self.is_dirty = *DEFAULT_CONFIG != self.config;
-        }
+        self.is_dirty = self.config != *self.loaded_config;
     }
 }
