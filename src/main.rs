@@ -166,7 +166,7 @@ impl Komofig {
                 if let Some(monitors_config) = &mut self.config.monitors {
                     let (action, task) =
                         self.monitors
-                            .update(message, &self.display_info, monitors_config);
+                            .update(message, monitors_config, &self.display_info);
                     let action_task = match action {
                         monitors::Action::None => Task::none(),
                     };
@@ -179,7 +179,7 @@ impl Komofig {
                     self.config.stackbar = Some(stackbar::default_stackbar_config());
                 }
                 if let Some(stackbar_config) = self.config.stackbar.as_mut() {
-                    let (action, task) = self.stackbar.update(stackbar_config, message);
+                    let (action, task) = self.stackbar.update(message, stackbar_config);
                     let action_task = match action {
                         stackbar::Action::None => Task::none(),
                     };
@@ -196,7 +196,7 @@ impl Komofig {
                 return Task::batch([task.map(Message::Transparency), action_task]);
             }
             Message::Rules(message) => {
-                let (action, task) = self.rules.update(&mut self.config, message);
+                let (action, task) = self.rules.update(message, &mut self.config);
                 let action_task = match action {
                     rules::Action::None => Task::none(),
                 };

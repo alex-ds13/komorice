@@ -53,8 +53,8 @@ pub struct Stackbar {
 impl Stackbar {
     pub fn update(
         &mut self,
-        config: &mut StackbarConfig,
         message: Message,
+        config: &mut StackbarConfig,
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigChange(change) => match change {

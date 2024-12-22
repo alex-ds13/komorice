@@ -72,8 +72,8 @@ impl Monitors {
     pub fn update(
         &mut self,
         message: Message,
-        display_info: &HashMap<usize, (String, Rect)>,
         monitors_config: &mut [MonitorConfig],
+        display_info: &HashMap<usize, (String, Rect)>,
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {

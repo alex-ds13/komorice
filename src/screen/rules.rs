@@ -74,8 +74,8 @@ pub struct Rules {
 impl Rules {
     pub fn update(
         &mut self,
-        config: &mut StaticConfig,
         message: Message,
+        config: &mut StaticConfig,
     ) -> (Action, Task<Message>) {
         match message {
             Message::SetScreen(screen) => {
