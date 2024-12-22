@@ -64,11 +64,11 @@ enum Message {
 
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
+
+    // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
-
-    // Config related Messages
     DiscardChanges,
     Save,
     Saved,
