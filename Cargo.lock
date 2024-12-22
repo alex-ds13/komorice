@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "base16-egui-themes"
 version = "0.1.0"
-source = "git+https://github.com/alex-ds13/base16-egui-themes?rev=2fd6292#2fd6292a01f34a60efac7e48054cba5aeb4c77f2"
+source = "git+https://github.com/LGUG2Z/base16-egui-themes?rev=e743e30#e743e30dbabebcb292cd2b2b6fd7a64b8f6deaac"
 dependencies = [
  "egui",
  "schemars",
@@ -2735,13 +2735,13 @@ dependencies = [
  "notify-debouncer-mini",
  "serde",
  "serde_json_lenient",
- "win32-display-data 0.1.0 (git+https://github.com/LGUG2Z/win32-display-data)",
+ "win32-display-data",
 ]
 
 [[package]]
 name = "komorebi"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2775,7 +2775,7 @@ dependencies = [
  "tracing-subscriber",
  "uds_windows",
  "which",
- "win32-display-data 0.1.0 (git+https://github.com/LGUG2Z/win32-display-data?rev=dd65e3f22d0521b78fcddde11abc2a3e9dcc32a8)",
+ "win32-display-data",
  "windows 0.58.0",
  "windows-core 0.58.0",
  "windows-implement 0.58.0",
@@ -2787,7 +2787,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2797,7 +2797,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#88e6b4afeaaae914795ad6ea4ffe41c1ae153e7e"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
@@ -5550,16 +5550,6 @@ dependencies = [
 name = "win32-display-data"
 version = "0.1.0"
 source = "git+https://github.com/LGUG2Z/win32-display-data?rev=dd65e3f22d0521b78fcddde11abc2a3e9dcc32a8#dd65e3f22d0521b78fcddde11abc2a3e9dcc32a8"
-dependencies = [
- "itertools",
- "thiserror",
- "windows 0.58.0",
-]
-
-[[package]]
-name = "win32-display-data"
-version = "0.1.0"
-source = "git+https://github.com/LGUG2Z/win32-display-data#dd65e3f22d0521b78fcddde11abc2a3e9dcc32a8"
 dependencies = [
  "itertools",
  "thiserror",
