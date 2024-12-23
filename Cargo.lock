@@ -107,7 +107,7 @@ dependencies = [
  "accesskit_unix",
  "accesskit_windows",
  "raw-window-handle",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -1408,7 +1408,7 @@ dependencies = [
  "web-time",
  "winapi",
  "windows-sys 0.59.0",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -1443,7 +1443,7 @@ dependencies = [
  "type-map",
  "web-time",
  "wgpu",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -1462,7 +1462,7 @@ dependencies = [
  "smithay-clipboard",
  "web-time",
  "webbrowser",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -1480,7 +1480,7 @@ dependencies = [
  "profiling",
  "wasm-bindgen",
  "web-sys",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -2026,7 +2026,7 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "glutin",
  "raw-window-handle",
- "winit 0.30.6",
+ "winit 0.30.7",
 ]
 
 [[package]]
@@ -2741,7 +2741,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#27b34c31274d289e7bd42e10c096d6aba586b069"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2787,7 +2787,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#27b34c31274d289e7bd42e10c096d6aba586b069"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2797,7 +2797,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#de5b2cdd60264d05561753a4c33e4dd2ea3f98da"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#27b34c31274d289e7bd42e10c096d6aba586b069"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
@@ -3640,9 +3640,9 @@ dependencies = [
 
 [[package]]
 name = "os_info"
-version = "3.9.0"
+version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5ca711d8b83edbb00b44d504503cd247c9c0bd8b0fa2694f2a1a3d8165379ce"
+checksum = "eb6651f4be5e39563c4fe5cc8326349eb99a25d805a3493f791d5bfd0269e430"
 dependencies = [
  "log",
  "serde",
@@ -4326,9 +4326,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.133"
+version = "1.0.134"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fceb2473b9166b2294ef05efcb65a3db80803f0b03ef86a5fc88a2b85ee377"
+checksum = "d00f4175c42ee48b15416f6193a959ba3a0d67fc699a0db9ad12df9f83991c7d"
 dependencies = [
  "itoa",
  "memchr",
@@ -4651,9 +4651,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.90"
+version = "2.0.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "919d3b74a5dd0ccd15aeb8f93e7006bd9e14c295087c9896a110f490752bcf31"
+checksum = "d53cbcb5a243bd33b7858b1d7f4aca2153490815872d86d955d6ea29f743c035"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5994,9 +5994,9 @@ dependencies = [
 
 [[package]]
 name = "winit"
-version = "0.30.6"
+version = "0.30.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c3d72dfa0f47e429290cd0d236884ca02f22dbd5dd33a43ad2b8bf4d79b6c18"
+checksum = "dba50bc8ef4b6f1a75c9274fb95aa9a8f63fbc66c56f391bd85cf68d51e7b1a3"
 dependencies = [
  "ahash 0.8.11",
  "android-activity",
