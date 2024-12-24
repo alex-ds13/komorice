@@ -155,7 +155,7 @@ impl Komofig {
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::General(message) => {
-                let (action, task) = self.general.update(message, &mut self.config);
+                let (action, task) = self.general.update(message, &mut self.config, &self.loaded_config);
                 let action_task = match action {
                     general::Action::None => Task::none(),
                 };

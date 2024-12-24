@@ -122,33 +122,60 @@ pub fn fill_monitors(config: &mut StaticConfig) {
     } else {
         config.monitors = Some(
             monitors
-            .iter()
-            .map(|_| komorebi_client::MonitorConfig {
-                workspaces: vec![komorebi_client::WorkspaceConfig {
-                    name: String::new(),
-                    layout: Some(komorebi_client::DefaultLayout::BSP),
-                    custom_layout: None,
-                    layout_rules: None,
-                    custom_layout_rules: None,
-                    container_padding: None,
-                    workspace_padding: None,
-                    initial_workspace_rules: None,
-                    workspace_rules: None,
-                    apply_window_based_work_area_offset: None,
-                    window_container_behaviour: None,
-                    float_override: None,
-                }],
-                work_area_offset: None,
-                window_based_work_area_offset: None,
-                window_based_work_area_offset_limit: None,
-            })
-        .collect(),
+                .iter()
+                .map(|_| komorebi_client::MonitorConfig {
+                    workspaces: vec![komorebi_client::WorkspaceConfig {
+                        name: String::new(),
+                        layout: Some(komorebi_client::DefaultLayout::BSP),
+                        custom_layout: None,
+                        layout_rules: None,
+                        custom_layout_rules: None,
+                        container_padding: None,
+                        workspace_padding: None,
+                        initial_workspace_rules: None,
+                        workspace_rules: None,
+                        apply_window_based_work_area_offset: None,
+                        window_container_behaviour: None,
+                        float_override: None,
+                    }],
+                    work_area_offset: None,
+                    window_based_work_area_offset: None,
+                    window_based_work_area_offset_limit: None,
+                })
+                .collect(),
         );
     }
 }
 
-trait ChangeConfig {
-    fn change_config(&mut self, mut f: impl FnMut(&mut Self)) {
+/// It checks the value against the default config value and the loaded value. If the value is the
+/// default value while the loaded was something else, then we change value to `None` instead so
+/// that it doesn't show on the final config file. If value is the default value while the loaded
+/// value was also the default value we don't change it so that we don't get a dirty state when in
+/// fact they are the same. In any other situation we don't change the value.
+pub fn sanitize_value<T: Clone + PartialEq>(
+    loaded: &StaticConfig,
+    value: Option<T>,
+    getter: impl Fn(&StaticConfig) -> &Option<T>,
+) -> Option<T> {
+    let loaded_value = getter(loaded);
+    let default_value = getter(&DEFAULT_CONFIG);
+    if value == *default_value && loaded_value != default_value {
+        None
+    } else {
+        value
+    }
+}
+
+pub trait ChangeConfig {
+    fn set_optional<T: Clone + PartialEq>(
+        &mut self,
+        value: Option<T>,
+        getter: impl Fn(&mut Self) -> &mut Option<T>,
+        getter_ref: impl Fn(&Self) -> &Option<T>,
+        loaded: &Self,
+    );
+
+    fn change_config(&mut self, f: impl Fn(&mut Self)) {
         f(self);
     }
 
@@ -163,6 +190,17 @@ trait ChangeConfig {
 }
 
 impl ChangeConfig for StaticConfig {
+    fn set_optional<T: Clone + PartialEq>(
+        &mut self,
+        value: Option<T>,
+        getter: impl Fn(&mut Self) -> &mut Option<T>,
+        getter_ref: impl Fn(&Self) -> &Option<T>,
+        loaded: &Self,
+    ) {
+        let sanitized_value = sanitize_value(loaded, value, getter_ref);
+        *getter(self) = sanitized_value;
+    }
+
     fn change_monitor_config(&mut self, idx: usize, f: impl Fn(&mut MonitorConfig)) {
         if let Some(monitors) = &mut self.monitors {
             if let Some(monitor) = monitors.get_mut(idx) {
