@@ -155,7 +155,9 @@ impl Komofig {
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::General(message) => {
-                let (action, task) = self.general.update(message, &mut self.config, &self.loaded_config);
+                let (action, task) =
+                    self.general
+                        .update(message, &mut self.config, &self.loaded_config);
                 let action_task = match action {
                     general::Action::None => Task::none(),
                 };
@@ -188,7 +190,9 @@ impl Komofig {
                 }
             }
             Message::Transparency(message) => {
-                let (action, task) = self.transparency.update(message, &mut self.config);
+                let (action, task) =
+                    self.transparency
+                        .update(message, &mut self.config, &self.loaded_config);
                 let action_task = match action {
                     transparency::Action::None => Task::none(),
                 };
@@ -262,11 +266,10 @@ impl Komofig {
                 self.config_watcher_tx = Some(sender);
             }
             Message::Save => {
-                return Task::future(config::save(self.config.clone()))
-                    .map(|res| match res {
-                        Ok(_) => Message::Saved,
-                        Err(apperror) => Message::AppError(apperror),
-                    });
+                return Task::future(config::save(self.config.clone())).map(|res| match res {
+                    Ok(_) => Message::Saved,
+                    Err(apperror) => Message::AppError(apperror),
+                });
             }
             Message::Saved => {
                 if let Some(sender) = &self.config_watcher_tx {

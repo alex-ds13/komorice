@@ -1,5 +1,6 @@
 use super::rule::{self, Rule};
 
+use crate::config::{sanitize_value as sv, DEFAULT_CONFIG};
 use crate::{widget::opt_helpers, BOLD_FONT};
 
 use iced::{
@@ -20,8 +21,8 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
-    Transparency(bool),
-    TransparencyAlpha(i32),
+    Transparency(Option<bool>),
+    TransparencyAlpha(Option<i32>),
 }
 
 #[derive(Clone, Debug, Default)]
@@ -56,14 +57,19 @@ impl Transparency {
         &mut self,
         message: Message,
         config: &mut StaticConfig,
+        loaded_config: &StaticConfig,
     ) -> (Action, Task<Message>) {
+        let lc = loaded_config;
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::Transparency(value) => {
-                    config.transparency = Some(value);
+                    let value = sv(lc, value, |c| &c.transparency);
+                    config.transparency = value;
                 }
                 ConfigChange::TransparencyAlpha(value) => {
-                    config.transparency_alpha = Some(value.try_into().unwrap_or(0));
+                    let value = value.and_then(|v| v.try_into().ok().or(config.transparency_alpha));
+                    let value = sv(lc, value, |c| &c.transparency_alpha);
+                    config.transparency_alpha = value;
                 }
             },
             Message::SetScreen(screen) => {
@@ -121,18 +127,22 @@ impl Transparency {
         opt_helpers::section_view(
             "Transparency:",
             [
-                opt_helpers::toggle(
+                opt_helpers::toggle_with_disable_default(
                     "Transparency",
                     Some("Add transparency to unfocused windows (default: false)"),
-                    config.transparency.unwrap_or_default(),
-                    |value| Message::ConfigChange(ConfigChange::Transparency(value))
+                    config.transparency.or(DEFAULT_CONFIG.transparency),
+                    DEFAULT_CONFIG.transparency,
+                    |value| Message::ConfigChange(ConfigChange::Transparency(value)),
+                    None,
                 ),
-                opt_helpers::number(
+                opt_helpers::number_with_disable_default_option(
                     "Transparency Alpha",
                     Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
                         Value must be greater or equal to 0.0"),
-                        config.transparency_alpha.unwrap_or(200).into(),
-                        |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
+                    config.transparency_alpha.or(DEFAULT_CONFIG.transparency_alpha).map(Into::into),
+                    DEFAULT_CONFIG.transparency_alpha.map(Into::into),
+                    |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
+                    None,
                 ),
                 opt_helpers::opt_button(
                     "Transparency Ignore Rules",
