@@ -122,11 +122,16 @@ impl Default for Komofig {
 
 impl Komofig {
     pub fn initialize() -> (Self, Task<Message>) {
+        let mut config = DEFAULT_CONFIG.clone();
+        config::fill_monitors(&mut config);
+        let loaded_config = Arc::new(config.clone());
+        let display_info = monitors::get_display_information();
         let mut init = Komofig {
-            display_info: monitors::get_display_information(),
+            display_info,
+            config,
+            loaded_config,
             ..Default::default()
         };
-        config::fill_monitors(Arc::make_mut(&mut init.loaded_config));
         init.populate_monitors();
         (
             init,
@@ -228,7 +233,7 @@ impl Komofig {
                         notification.state.monitors.elements().len() > self.monitors.monitors.len();
                     self.komorebi_state = Some(Arc::from(notification.state));
                     if should_update_monitors {
-                        self.populate_monitors();
+                        self.is_dirty = self.populate_monitors() || self.is_dirty;
                     }
                 } else {
                     self.errors.push(AppError {
@@ -243,18 +248,15 @@ impl Komofig {
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
                     println!("Config Loaded: {config:#?}");
+                    let config = config::merge_default(config);
                     self.config = config.clone();
-                    self.populate_monitors();
+                    self.is_dirty = self.populate_monitors();
                     self.has_loaded_config = true;
                     self.loaded_config = Arc::new(config);
-                    self.is_dirty = false;
                     //TODO: show message on app to load external changes
                 }
             }
             Message::FailedToLoadConfig(apperror) => {
-                // We still need to populate the monitors config according to the actual physical
-                // amount of monitors.
-                self.populate_monitors();
                 println!("Received AppError: {apperror:#?}");
                 self.errors.push(apperror);
             }
@@ -435,14 +437,14 @@ impl Komofig {
 
     /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
     /// in case the loaded config doesn't have it already.
-    fn populate_monitors(&mut self) {
-        config::fill_monitors(&mut self.config);
+    /// Returns wether or not `fill_monitors` made any changes to the config.
+    fn populate_monitors(&mut self) -> bool {
+        let made_changes = config::fill_monitors(&mut self.config);
         self.monitors = monitors::Monitors::new(&self.config);
+        made_changes
     }
 
     fn check_changes(&mut self) {
-        let merged_config = config::merge_default(&self.config);
-        let merged_loaded = config::merge_default(&self.loaded_config);
-        self.is_dirty = merged_config != merged_loaded;
+        self.is_dirty = self.config != *self.loaded_config;
     }
 }

@@ -1,6 +1,6 @@
 use crate::widget::opt_helpers::description_text as t;
 use crate::{
-    config::{sanitize_value as sv, DEFAULT_CONFIG},
+    config::DEFAULT_CONFIG,
     utils::DisplayOption,
     widget::opt_helpers::{self, DisableArgs},
 };
@@ -75,35 +75,27 @@ impl General {
                     config.app_specific_configuration_path = path;
                 }
                 ConfigChange::CrossBoundaryBehaviour(value) => {
-                    let value = sv(value, |c| &c.cross_boundary_behaviour);
                     config.cross_boundary_behaviour = value;
                 }
                 ConfigChange::CrossMonitorMoveBehaviour(value) => {
-                    let value = sv(value, |c| &c.cross_monitor_move_behaviour);
                     config.cross_monitor_move_behaviour = value;
                 }
                 ConfigChange::DefaultContainerPadding(value) => {
-                    let value = sv(value, |c| &c.default_container_padding);
                     config.default_container_padding = value;
                 }
                 ConfigChange::DefaultWorkspacePadding(value) => {
-                    let value = sv(value, |c| &c.default_workspace_padding);
                     config.default_workspace_padding = value;
                 }
                 ConfigChange::DisplayIndexPreferences(value) => {
-                    let value = sv(value, |c| &c.display_index_preferences);
                     config.display_index_preferences = value;
                 }
                 ConfigChange::FloatOverride(value) => {
-                    let value = sv(value, |c| &c.float_override);
                     config.float_override = value;
                 }
                 ConfigChange::FocusFollowsMouse(value) => {
-                    let value = sv(value, |c| &c.focus_follows_mouse);
                     config.focus_follows_mouse = value;
                 }
                 ConfigChange::GlobalWorkAreaOffset(value) => {
-                    let value = sv(value, |c| &c.global_work_area_offset);
                     config.global_work_area_offset = value;
                 }
                 ConfigChange::GlobalWorkAreaOffsetTop(value) => {
@@ -155,11 +147,9 @@ impl General {
                     }
                 }
                 ConfigChange::MouseFollowsFocus(value) => {
-                    let value = sv(value, |c| &c.mouse_follows_focus);
                     config.mouse_follows_focus = value;
                 }
                 ConfigChange::ResizeDelta(value) => {
-                    let value = sv(value, |c| &c.resize_delta);
                     config.resize_delta = value;
                 }
                 ConfigChange::SlowApplicationCompensationTime(value) => {
@@ -168,19 +158,15 @@ impl General {
                             .ok()
                             .or(config.slow_application_compensation_time)
                     });
-                    let value = sv(value, |c| &c.slow_application_compensation_time);
                     config.slow_application_compensation_time = value;
                 }
                 ConfigChange::UnmanagedWindowBehaviour(value) => {
-                    let value = sv(value, |c| &c.unmanaged_window_operation_behaviour);
                     config.unmanaged_window_operation_behaviour = value;
                 }
                 ConfigChange::WindowContainerBehaviour(value) => {
-                    let value = sv(value, |c| &c.window_container_behaviour);
                     config.window_container_behaviour = value;
                 }
                 ConfigChange::WindowHidingBehaviour(value) => {
-                    let value = sv(value, |c| &c.window_hiding_behaviour);
                     config.window_hiding_behaviour = value;
                 }
             },

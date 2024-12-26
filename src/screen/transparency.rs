@@ -1,6 +1,6 @@
 use super::rule::{self, Rule};
 
-use crate::config::{sanitize_value as sv, DEFAULT_CONFIG};
+use crate::config::DEFAULT_CONFIG;
 use crate::{widget::opt_helpers, BOLD_FONT};
 
 use iced::{
@@ -61,12 +61,10 @@ impl Transparency {
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::Transparency(value) => {
-                    let value = sv(value, |c| &c.transparency);
                     config.transparency = value;
                 }
                 ConfigChange::TransparencyAlpha(value) => {
                     let value = value.and_then(|v| v.try_into().ok().or(config.transparency_alpha));
-                    let value = sv(value, |c| &c.transparency_alpha);
                     config.transparency_alpha = value;
                 }
             },

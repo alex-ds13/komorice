@@ -1,5 +1,5 @@
 use crate::apperror::{AppError, AppErrorKind};
-use crate::Message;
+use crate::{config, Message};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -102,41 +102,30 @@ lazy_static! {
         custom_layout_rules: None,
         container_padding: None,
         workspace_padding: None,
-        initial_workspace_rules: None,
-        workspace_rules: None,
+        initial_workspace_rules: Some(Vec::new()),
+        workspace_rules: Some(Vec::new()),
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
         float_override: None,
     };
 }
 
-pub fn fill_monitors(config: &mut StaticConfig) {
+/// Adds any missing `MonitorConfig` on `config`. It checks the physical amount of monitors, if the
+/// amount of `MonitorConfig` on the `config` is less than the physical amount then it adds default
+/// `MonitorConfig` until it has the same amount.
+/// Returns a bool that says wether changes were made or not.
+pub fn fill_monitors(config: &mut StaticConfig) -> bool {
     let monitors = crate::monitors::get_displays();
     if let Some(config_monitors) = &mut config.monitors {
         let physical_monitors_len = monitors.len();
         let config_monitors_len = config_monitors.len();
         if physical_monitors_len <= config_monitors_len {
-            return;
+            return false;
         }
         for _ in 0..(physical_monitors_len - config_monitors_len) {
             config_monitors.push(MonitorConfig {
-                workspaces: vec![WorkspaceConfig {
-                    name: String::new(),
-                    layout: Some(DefaultLayout::BSP),
-                    custom_layout: None,
-                    layout_rules: None,
-                    custom_layout_rules: None,
-                    container_padding: None,
-                    workspace_padding: None,
-                    initial_workspace_rules: None,
-                    workspace_rules: None,
-                    apply_window_based_work_area_offset: None,
-                    window_container_behaviour: None,
-                    float_override: None,
-                }],
-                work_area_offset: None,
-                window_based_work_area_offset: None,
-                window_based_work_area_offset_limit: None,
+                workspaces: vec![DEFAULT_WORKSPACE_CONFIG.clone()],
+                ..*DEFAULT_MONITOR_CONFIG
             })
         }
     } else {
@@ -165,6 +154,7 @@ pub fn fill_monitors(config: &mut StaticConfig) {
                 .collect(),
         );
     }
+    true
 }
 
 /// It checks the value against the default config value. If the value is the default value, then
@@ -182,7 +172,10 @@ pub fn sanitize_value<T: Clone + PartialEq>(
     }
 }
 
-pub fn merge_default(config: &StaticConfig) -> StaticConfig {
+/// Merge the `DEFAULT_CONFIG` values on `config`. For each value that is `None` on `config`
+/// it uses the corresponding value from `DEFAULT_CONFIG`.
+/// It returns a new `StaticConfig` with the result.
+pub fn merge_default(config: StaticConfig) -> StaticConfig {
     StaticConfig {
         invisible_borders: config
             .invisible_borders
@@ -221,7 +214,7 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
         border_width: config.border_width.or(DEFAULT_CONFIG.border_width),
         border_offset: config.border_offset.or(DEFAULT_CONFIG.border_offset),
         border: config.border.or(DEFAULT_CONFIG.border),
-        border_colours: config.border_colours.as_ref().map(|bc| BorderColours {
+        border_colours: config.border_colours.map(|bc| BorderColours {
             single: bc.single.or(DEFAULT_CONFIG
                 .border_colours
                 .as_ref()
@@ -254,8 +247,6 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
             .or(DEFAULT_CONFIG.transparency_alpha),
         transparency_ignore_rules: config
             .transparency_ignore_rules
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.transparency_ignore_rules.clone()),
         default_workspace_padding: config
             .default_workspace_padding
@@ -263,29 +254,23 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
         default_container_padding: config
             .default_container_padding
             .or(DEFAULT_CONFIG.default_container_padding),
-        monitors: config.monitors.as_ref().map(|ms| {
-            ms.iter()
+        monitors: config.monitors.map(|ms| {
+            ms.into_iter()
                 .map(|m| MonitorConfig {
                     workspaces: m
                         .workspaces
-                        .iter()
+                        .into_iter()
                         .map(|w| WorkspaceConfig {
-                            name: w.name.clone(),
-                            layout: w.layout.or(DEFAULT_WORKSPACE_CONFIG.layout),
+                            name: w.name,
+                            layout: w.layout,
                             custom_layout: w
                                 .custom_layout
-                                .as_ref()
-                                .cloned()
                                 .or(DEFAULT_WORKSPACE_CONFIG.custom_layout.clone()),
                             layout_rules: w
                                 .layout_rules
-                                .as_ref()
-                                .cloned()
                                 .or(DEFAULT_WORKSPACE_CONFIG.layout_rules.clone()),
                             custom_layout_rules: w
                                 .custom_layout_rules
-                                .as_ref()
-                                .cloned()
                                 .or(DEFAULT_WORKSPACE_CONFIG.custom_layout_rules.clone()),
                             container_padding: w
                                 .container_padding
@@ -295,13 +280,9 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
                                 .or(DEFAULT_WORKSPACE_CONFIG.workspace_padding),
                             initial_workspace_rules: w
                                 .initial_workspace_rules
-                                .as_ref()
-                                .cloned()
                                 .or(DEFAULT_WORKSPACE_CONFIG.initial_workspace_rules.clone()),
                             workspace_rules: w
                                 .workspace_rules
-                                .as_ref()
-                                .cloned()
                                 .or(DEFAULT_WORKSPACE_CONFIG.workspace_rules.clone()),
                             apply_window_based_work_area_offset: w
                                 .apply_window_based_work_area_offset
@@ -332,52 +313,30 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
         global_work_area_offset: config
             .global_work_area_offset
             .or(DEFAULT_CONFIG.global_work_area_offset),
-        ignore_rules: config
-            .ignore_rules
-            .as_ref()
-            .cloned()
-            .or(DEFAULT_CONFIG.ignore_rules.clone()),
-        manage_rules: config
-            .manage_rules
-            .as_ref()
-            .cloned()
-            .or(DEFAULT_CONFIG.manage_rules.clone()),
+        ignore_rules: config.ignore_rules.or(DEFAULT_CONFIG.ignore_rules.clone()),
+        manage_rules: config.manage_rules.or(DEFAULT_CONFIG.manage_rules.clone()),
         floating_applications: config
             .floating_applications
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.floating_applications.clone()),
         border_overflow_applications: config
             .border_overflow_applications
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.border_overflow_applications.clone()),
         tray_and_multi_window_applications: config
             .tray_and_multi_window_applications
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.tray_and_multi_window_applications.clone()),
         layered_applications: config
             .layered_applications
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.layered_applications.clone()),
         object_name_change_applications: config
             .object_name_change_applications
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.object_name_change_applications.clone()),
         monitor_index_preferences: config
             .monitor_index_preferences
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.monitor_index_preferences.clone()),
         display_index_preferences: config
             .display_index_preferences
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.display_index_preferences.clone()),
-        stackbar: config.stackbar.as_ref().map(|s| StackbarConfig {
+        stackbar: config.stackbar.map(|s| StackbarConfig {
             height: s
                 .height
                 .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height)),
@@ -387,7 +346,7 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
             mode: s
                 .mode
                 .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode)),
-            tabs: s.tabs.as_ref().map(|t| TabsConfig {
+            tabs: s.tabs.map(|t| TabsConfig {
                 width: t.width.or(DEFAULT_CONFIG
                     .stackbar
                     .as_ref()
@@ -414,29 +373,356 @@ pub fn merge_default(config: &StaticConfig) -> StaticConfig {
                     .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))),
             }),
         }),
-        animation: config
-            .animation
-            .as_ref()
-            .map(|a| AnimationsConfig {
-                enabled: a.enabled.clone(),
-                duration: a.duration.as_ref().cloned().or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.duration.clone())),
-                style: a.style.as_ref().cloned().or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.style.clone())),
-                fps: a.fps.or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
-            }),
+        animation: config.animation.map(|a| AnimationsConfig {
+            enabled: a.enabled,
+            duration: a.duration.or(DEFAULT_CONFIG
+                .animation
+                .as_ref()
+                .and_then(|a| a.duration.clone())),
+            style: a.style.or(DEFAULT_CONFIG
+                .animation
+                .as_ref()
+                .and_then(|a| a.style.clone())),
+            fps: a
+                .fps
+                .or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
+        }),
         theme: config.theme.or(DEFAULT_CONFIG.theme),
         slow_application_identifiers: config
             .slow_application_identifiers
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.slow_application_identifiers.clone()),
         slow_application_compensation_time: config
             .slow_application_compensation_time
             .or(DEFAULT_CONFIG.slow_application_compensation_time),
         bar_configurations: config
             .bar_configurations
-            .as_ref()
-            .cloned()
             .or(DEFAULT_CONFIG.bar_configurations.clone()),
+    }
+}
+
+/// Unmerge the `DEFAULT_CONFIG` values from `config`. For each value that is equal to
+/// `DEFAULT_CONFIG` on `config` it changes it to `None`, this way we simplify the `config` so that
+/// when written to file it will only have the necessary lines.
+/// It returns a new `StaticConfig` with the result.
+pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
+    StaticConfig {
+        invisible_borders: config
+            .invisible_borders
+            .and_then(|v| (DEFAULT_CONFIG.invisible_borders != Some(v)).then_some(v)),
+        minimum_window_width: config
+            .minimum_window_width
+            .and_then(|v| (DEFAULT_CONFIG.minimum_window_width != Some(v)).then_some(v)),
+        minimum_window_height: config
+            .minimum_window_height
+            .and_then(|v| (DEFAULT_CONFIG.minimum_window_height != Some(v)).then_some(v)),
+        resize_delta: config
+            .resize_delta
+            .and_then(|v| (DEFAULT_CONFIG.resize_delta != Some(v)).then_some(v)),
+        window_container_behaviour: config
+            .window_container_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.window_container_behaviour != Some(v)).then_some(v)),
+        float_override: config
+            .float_override
+            .and_then(|v| (DEFAULT_CONFIG.float_override != Some(v)).then_some(v)),
+        cross_monitor_move_behaviour: config
+            .cross_monitor_move_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.cross_monitor_move_behaviour != Some(v)).then_some(v)),
+        cross_boundary_behaviour: config
+            .cross_boundary_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.cross_boundary_behaviour != Some(v)).then_some(v)),
+        unmanaged_window_operation_behaviour: config.unmanaged_window_operation_behaviour.and_then(
+            |v| (DEFAULT_CONFIG.unmanaged_window_operation_behaviour != Some(v)).then_some(v),
+        ),
+        focus_follows_mouse: config
+            .focus_follows_mouse
+            .and_then(|v| (DEFAULT_CONFIG.focus_follows_mouse != Some(v)).then_some(v)),
+        mouse_follows_focus: config
+            .mouse_follows_focus
+            .and_then(|v| (DEFAULT_CONFIG.mouse_follows_focus != Some(v)).then_some(v)),
+        app_specific_configuration_path: config.app_specific_configuration_path.and_then(|v| {
+            (DEFAULT_CONFIG.app_specific_configuration_path.as_ref() != Some(&v)).then_some(v)
+        }),
+        border_width: config
+            .border_width
+            .and_then(|v| (DEFAULT_CONFIG.border_width != Some(v)).then_some(v)),
+        border_offset: config
+            .border_offset
+            .and_then(|v| (DEFAULT_CONFIG.border_offset != Some(v)).then_some(v)),
+        border: config
+            .border
+            .and_then(|v| (DEFAULT_CONFIG.border != Some(v)).then_some(v)),
+        border_colours: config.border_colours.map(|bc| BorderColours {
+            single: bc.single.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.single)
+                    != Some(v))
+                .then_some(v)
+            }),
+            stack: bc.stack.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.stack)
+                    != Some(v))
+                .then_some(v)
+            }),
+            monocle: bc.monocle.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.monocle)
+                    != Some(v))
+                .then_some(v)
+            }),
+            floating: bc.floating.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.floating)
+                    != Some(v))
+                .then_some(v)
+            }),
+            unfocused: bc.unfocused.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.unfocused)
+                    != Some(v))
+                .then_some(v)
+            }),
+        }),
+        border_style: config
+            .border_style
+            .and_then(|v| (DEFAULT_CONFIG.border_style != Some(v)).then_some(v)),
+        border_z_order: config
+            .border_z_order
+            .and_then(|v| (DEFAULT_CONFIG.border_z_order != Some(v)).then_some(v)),
+        border_implementation: config
+            .border_implementation
+            .and_then(|v| (DEFAULT_CONFIG.border_implementation != Some(v)).then_some(v)),
+        transparency: config
+            .transparency
+            .and_then(|v| (DEFAULT_CONFIG.transparency != Some(v)).then_some(v)),
+        transparency_alpha: config
+            .transparency_alpha
+            .and_then(|v| (DEFAULT_CONFIG.transparency_alpha != Some(v)).then_some(v)),
+        transparency_ignore_rules: config.transparency_ignore_rules.and_then(|v| {
+            (DEFAULT_CONFIG.transparency_ignore_rules.as_ref() != Some(&v)).then_some(v)
+        }),
+        default_workspace_padding: config
+            .default_workspace_padding
+            .and_then(|v| (DEFAULT_CONFIG.default_workspace_padding != Some(v)).then_some(v)),
+        default_container_padding: config
+            .default_container_padding
+            .and_then(|v| (DEFAULT_CONFIG.default_container_padding != Some(v)).then_some(v)),
+        monitors: config.monitors.map(|ms| {
+            ms.into_iter()
+                .map(|m| MonitorConfig {
+                    workspaces: m
+                        .workspaces
+                        .into_iter()
+                        .map(|ws| WorkspaceConfig {
+                            name: ws.name,
+                            layout: ws.layout,
+                            custom_layout: ws.custom_layout.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.custom_layout.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
+                            layout_rules: ws.layout_rules.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.layout_rules.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
+                            custom_layout_rules: ws.custom_layout_rules.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.custom_layout_rules.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
+                            container_padding: ws.container_padding.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.container_padding != Some(v)).then_some(v)
+                            }),
+                            workspace_padding: ws.workspace_padding.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.workspace_padding != Some(v)).then_some(v)
+                            }),
+                            initial_workspace_rules: ws.initial_workspace_rules.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.initial_workspace_rules.as_ref()
+                                    != Some(&v))
+                                .then_some(v)
+                            }),
+                            workspace_rules: ws.workspace_rules.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.workspace_rules.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
+                            apply_window_based_work_area_offset: ws
+                                .apply_window_based_work_area_offset
+                                .and_then(|v| {
+                                    (DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset
+                                        != Some(v))
+                                    .then_some(v)
+                                }),
+                            window_container_behaviour: ws.window_container_behaviour.and_then(
+                                |v| {
+                                    (DEFAULT_WORKSPACE_CONFIG.window_container_behaviour != Some(v))
+                                        .then_some(v)
+                                },
+                            ),
+                            float_override: ws.float_override.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.float_override != Some(v)).then_some(v)
+                            }),
+                        })
+                        .collect(),
+                    work_area_offset: m.work_area_offset.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.work_area_offset != Some(v)).then_some(v)
+                    }),
+                    window_based_work_area_offset: m.window_based_work_area_offset.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.window_based_work_area_offset != Some(v))
+                            .then_some(v)
+                    }),
+                    window_based_work_area_offset_limit: m
+                        .window_based_work_area_offset_limit
+                        .and_then(|v| {
+                            (DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit != Some(v))
+                                .then_some(v)
+                        }),
+                })
+                .collect()
+        }),
+        window_hiding_behaviour: config
+            .window_hiding_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.window_hiding_behaviour != Some(v)).then_some(v)),
+        global_work_area_offset: config
+            .global_work_area_offset
+            .and_then(|v| (DEFAULT_CONFIG.global_work_area_offset != Some(v)).then_some(v)),
+        ignore_rules: config
+            .ignore_rules
+            .and_then(|v| (DEFAULT_CONFIG.ignore_rules.as_ref() != Some(&v)).then_some(v)),
+        manage_rules: config
+            .manage_rules
+            .and_then(|v| (DEFAULT_CONFIG.manage_rules.as_ref() != Some(&v)).then_some(v)),
+        floating_applications: config
+            .floating_applications
+            .and_then(|v| (DEFAULT_CONFIG.floating_applications.as_ref() != Some(&v)).then_some(v)),
+        border_overflow_applications: config.border_overflow_applications.and_then(|v| {
+            (DEFAULT_CONFIG.border_overflow_applications.as_ref() != Some(&v)).then_some(v)
+        }),
+        tray_and_multi_window_applications: config.tray_and_multi_window_applications.and_then(
+            |v| {
+                (DEFAULT_CONFIG.tray_and_multi_window_applications.as_ref() != Some(&v))
+                    .then_some(v)
+            },
+        ),
+        layered_applications: config
+            .layered_applications
+            .and_then(|v| (DEFAULT_CONFIG.layered_applications.as_ref() != Some(&v)).then_some(v)),
+        object_name_change_applications: config.object_name_change_applications.and_then(|v| {
+            (DEFAULT_CONFIG.object_name_change_applications.as_ref() != Some(&v)).then_some(v)
+        }),
+        monitor_index_preferences: config.monitor_index_preferences.and_then(|v| {
+            (DEFAULT_CONFIG.monitor_index_preferences.as_ref() != Some(&v)).then_some(v)
+        }),
+        display_index_preferences: config.display_index_preferences.and_then(|v| {
+            (DEFAULT_CONFIG.display_index_preferences.as_ref() != Some(&v)).then_some(v)
+        }),
+        stackbar: config.stackbar.map(|s| StackbarConfig {
+            height: s.height.and_then(|v| {
+                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height) != Some(v)).then_some(v)
+            }),
+            label: s.label.and_then(|v| {
+                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label) != Some(v)).then_some(v)
+            }),
+            mode: s.mode.and_then(|v| {
+                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode) != Some(v)).then_some(v)
+            }),
+            tabs: s.tabs.map(|t| TabsConfig {
+                width: t.width.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))
+                        != Some(v))
+                    .then_some(v)
+                }),
+                focused_text: t.focused_text.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))
+                        != Some(v))
+                    .then_some(v)
+                }),
+                unfocused_text: t.unfocused_text.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))
+                        != Some(v))
+                    .then_some(v)
+                }),
+                background: t.background.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))
+                        != Some(v))
+                    .then_some(v)
+                }),
+                font_family: t.font_family.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.as_ref()))
+                        != Some(&v))
+                    .then_some(v)
+                }),
+                font_size: t.font_size.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .stackbar
+                        .as_ref()
+                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))
+                        != Some(v))
+                    .then_some(v)
+                }),
+            }),
+        }),
+        animation: config.animation.map(|a| AnimationsConfig {
+            enabled: a.enabled,
+            duration: a.duration.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .animation
+                    .as_ref()
+                    .and_then(|a| a.duration.as_ref())
+                    != Some(&v))
+                .then_some(v)
+            }),
+            style: a.style.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .animation
+                    .as_ref()
+                    .and_then(|a| a.style.as_ref())
+                    != Some(&v))
+                .then_some(v)
+            }),
+            fps: a.fps.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .animation
+                    .as_ref()
+                    .and_then(|a| a.fps.as_ref())
+                    != Some(&v))
+                .then_some(v)
+            }),
+        }),
+        theme: config
+            .theme
+            .and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
+        slow_application_identifiers: config.slow_application_identifiers.and_then(|v| {
+            (DEFAULT_CONFIG.slow_application_identifiers.as_ref() != Some(&v)).then_some(v)
+        }),
+        slow_application_compensation_time: config.slow_application_compensation_time.and_then(
+            |v| (DEFAULT_CONFIG.slow_application_compensation_time != Some(v)).then_some(v),
+        ),
+        bar_configurations: config
+            .bar_configurations
+            .and_then(|v| (DEFAULT_CONFIG.bar_configurations.as_ref() != Some(&v)).then_some(v)),
     }
 }
 
@@ -712,7 +998,8 @@ pub async fn load() -> Result<StaticConfig, AppError> {
 pub async fn save(config: StaticConfig) -> Result<(), AppError> {
     use async_std::prelude::*;
 
-    let json = serde_json::to_string_pretty(&config).map_err(|e| AppError {
+    let unmerged_config = config::unmerge_default(config);
+    let json = serde_json::to_string_pretty(&unmerged_config).map_err(|e| AppError {
         title: "Error writing to 'komorebi.json' file".into(),
         description: Some(e.to_string()),
         kind: AppErrorKind::Error,
