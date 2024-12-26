@@ -49,19 +49,19 @@ lazy_static! {
         border_implementation: Some(BorderImplementation::default()),
         transparency: Some(false),
         transparency_alpha: Some(200),
-        transparency_ignore_rules: None,
+        transparency_ignore_rules: Some(Vec::new()),
         default_workspace_padding: Some(10),
         default_container_padding: Some(10),
         monitors: None,
         window_hiding_behaviour: Some(HidingBehaviour::Cloak),
         global_work_area_offset: None,
-        ignore_rules: None,
-        manage_rules: None,
-        floating_applications: None,
-        border_overflow_applications: None,
-        tray_and_multi_window_applications: None,
-        layered_applications: None,
-        object_name_change_applications: None,
+        ignore_rules: Some(Vec::new()),
+        manage_rules: Some(Vec::new()),
+        floating_applications: Some(Vec::new()),
+        border_overflow_applications: Some(Vec::new()),
+        tray_and_multi_window_applications: Some(Vec::new()),
+        layered_applications: Some(Vec::new()),
+        object_name_change_applications: Some(Vec::new()),
         monitor_index_preferences: None,
         display_index_preferences: None,
         stackbar: Some(StackbarConfig {
@@ -84,9 +84,29 @@ lazy_static! {
             fps: Some(60),
         }),
         theme: None,
-        slow_application_identifiers: None,
+        slow_application_identifiers: Some(Vec::new()),
         slow_application_compensation_time: Some(20),
-        bar_configurations: None,
+        bar_configurations: Some(Vec::new()),
+    };
+    pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
+        workspaces: Vec::new(),
+        work_area_offset: None,
+        window_based_work_area_offset: None,
+        window_based_work_area_offset_limit: Some(1),
+    };
+    pub static ref DEFAULT_WORKSPACE_CONFIG: WorkspaceConfig = WorkspaceConfig {
+        name: String::new(),
+        layout: Some(DefaultLayout::BSP),
+        custom_layout: None,
+        layout_rules: None,
+        custom_layout_rules: None,
+        container_padding: None,
+        workspace_padding: None,
+        initial_workspace_rules: None,
+        workspace_rules: None,
+        apply_window_based_work_area_offset: Some(true),
+        window_container_behaviour: None,
+        float_override: None,
     };
 }
 
@@ -147,22 +167,276 @@ pub fn fill_monitors(config: &mut StaticConfig) {
     }
 }
 
-/// It checks the value against the default config value and the loaded value. If the value is the
-/// default value while the loaded was something else, then we change value to `None` instead so
-/// that it doesn't show on the final config file. If value is the default value while the loaded
-/// value was also the default value we don't change it so that we don't get a dirty state when in
-/// fact they are the same. In any other situation we don't change the value.
+/// It checks the value against the default config value. If the value is the default value, then
+/// we change value to `None` so that it doesn't show on the final config file. Otherwise, we keep
+/// value as it was.
 pub fn sanitize_value<T: Clone + PartialEq>(
-    loaded: &StaticConfig,
     value: Option<T>,
     getter: impl Fn(&StaticConfig) -> &Option<T>,
 ) -> Option<T> {
-    let loaded_value = getter(loaded);
     let default_value = getter(&DEFAULT_CONFIG);
-    if value == *default_value && loaded_value != default_value {
+    if value == *default_value {
         None
     } else {
         value
+    }
+}
+
+pub fn merge_default(config: &StaticConfig) -> StaticConfig {
+    StaticConfig {
+        invisible_borders: config
+            .invisible_borders
+            .or(DEFAULT_CONFIG.invisible_borders),
+        minimum_window_width: config
+            .minimum_window_width
+            .or(DEFAULT_CONFIG.minimum_window_width),
+        minimum_window_height: config
+            .minimum_window_height
+            .or(DEFAULT_CONFIG.minimum_window_height),
+        resize_delta: config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
+        window_container_behaviour: config
+            .window_container_behaviour
+            .or(DEFAULT_CONFIG.window_container_behaviour),
+        float_override: config.float_override.or(DEFAULT_CONFIG.float_override),
+        cross_monitor_move_behaviour: config
+            .cross_monitor_move_behaviour
+            .or(DEFAULT_CONFIG.cross_monitor_move_behaviour),
+        cross_boundary_behaviour: config
+            .cross_boundary_behaviour
+            .or(DEFAULT_CONFIG.cross_boundary_behaviour),
+        unmanaged_window_operation_behaviour: config
+            .unmanaged_window_operation_behaviour
+            .or(DEFAULT_CONFIG.unmanaged_window_operation_behaviour),
+        focus_follows_mouse: config
+            .focus_follows_mouse
+            .or(DEFAULT_CONFIG.focus_follows_mouse),
+        mouse_follows_focus: config
+            .mouse_follows_focus
+            .or(DEFAULT_CONFIG.mouse_follows_focus),
+        app_specific_configuration_path: config
+            .app_specific_configuration_path
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.app_specific_configuration_path.clone()),
+        border_width: config.border_width.or(DEFAULT_CONFIG.border_width),
+        border_offset: config.border_offset.or(DEFAULT_CONFIG.border_offset),
+        border: config.border.or(DEFAULT_CONFIG.border),
+        border_colours: config.border_colours.as_ref().map(|bc| BorderColours {
+            single: bc.single.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.single)),
+            stack: bc.stack.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.stack)),
+            monocle: bc.monocle.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.monocle)),
+            floating: bc.floating.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.floating)),
+            unfocused: bc.unfocused.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.unfocused)),
+        }),
+        border_style: config.border_style.or(DEFAULT_CONFIG.border_style),
+        border_z_order: config.border_z_order.or(DEFAULT_CONFIG.border_z_order),
+        border_implementation: config
+            .border_implementation
+            .or(DEFAULT_CONFIG.border_implementation),
+        transparency: config.transparency.or(DEFAULT_CONFIG.transparency),
+        transparency_alpha: config
+            .transparency_alpha
+            .or(DEFAULT_CONFIG.transparency_alpha),
+        transparency_ignore_rules: config
+            .transparency_ignore_rules
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.transparency_ignore_rules.clone()),
+        default_workspace_padding: config
+            .default_workspace_padding
+            .or(DEFAULT_CONFIG.default_workspace_padding),
+        default_container_padding: config
+            .default_container_padding
+            .or(DEFAULT_CONFIG.default_container_padding),
+        monitors: config.monitors.as_ref().map(|ms| {
+            ms.iter()
+                .map(|m| MonitorConfig {
+                    workspaces: m
+                        .workspaces
+                        .iter()
+                        .map(|w| WorkspaceConfig {
+                            name: w.name.clone(),
+                            layout: w.layout.or(DEFAULT_WORKSPACE_CONFIG.layout),
+                            custom_layout: w
+                                .custom_layout
+                                .as_ref()
+                                .cloned()
+                                .or(DEFAULT_WORKSPACE_CONFIG.custom_layout.clone()),
+                            layout_rules: w
+                                .layout_rules
+                                .as_ref()
+                                .cloned()
+                                .or(DEFAULT_WORKSPACE_CONFIG.layout_rules.clone()),
+                            custom_layout_rules: w
+                                .custom_layout_rules
+                                .as_ref()
+                                .cloned()
+                                .or(DEFAULT_WORKSPACE_CONFIG.custom_layout_rules.clone()),
+                            container_padding: w
+                                .container_padding
+                                .or(DEFAULT_WORKSPACE_CONFIG.container_padding),
+                            workspace_padding: w
+                                .workspace_padding
+                                .or(DEFAULT_WORKSPACE_CONFIG.workspace_padding),
+                            initial_workspace_rules: w
+                                .initial_workspace_rules
+                                .as_ref()
+                                .cloned()
+                                .or(DEFAULT_WORKSPACE_CONFIG.initial_workspace_rules.clone()),
+                            workspace_rules: w
+                                .workspace_rules
+                                .as_ref()
+                                .cloned()
+                                .or(DEFAULT_WORKSPACE_CONFIG.workspace_rules.clone()),
+                            apply_window_based_work_area_offset: w
+                                .apply_window_based_work_area_offset
+                                .or(DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset),
+                            window_container_behaviour: w
+                                .window_container_behaviour
+                                .or(DEFAULT_WORKSPACE_CONFIG.window_container_behaviour),
+                            float_override: w
+                                .float_override
+                                .or(DEFAULT_WORKSPACE_CONFIG.float_override),
+                        })
+                        .collect(),
+                    work_area_offset: m
+                        .work_area_offset
+                        .or(DEFAULT_MONITOR_CONFIG.work_area_offset),
+                    window_based_work_area_offset: m
+                        .window_based_work_area_offset
+                        .or(DEFAULT_MONITOR_CONFIG.window_based_work_area_offset),
+                    window_based_work_area_offset_limit: m
+                        .window_based_work_area_offset_limit
+                        .or(DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit),
+                })
+                .collect()
+        }),
+        window_hiding_behaviour: config
+            .window_hiding_behaviour
+            .or(DEFAULT_CONFIG.window_hiding_behaviour),
+        global_work_area_offset: config
+            .global_work_area_offset
+            .or(DEFAULT_CONFIG.global_work_area_offset),
+        ignore_rules: config
+            .ignore_rules
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.ignore_rules.clone()),
+        manage_rules: config
+            .manage_rules
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.manage_rules.clone()),
+        floating_applications: config
+            .floating_applications
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.floating_applications.clone()),
+        border_overflow_applications: config
+            .border_overflow_applications
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.border_overflow_applications.clone()),
+        tray_and_multi_window_applications: config
+            .tray_and_multi_window_applications
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.tray_and_multi_window_applications.clone()),
+        layered_applications: config
+            .layered_applications
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.layered_applications.clone()),
+        object_name_change_applications: config
+            .object_name_change_applications
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.object_name_change_applications.clone()),
+        monitor_index_preferences: config
+            .monitor_index_preferences
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.monitor_index_preferences.clone()),
+        display_index_preferences: config
+            .display_index_preferences
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.display_index_preferences.clone()),
+        stackbar: config.stackbar.as_ref().map(|s| StackbarConfig {
+            height: s
+                .height
+                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height)),
+            label: s
+                .label
+                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label)),
+            mode: s
+                .mode
+                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode)),
+            tabs: s.tabs.as_ref().map(|t| TabsConfig {
+                width: t.width.or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))),
+                focused_text: t.focused_text.or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))),
+                unfocused_text: t.unfocused_text.or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))),
+                background: t.background.or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))),
+                font_family: t.font_family.as_ref().cloned().or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.clone()))),
+                font_size: t.font_size.or(DEFAULT_CONFIG
+                    .stackbar
+                    .as_ref()
+                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))),
+            }),
+        }),
+        animation: config
+            .animation
+            .as_ref()
+            .map(|a| AnimationsConfig {
+                enabled: a.enabled.clone(),
+                duration: a.duration.as_ref().cloned().or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.duration.clone())),
+                style: a.style.as_ref().cloned().or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.style.clone())),
+                fps: a.fps.or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
+            }),
+        theme: config.theme.or(DEFAULT_CONFIG.theme),
+        slow_application_identifiers: config
+            .slow_application_identifiers
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.slow_application_identifiers.clone()),
+        slow_application_compensation_time: config
+            .slow_application_compensation_time
+            .or(DEFAULT_CONFIG.slow_application_compensation_time),
+        bar_configurations: config
+            .bar_configurations
+            .as_ref()
+            .cloned()
+            .or(DEFAULT_CONFIG.bar_configurations.clone()),
     }
 }
 
@@ -172,7 +446,6 @@ pub trait ChangeConfig {
         value: Option<T>,
         getter: impl Fn(&mut Self) -> &mut Option<T>,
         getter_ref: impl Fn(&Self) -> &Option<T>,
-        loaded: &Self,
     );
 
     fn change_config(&mut self, f: impl Fn(&mut Self)) {
@@ -195,9 +468,8 @@ impl ChangeConfig for StaticConfig {
         value: Option<T>,
         getter: impl Fn(&mut Self) -> &mut Option<T>,
         getter_ref: impl Fn(&Self) -> &Option<T>,
-        loaded: &Self,
     ) {
-        let sanitized_value = sanitize_value(loaded, value, getter_ref);
+        let sanitized_value = sanitize_value(value, getter_ref);
         *getter(self) = sanitized_value;
     }
 

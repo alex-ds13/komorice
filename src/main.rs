@@ -155,9 +155,7 @@ impl Komofig {
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::General(message) => {
-                let (action, task) =
-                    self.general
-                        .update(message, &mut self.config, &self.loaded_config);
+                let (action, task) = self.general.update(message, &mut self.config);
                 let action_task = match action {
                     general::Action::None => Task::none(),
                 };
@@ -190,9 +188,7 @@ impl Komofig {
                 }
             }
             Message::Transparency(message) => {
-                let (action, task) =
-                    self.transparency
-                        .update(message, &mut self.config, &self.loaded_config);
+                let (action, task) = self.transparency.update(message, &mut self.config);
                 let action_task = match action {
                     transparency::Action::None => Task::none(),
                 };
@@ -445,6 +441,8 @@ impl Komofig {
     }
 
     fn check_changes(&mut self) {
-        self.is_dirty = self.config != *self.loaded_config;
+        let merged_config = config::merge_default(&self.config);
+        let merged_loaded = config::merge_default(&self.loaded_config);
+        self.is_dirty = merged_config != merged_loaded;
     }
 }

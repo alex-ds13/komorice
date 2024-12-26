@@ -57,18 +57,16 @@ impl Transparency {
         &mut self,
         message: Message,
         config: &mut StaticConfig,
-        loaded_config: &StaticConfig,
     ) -> (Action, Task<Message>) {
-        let lc = loaded_config;
         match message {
             Message::ConfigChange(change) => match change {
                 ConfigChange::Transparency(value) => {
-                    let value = sv(lc, value, |c| &c.transparency);
+                    let value = sv(value, |c| &c.transparency);
                     config.transparency = value;
                 }
                 ConfigChange::TransparencyAlpha(value) => {
                     let value = value.and_then(|v| v.try_into().ok().or(config.transparency_alpha));
-                    let value = sv(lc, value, |c| &c.transparency_alpha);
+                    let value = sv(value, |c| &c.transparency_alpha);
                     config.transparency_alpha = value;
                 }
             },
