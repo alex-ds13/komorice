@@ -112,7 +112,7 @@ where
         // });
         let mut origin_point = Point::ORIGIN;
         let mut rect = zero_rect;
-        let mut children: Vec<Node> = rects
+        let children: Vec<Node> = rects
             .iter()
             .map(|r| {
                 let n = layout::padded(
@@ -136,11 +136,12 @@ where
                     },
                 ); //,
                    // println!("{:#?}", &n);
-                if r.x + 2.0 * Self::DEFAULT_PADDING < origin_point.x {
+                // println!("CHECKING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
+                if r.x + 2.0 * Self::DEFAULT_PADDING < 0.0 {
                     origin_point.x += n.bounds().width;
                 }
-                if r.y + 2.0 * Self::DEFAULT_PADDING < origin_point.y {
-                    // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
+                if r.y + 2.0 * Self::DEFAULT_PADDING < 0.0 {
+                    // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
                     origin_point.y += n.bounds().height;
                 }
                 n
@@ -149,7 +150,7 @@ where
 
         // println!("ORIGIN_POINT: {origin_point}");
         let children = children
-            .iter_mut()
+            .into_iter()
             .zip(rects)
             .map(|(node, r)| {
                 let x_offset =
@@ -172,7 +173,7 @@ where
                     } else {
                         0.0
                     };
-                let n = node.clone().translate(iced::Vector {
+                let n = node.translate(iced::Vector {
                     x: origin_point.x + x_offset + r.x,
                     y: origin_point.y + y_offset + r.y,
                 });
@@ -180,6 +181,8 @@ where
                 n
             })
             .collect();
+        // println!("RECT: {rect:#?}");
+        // println!("Children: {children:#?}");
         Node::with_children(rect.size(), children)
         // Node::new(rect.size())
     }
