@@ -205,7 +205,7 @@ impl Monitors {
 }
 
 pub fn get_display_information() -> HashMap<usize, (String, Rect)> {
-    win32_display_data::connected_displays_all()
+    win32_display_data::connected_displays_physical()
         .flatten()
         .enumerate()
         .map(|(i, display)| {
@@ -228,7 +228,7 @@ pub fn get_display_information() -> HashMap<usize, (String, Rect)> {
 }
 
 pub fn get_displays() -> Vec<komorebi_client::Monitor> {
-    win32_display_data::connected_displays_all()
+    win32_display_data::connected_displays_physical()
         .flatten()
         .map(|display| {
             let path = display.device_path.clone();
