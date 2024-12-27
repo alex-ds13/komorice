@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod border;
 pub mod general;
 pub mod monitor;
@@ -22,6 +23,7 @@ pub enum Screen {
     Border,
     Stackbar,
     Transparency,
+    Animations,
     Rules,
     Debug,
     Settings,
@@ -36,6 +38,7 @@ impl Display for Screen {
             Screen::Border => write!(f, "Border"),
             Screen::Stackbar => write!(f, "Stackbar"),
             Screen::Transparency => write!(f, "Transparency"),
+            Screen::Animations => write!(f, "Animations"),
             Screen::Rules => write!(f, "Rules"),
             Screen::Debug => write!(f, "Debug"),
             Screen::Settings => write!(f, "Settings"),

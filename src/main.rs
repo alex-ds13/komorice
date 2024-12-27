@@ -7,7 +7,9 @@ mod widget;
 
 use crate::apperror::AppError;
 use crate::config::DEFAULT_CONFIG;
-use crate::screen::{border, general, monitors, rules, sidebar, stackbar, transparency, Screen};
+use crate::screen::{
+    animation, border, general, monitors, rules, sidebar, stackbar, transparency, Screen,
+};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -54,6 +56,7 @@ enum Message {
     ThemeChanged(Theme),
 
     // View/Screen related Messages
+    Animation(animation::Message),
     Border(border::Message),
     General(general::Message),
     Monitors(monitors::Message),
@@ -85,6 +88,7 @@ struct Komofig {
     general: general::General,
     stackbar: stackbar::Stackbar,
     transparency: transparency::Transparency,
+    animation: animation::Animation,
     rules: rules::Rules,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
@@ -108,6 +112,7 @@ impl Default for Komofig {
             general: Default::default(),
             stackbar: Default::default(),
             transparency: Default::default(),
+            animation: Default::default(),
             rules: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
@@ -199,6 +204,19 @@ impl Komofig {
                 };
                 self.check_changes();
                 return Task::batch([task.map(Message::Transparency), action_task]);
+            }
+            Message::Animation(message) => {
+                if self.config.animation.is_none() {
+                    self.config.animation = Some(animation::default_animations_config());
+                }
+                if let Some(animation_config) = self.config.animation.as_mut() {
+                    let (action, task) = self.animation.update(message, animation_config);
+                    let action_task = match action {
+                        animation::Action::None => Task::none(),
+                    };
+                    self.check_changes();
+                    return Task::batch([task.map(Message::Animation), action_task]);
+                }
             }
             Message::Rules(message) => {
                 let (action, task) = self.rules.update(message, &mut self.config);
@@ -346,6 +364,10 @@ impl Komofig {
                 .transparency
                 .view(&self.config)
                 .map(Message::Transparency),
+            Screen::Animations => self
+                .animation
+                .view(self.config.animation.as_ref())
+                .map(Message::Animation),
             Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
             Screen::Debug => {
                 let notifications = scrollable(
@@ -414,6 +436,7 @@ impl Komofig {
             | Screen::General
             | Screen::Border
             | Screen::Stackbar
+            | Screen::Animations
             | Screen::Debug
             | Screen::Settings => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
