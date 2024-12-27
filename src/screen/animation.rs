@@ -62,10 +62,8 @@ pub struct Animation {
     pub enable_expanded: bool,
     pub duration_hovered: bool,
     pub duration_expanded: bool,
-    pub duration_config_type: ConfigType,
     pub style_hovered: bool,
     pub style_expanded: bool,
-    pub style_config_type: ConfigType,
 }
 
 impl Animation {
@@ -146,10 +144,62 @@ impl Animation {
             }
             Message::ToggleDurationExpand => self.duration_expanded = !self.duration_expanded,
             Message::ToggleDurationHover(hover) => self.duration_hovered = hover,
-            Message::ToggleDurationConfigType(c_type) => self.duration_config_type = c_type,
+            Message::ToggleDurationConfigType(c_type) => {
+                match c_type {
+                    ConfigType::Global => {
+                        if let Some(PerAnimationPrefixConfig::Prefix(ap)) = &config.duration {
+                            // If all animation types duration was the same then set the `Global`
+                            // with that value, otherwise set it to default value
+                            let duration = ap.values().next().and_then(|duration| {
+                                ap.values().all(|v| v == duration).then_some(*duration)
+                            });
+                            config.duration = duration.map(PerAnimationPrefixConfig::Global);
+                        } else {
+                            config.duration = DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.duration.clone());
+                        }
+                    }
+                    ConfigType::PerType => {
+                        if let Some(PerAnimationPrefixConfig::Global(global)) = config.duration {
+                            // Use the `Global` value on each animation type
+                            config.duration = Some(PerAnimationPrefixConfig::Prefix(HashMap::from([
+                                (AnimationPrefix::Movement, global),
+                                (AnimationPrefix::Transparency, global),
+                            ])));
+                        } else {
+                            config.duration = Some(PerAnimationPrefixConfig::Prefix(HashMap::new()));
+                        }
+                    }
+                }
+            }
             Message::ToggleStyleExpand => self.style_expanded = !self.style_expanded,
             Message::ToggleStyleHover(hover) => self.style_hovered = hover,
-            Message::ToggleStyleConfigType(c_type) => self.style_config_type = c_type,
+            Message::ToggleStyleConfigType(c_type) => {
+                match c_type {
+                    ConfigType::Global => {
+                        if let Some(PerAnimationPrefixConfig::Prefix(ap)) = &config.style {
+                            // If all animation types style was the same then set the `Global`
+                            // with that value, otherwise set it to default value
+                            let style = ap.values().next().and_then(|style| {
+                                ap.values().all(|v| v == style).then_some(*style)
+                            });
+                            config.style = style.map(PerAnimationPrefixConfig::Global);
+                        } else {
+                            config.style = DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.style.clone());
+                        }
+                    }
+                    ConfigType::PerType => {
+                        if let Some(PerAnimationPrefixConfig::Global(global)) = config.style {
+                            // Use the `Global` value on each animation type
+                            config.style = Some(PerAnimationPrefixConfig::Prefix(HashMap::from([
+                                (AnimationPrefix::Movement, global),
+                                (AnimationPrefix::Transparency, global),
+                            ])));
+                        } else {
+                            config.style = Some(PerAnimationPrefixConfig::Prefix(HashMap::new()));
+                        }
+                    }
+                }
+            }
         }
         (Action::None, Task::none())
     }
