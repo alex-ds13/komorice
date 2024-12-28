@@ -124,10 +124,11 @@ impl Monitors {
                     .spacing(10)
                     .padding(padding::top(10).bottom(10).right(20));
 
-                let m = monitors_viewer::Monitors::new(display_info)
+                let m: Element<Message> = monitors_viewer::Monitors::new(display_info)
                     .selected(self.monitor_to_config)
-                    .on_selected(Message::ConfigMonitor);
-                // let m = m.explain(color!(0x00aaff));
+                    .on_selected(Message::ConfigMonitor)
+                    .into();
+                // let m = m.explain(iced::color!(0x00aaff));
                 let m = container(m)
                     .padding(10)
                     .width(Fill)

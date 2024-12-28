@@ -53,14 +53,18 @@ impl<'a, Message> Monitors<'a, Message> {
         self
     }
 
-    fn get_rects(&self) -> Vec<Rectangle<f32>> {
-        self.monitors
+    fn get_rects(&self) -> (Vec<Rectangle<f32>>, Point) {
+        let mut top_left = Point::ORIGIN;
+        let rects = self
+            .monitors
             .iter()
             .map(|(_, (_, size))| {
                 let x = size.left as f32 / 10.0;
                 let y = size.top as f32 / 10.0;
                 let width = size.right as f32 / 10.0;
                 let height = size.bottom as f32 / 10.0;
+                top_left.x = top_left.x.min(x);
+                top_left.y = top_left.y.min(y);
                 Rectangle {
                     x,
                     y,
@@ -68,7 +72,8 @@ impl<'a, Message> Monitors<'a, Message> {
                     height,
                 }
             })
-            .collect()
+            .collect();
+        (rects, top_left)
     }
 }
 
@@ -99,7 +104,7 @@ where
 
     fn layout(&self, _tree: &mut Tree, _renderer: &Renderer, _limits: &Limits) -> Node {
         // let mut origin_point = Point::ORIGIN;
-        let rects = self.get_rects();
+        let (rects, top_left) = self.get_rects();
         let zero_rect = Rectangle::with_size(Size::ZERO);
         // let rect = rects.iter().fold(zero_rect, |rect, r| {
         //     if r.x < origin_point.x {
@@ -110,7 +115,7 @@ where
         //     }
         //     rect.union(r)
         // });
-        let mut origin_point = Point::ORIGIN;
+        // let mut origin_point = Point::ORIGIN;
         let mut rect = zero_rect;
         let children: Vec<Node> = rects
             .iter()
@@ -126,6 +131,10 @@ where
                         //     y: origin_point.y + r.y,
                         // })
                         // Node::new(r.size())
+                        // let size = Size {
+                        //     width: r.size().width - Self::DEFAULT_PADDING * 2.0,
+                        //     height: r.size().height - Self::DEFAULT_PADDING * 2.0,
+                        // };
                         layout::sized(limits, Shrink, Shrink, |limits| {
                             limits.resolve(Shrink, Shrink, r.size())
                         })
@@ -136,51 +145,67 @@ where
                     },
                 ); //,
                    // println!("{:#?}", &n);
-                // println!("CHECKING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
-                if r.x + 2.0 * Self::DEFAULT_PADDING < 0.0 {
-                    origin_point.x += n.bounds().width;
-                }
-                if r.y + 2.0 * Self::DEFAULT_PADDING < 0.0 {
-                    // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
-                    origin_point.y += n.bounds().height;
-                }
-                n
-            })
-            .collect();
+                   // println!("CHECKING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
+                   // if r.x + 2.0 * Self::DEFAULT_PADDING < 0.0 {
+                   //     origin_point.x += n.bounds().width;
+                   // }
+                   // if r.y + 2.0 * Self::DEFAULT_PADDING < 0.0 {
+                   //     // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
+                   //     origin_point.y += n.bounds().height;
+                   // }
 
-        // println!("ORIGIN_POINT: {origin_point}");
-        let children = children
-            .into_iter()
-            .zip(rects)
-            .map(|(node, r)| {
-                let x_offset =
-                    if r.x + 2.0 * Self::DEFAULT_PADDING + node.bounds().width < origin_point.x {
-                        // println!("Negative Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
-                        -2.0 * Self::DEFAULT_PADDING
-                    } else if r.x > origin_point.x {
-                        // println!("Positive Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
-                        2.0 * Self::DEFAULT_PADDING
-                    } else {
-                        0.0
-                    };
-                let y_offset =
-                    if r.y + 2.0 * Self::DEFAULT_PADDING + node.bounds().height < origin_point.y {
-                        // println!("Negative Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
-                        -2.0 * Self::DEFAULT_PADDING
-                    } else if r.y > origin_point.y {
-                        // println!("Positive Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
-                        2.0 * Self::DEFAULT_PADDING
-                    } else {
-                        0.0
-                    };
-                let n = node.translate(iced::Vector {
-                    x: origin_point.x + x_offset + r.x,
-                    y: origin_point.y + y_offset + r.y,
+                let x_offset = if r.x == top_left.x {
+                    0.0
+                } else {
+                    2.0 * Self::DEFAULT_PADDING
+                };
+                let y_offset = if r.y == top_left.y {
+                    0.0
+                } else {
+                    2.0 * Self::DEFAULT_PADDING
+                };
+                let n = n.translate(iced::Vector {
+                    x: r.x - top_left.x + x_offset,
+                    y: r.y - top_left.y + y_offset,
                 });
                 rect = rect.union(&n.bounds());
                 n
             })
             .collect();
+
+        // println!("ORIGIN_POINT: {origin_point}");
+        // let children = children
+        //     .into_iter()
+        //     .zip(rects)
+        //     .map(|(node, r)| {
+        //         let x_offset =
+        //             if r.x + 2.0 * Self::DEFAULT_PADDING + node.bounds().width < origin_point.x {
+        //                 // println!("Negative Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
+        //                 -2.0 * Self::DEFAULT_PADDING
+        //             } else if r.x > origin_point.x {
+        //                 // println!("Positive Offsetting: r.x -> {}, origin.x -> {}", r.x, origin_point.x);
+        //                 2.0 * Self::DEFAULT_PADDING
+        //             } else {
+        //                 0.0
+        //             };
+        //         let y_offset =
+        //             if r.y + 2.0 * Self::DEFAULT_PADDING + node.bounds().height < origin_point.y {
+        //                 // println!("Negative Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
+        //                 -2.0 * Self::DEFAULT_PADDING
+        //             } else if r.y > origin_point.y {
+        //                 // println!("Positive Offsetting: r.y -> {}, origin.y -> {}", r.y, origin_point.y);
+        //                 2.0 * Self::DEFAULT_PADDING
+        //             } else {
+        //                 0.0
+        //             };
+        //         // let n = node.translate(iced::Vector {
+        //         //     x: origin_point.x + x_offset + r.x,
+        //         //     y: origin_point.y + y_offset + r.y,
+        //         // });
+        //         rect = rect.union(&node.bounds());
+        //         node
+        //     })
+        //     .collect();
         // println!("RECT: {rect:#?}");
         // println!("Children: {children:#?}");
         Node::with_children(rect.size(), children)
@@ -204,12 +229,7 @@ where
         let border_color: iced::Color = iced::color!(0x000000);
         let hover_border_color: iced::Color = iced::color!(0x333333);
         let selected_border_color: iced::Color = iced::color!(0x45ccff);
-        for (((idx, (device_id, _)), rect), child_layout) in self
-            .monitors
-            .iter()
-            .zip(self.get_rects())
-            .zip(layout.children())
-        {
+        for ((idx, (device_id, _)), child_layout) in self.monitors.iter().zip(layout.children()) {
             let bounds = child_layout.children().next().unwrap().bounds();
             let is_hover = _cursor.position_over(bounds).is_some();
             let background = if matches!(self.selected, Some(i) if i == *idx) {
@@ -232,7 +252,7 @@ where
                     bounds: Rectangle {
                         x: bounds.x,
                         y: bounds.y,
-                        ..rect
+                        ..bounds
                     },
                     border: Border {
                         color: border_color,
@@ -297,9 +317,7 @@ where
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
-                for ((idx, _monitor), child_layout) in
-                    self.monitors.iter().zip(layout.children())
-                {
+                for ((idx, _monitor), child_layout) in self.monitors.iter().zip(layout.children()) {
                     let bounds = child_layout.bounds();
                     let mouse_over = cursor.is_over(bounds);
 
