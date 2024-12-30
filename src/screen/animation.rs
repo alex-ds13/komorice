@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
 use crate::config::DEFAULT_CONFIG;
 use crate::widget::opt_helpers;
+
+use std::collections::HashMap;
 
 use iced::{
     widget::{column, horizontal_space, pick_list, row},
@@ -10,6 +10,42 @@ use iced::{
 use komorebi_client::{
     AnimationPrefix, AnimationStyle, AnimationsConfig, PerAnimationPrefixConfig,
 };
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref ALL_ANIMATIONS_STYLES: [AnimationStyle; 30] = [
+        AnimationStyle::Linear,
+        AnimationStyle::EaseInSine,
+        AnimationStyle::EaseOutSine,
+        AnimationStyle::EaseInOutSine,
+        AnimationStyle::EaseInQuad,
+        AnimationStyle::EaseOutQuad,
+        AnimationStyle::EaseInOutQuad,
+        AnimationStyle::EaseInCubic,
+        AnimationStyle::EaseInOutCubic,
+        AnimationStyle::EaseInQuart,
+        AnimationStyle::EaseOutQuart,
+        AnimationStyle::EaseInOutQuart,
+        AnimationStyle::EaseInQuint,
+        AnimationStyle::EaseOutQuint,
+        AnimationStyle::EaseInOutQuint,
+        AnimationStyle::EaseInExpo,
+        AnimationStyle::EaseOutExpo,
+        AnimationStyle::EaseInOutExpo,
+        AnimationStyle::EaseInCirc,
+        AnimationStyle::EaseOutCirc,
+        AnimationStyle::EaseInOutCirc,
+        AnimationStyle::EaseInBack,
+        AnimationStyle::EaseOutBack,
+        AnimationStyle::EaseInOutBack,
+        AnimationStyle::EaseInElastic,
+        AnimationStyle::EaseOutElastic,
+        AnimationStyle::EaseInOutElastic,
+        AnimationStyle::EaseInBounce,
+        AnimationStyle::EaseOutBounce,
+        AnimationStyle::EaseInOutBounce,
+    ];
+}
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -29,11 +65,11 @@ pub enum Message {
 pub enum ConfigChange {
     EnableGlobal(bool),
     EnablePerType(AnimationPrefix, bool),
-    DurationGlobal(Option<u64>),
-    DurationPerType(AnimationPrefix, Option<u64>),
-    StyleGlobal(Option<AnimationStyle>),
-    StylePerType(AnimationPrefix, Option<AnimationStyle>),
-    Fps(Option<u64>),
+    DurationGlobal(u64),
+    DurationPerType(AnimationPrefix, u64),
+    StyleGlobal(AnimationStyle),
+    StylePerType(AnimationPrefix, AnimationStyle),
+    Fps(Option<i32>),
 }
 
 #[derive(Clone, Debug)]
@@ -86,38 +122,35 @@ impl Animation {
                     }
                 }
                 ConfigChange::DurationGlobal(value) => {
-                    config.duration = value.map(PerAnimationPrefixConfig::Global);
+                    config.duration = Some(PerAnimationPrefixConfig::Global(value));
                 }
                 ConfigChange::DurationPerType(prefix, value) => {
                     if let Some(PerAnimationPrefixConfig::Prefix(ap)) = &mut config.duration {
-                        if let Some(value) = value {
-                            ap.insert(prefix, value);
-                        } else {
-                            ap.remove(&prefix);
-                        }
+                        ap.insert(prefix, value);
                     } else {
-                        config.duration = value.map(|v| {
-                            PerAnimationPrefixConfig::Prefix(HashMap::from([(prefix, v)]))
-                        });
+                        config.duration =
+                            Some(PerAnimationPrefixConfig::Prefix(HashMap::from([(
+                                prefix, value,
+                            )])));
                     }
                 }
                 ConfigChange::StyleGlobal(value) => {
-                    config.style = value.map(PerAnimationPrefixConfig::Global);
+                    config.style = Some(PerAnimationPrefixConfig::Global(value));
                 }
                 ConfigChange::StylePerType(prefix, value) => {
                     if let Some(PerAnimationPrefixConfig::Prefix(ap)) = &mut config.style {
-                        if let Some(value) = value {
-                            ap.insert(prefix, value);
-                        } else {
-                            ap.remove(&prefix);
-                        }
+                        ap.insert(prefix, value);
                     } else {
-                        config.style = value.map(|v| {
-                            PerAnimationPrefixConfig::Prefix(HashMap::from([(prefix, v)]))
-                        });
+                        config.style = Some(PerAnimationPrefixConfig::Prefix(HashMap::from([(
+                            prefix, value,
+                        )])));
                     }
                 }
-                ConfigChange::Fps(value) => config.fps = value,
+                ConfigChange::Fps(value) => {
+                    if let Some(fps) = value.and_then(|v| v.try_into().ok()) {
+                        config.fps = Some(fps);
+                    }
+                }
             },
             Message::ToggleEnableExpand => self.enable_expanded = !self.enable_expanded,
             Message::ToggleEnableHover(hover) => self.enable_hovered = hover,
@@ -155,18 +188,23 @@ impl Animation {
                             });
                             config.duration = duration.map(PerAnimationPrefixConfig::Global);
                         } else {
-                            config.duration = DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.duration.clone());
+                            config.duration = DEFAULT_CONFIG
+                                .animation
+                                .as_ref()
+                                .and_then(|a| a.duration.clone());
                         }
                     }
                     ConfigType::PerType => {
                         if let Some(PerAnimationPrefixConfig::Global(global)) = config.duration {
                             // Use the `Global` value on each animation type
-                            config.duration = Some(PerAnimationPrefixConfig::Prefix(HashMap::from([
-                                (AnimationPrefix::Movement, global),
-                                (AnimationPrefix::Transparency, global),
-                            ])));
+                            config.duration =
+                                Some(PerAnimationPrefixConfig::Prefix(HashMap::from([
+                                    (AnimationPrefix::Movement, global),
+                                    (AnimationPrefix::Transparency, global),
+                                ])));
                         } else {
-                            config.duration = Some(PerAnimationPrefixConfig::Prefix(HashMap::new()));
+                            config.duration =
+                                Some(PerAnimationPrefixConfig::Prefix(HashMap::new()));
                         }
                     }
                 }
@@ -184,7 +222,10 @@ impl Animation {
                             });
                             config.style = style.map(PerAnimationPrefixConfig::Global);
                         } else {
-                            config.style = DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.style.clone());
+                            config.style = DEFAULT_CONFIG
+                                .animation
+                                .as_ref()
+                                .and_then(|a| a.style.clone());
                         }
                     }
                     ConfigType::PerType => {
@@ -214,12 +255,22 @@ impl Animation {
             PerAnimationPrefixConfig::Prefix(_) => ConfigType::PerType,
             PerAnimationPrefixConfig::Global(_) => ConfigType::Global,
         };
+        let duration_config_type = match &config.duration {
+            Some(PerAnimationPrefixConfig::Prefix(_)) => ConfigType::PerType,
+            Some(PerAnimationPrefixConfig::Global(_)) => ConfigType::Global,
+            None => ConfigType::Global,
+        };
+        let style_config_type = match &config.style {
+            Some(PerAnimationPrefixConfig::Prefix(_)) => ConfigType::PerType,
+            Some(PerAnimationPrefixConfig::Global(_)) => ConfigType::Global,
+            None => ConfigType::Global,
+        };
         opt_helpers::section_view(
             "Animations:",
             [
                 opt_helpers::expandable_with_disable_default(
                     "Enable",
-                    Some("Enable/Disable all animations or per type of animation"),
+                    Some("Enable or disable all animations or per type of animation"),
                     [
                         column![
                             opt_helpers::opt_box(
@@ -275,6 +326,171 @@ impl Animation {
                     Message::ToggleEnableHover,
                     DEFAULT_CONFIG.animation.as_ref().map(|a| a.enabled != config.enabled).unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::EnableGlobal(false)),
+                    None,
+                ),
+                opt_helpers::expandable_with_disable_default(
+                    "Duration",
+                    Some("Set the animation duration in ms for all animations or per type of animation (default: 250)"),
+                    [
+                        column![
+                            opt_helpers::opt_box(
+                                row![
+                                    column![
+                                        pick_list(
+                                            [ConfigType::Global, ConfigType::PerType],
+                                            Some(duration_config_type.clone()),
+                                            Message::ToggleDurationConfigType,
+                                        ),
+                                        opt_helpers::description_text(if matches!(duration_config_type, ConfigType::Global) {
+                                            "Set Duration for all types of animations"
+                                        } else {
+                                            "Set Duration per type of animation"
+                                        }),
+                                    ].spacing(5),
+                                    horizontal_space(),
+                                ]
+                                .push_maybe(config.duration.as_ref().map(|d| -> Element<Message> {
+                                    if let PerAnimationPrefixConfig::Global(duration) = d {
+                                        iced_aw::number_input(*duration, u64::MIN..=u64::MAX, |v| Message::ConfigChange(ConfigChange::DurationGlobal(v)))
+                                            .style(opt_helpers::num_button_style)
+                                            .into()
+                                    } else {
+                                        horizontal_space().into()
+                                    }
+                                }))
+                                .align_y(Center)
+                            )
+                        ]
+                        .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
+                            if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
+                                if let Some(duration) = hm.get(&AnimationPrefix::Movement) {
+                                    opt_helpers::number(
+                                        "Set Duration for Movement Animations",
+                                        None,
+                                        (*duration).try_into().unwrap_or(250),
+                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Movement, v.try_into().unwrap_or_default())),
+                                    )
+                                } else {
+                                    horizontal_space().into()
+                                }
+                            } else {
+                                horizontal_space().into()
+                            }
+                        }))
+                        .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
+                            if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
+                                if let Some(duration) = hm.get(&AnimationPrefix::Transparency) {
+                                    opt_helpers::number(
+                                        "Set Duration for Transparency Animations",
+                                        None,
+                                        (*duration).try_into().unwrap_or(250),
+                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Transparency, v.try_into().unwrap_or_default())),
+                                    )
+                                } else {
+                                    horizontal_space().into()
+                                }
+                            } else {
+                                horizontal_space().into()
+                            }
+                        }))
+                        .spacing(10)
+                        .into()
+                    ],
+                    self.duration_expanded,
+                    self.duration_hovered,
+                    Message::ToggleDurationExpand,
+                    Message::ToggleDurationHover,
+                    DEFAULT_CONFIG.animation.as_ref().map(|a| a.duration != config.duration).unwrap_or_default(),
+                    Message::ConfigChange(ConfigChange::DurationGlobal(250)),
+                    None,
+                ),
+                opt_helpers::expandable_with_disable_default(
+                    "Style",
+                    Some("Set the animation style for all animations or per type of animation (default: Linear)"),
+                    [
+                        column![
+                            opt_helpers::opt_box(
+                                row![
+                                    column![
+                                        pick_list(
+                                            [ConfigType::Global, ConfigType::PerType],
+                                            Some(style_config_type.clone()),
+                                            Message::ToggleStyleConfigType,
+                                        ),
+                                        opt_helpers::description_text(if matches!(style_config_type, ConfigType::Global) {
+                                            "Set Style for all types of animations"
+                                        } else {
+                                            "Set Style per type of animation"
+                                        }),
+                                    ].spacing(5),
+                                    horizontal_space(),
+                                ]
+                                .push_maybe(config.style.as_ref().map(|s| -> Element<Message> {
+                                    if let PerAnimationPrefixConfig::Global(style) = s {
+                                        pick_list(
+                                            *ALL_ANIMATIONS_STYLES,
+                                            Some(style),
+                                            |s| Message::ConfigChange(ConfigChange::StyleGlobal(s)),
+
+                                        ).into()
+                                    } else {
+                                        horizontal_space().into()
+                                    }
+                                }))
+                                .align_y(Center)
+                            )
+                        ]
+                        .push_maybe(matches!(&style_config_type, ConfigType::PerType).then(|| -> Element<Message> {
+                            if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.style {
+                                if let Some(style) = hm.get(&AnimationPrefix::Movement) {
+                                    opt_helpers::choose(
+                                        "Set Style for Movement Animations",
+                                        None,
+                                        *ALL_ANIMATIONS_STYLES,
+                                        Some(style),
+                                        |s| Message::ConfigChange(ConfigChange::StylePerType(AnimationPrefix::Movement, s)),
+                                    )
+                                } else {
+                                    horizontal_space().into()
+                                }
+                            } else {
+                                horizontal_space().into()
+                            }
+                        }))
+                        .push_maybe(matches!(&style_config_type, ConfigType::PerType).then(|| -> Element<Message> {
+                            if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.style {
+                                if let Some(style) = hm.get(&AnimationPrefix::Transparency) {
+                                    opt_helpers::choose(
+                                        "Set Style for Transparency Animations",
+                                        None,
+                                        *ALL_ANIMATIONS_STYLES,
+                                        Some(style),
+                                        |s| Message::ConfigChange(ConfigChange::StylePerType(AnimationPrefix::Transparency, s)),
+                                    )
+                                } else {
+                                    horizontal_space().into()
+                                }
+                            } else {
+                                horizontal_space().into()
+                            }
+                        }))
+                        .spacing(10)
+                        .into()
+                    ],
+                    self.style_expanded,
+                    self.style_hovered,
+                    Message::ToggleStyleExpand,
+                    Message::ToggleStyleHover,
+                    DEFAULT_CONFIG.animation.as_ref().map(|a| a.style != config.style).unwrap_or_default(),
+                    Message::ConfigChange(ConfigChange::StyleGlobal(AnimationStyle::Linear)),
+                    None,
+                ),
+                opt_helpers::number_with_disable_default_option(
+                    "FPS",
+                    Some("Set the animation FPS for all animations"),
+                    config.fps.map(|f| f as i32),
+                    DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps.map(|v| v as i32)),
+                    |v| Message::ConfigChange(ConfigChange::Fps(v)),
                     None,
                 ),
             ],

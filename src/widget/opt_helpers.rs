@@ -112,7 +112,7 @@ fn disable_checkbox<'a, Message: 'a + Clone>(
     })
 }
 
-fn num_button_style(
+pub fn num_button_style(
     t: &iced::Theme,
     _s: iced_aw::style::Status,
 ) -> iced_aw::number_input::number_input::Style {
