@@ -1,5 +1,6 @@
 use super::rule;
 
+use crate::config::DEFAULT_WORKSPACE_CONFIG;
 use crate::komo_interop::layout::{Layout, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE};
 use crate::utils::DisplayOptionCustom as DisplayOption;
 use crate::widget::icons::ICONS;
@@ -270,14 +271,17 @@ impl Workspace {
                 "[None] (Floating)",
             )),
             |s| Message::ConfigChange(ConfigChange::Layout(s.and_then(|s| s.0))),
-            Some(DisplayOption(Some(Layout::BSP), "[None] (Floating)")),
+            Some(DisplayOption(
+                DEFAULT_WORKSPACE_CONFIG.layout.map(Into::into),
+                "[None] (Floating)",
+            )),
             None,
         );
         let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
             "Apply Window Based Work Area Offset",
             Some("Apply this monitor's window-based work area offset (default: true)"),
             ws_config.apply_window_based_work_area_offset.or(Some(true)),
-            Some(true),
+            DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset,
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
             None,
         );
@@ -285,7 +289,7 @@ impl Workspace {
             "Container Padding",
             Some("Container padding (default: global)"),
             ws_config.container_padding,
-            None,
+            DEFAULT_WORKSPACE_CONFIG.container_padding,
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: ws_config.container_padding.is_none(),
@@ -297,7 +301,7 @@ impl Workspace {
             "Float Override",
             Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
             ws_config.float_override,
-            None,
+            DEFAULT_WORKSPACE_CONFIG.float_override,
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
             Some(opt_helpers::DisableArgs {
                 disable: ws_config.float_override.is_none(),
@@ -344,7 +348,7 @@ impl Workspace {
             ],
             ws_config.window_container_behaviour,
             |v| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(v)),
-            None,
+            DEFAULT_WORKSPACE_CONFIG.window_container_behaviour,
             Some(opt_helpers::DisableArgs {
                 disable: ws_config.window_container_behaviour.is_none(),
                 label: Some("Global"),
@@ -357,7 +361,7 @@ impl Workspace {
             "Workspace Padding",
             Some("Workspace padding (default: global)"),
             ws_config.workspace_padding,
-            None,
+            DEFAULT_WORKSPACE_CONFIG.workspace_padding,
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
             Some(opt_helpers::DisableArgs {
                 disable: ws_config.workspace_padding.is_none(),
