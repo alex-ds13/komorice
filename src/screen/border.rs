@@ -1,5 +1,5 @@
-use crate::widget::opt_helpers;
 use crate::widget::opt_helpers::description_text as t;
+use crate::{config::DEFAULT_CONFIG, widget::opt_helpers};
 
 use iced::{Element, Task};
 use komorebi::{BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig};
@@ -207,7 +207,7 @@ impl Border {
                     "Enable Border",
                     Some("Display an active window border (default: false)"),
                     *config.border.unwrap_or(&false),
-                    false,
+                    DEFAULT_CONFIG.border.unwrap_or_default(),
                     |v| Message::ConfigChange(ConfigChange::Border(v)),
                     None,
                 ),
@@ -215,7 +215,7 @@ impl Border {
                     "Border Width",
                     Some("Width of the window border. (default: 8)"),
                     *config.border_width.unwrap_or(&8),
-                    8,
+                    DEFAULT_CONFIG.border_width.unwrap_or(8),
                     |value| Message::ConfigChange(ConfigChange::BorderWidth(value)),
                     None,
                 ),
@@ -223,7 +223,7 @@ impl Border {
                     "Border Offset",
                     Some("Offset of the window border (default: -1)"),
                     *config.border_offset.unwrap_or(&-1),
-                    -1,
+                    DEFAULT_CONFIG.border_offset.unwrap_or(-1),
                     |value| Message::ConfigChange(ConfigChange::BorderOffset(value)),
                     None,
                 ),
@@ -242,7 +242,7 @@ impl Border {
                             selected.unwrap_or(BorderStyle::System),
                         ))
                     },
-                    Some(BorderStyle::System),
+                    DEFAULT_CONFIG.border_style,
                     None,
                 ),
                 opt_helpers::choose_with_disable_default(
@@ -262,7 +262,7 @@ impl Border {
                             selected.unwrap_or(BorderImplementation::Komorebi),
                         ))
                     },
-                    Some(BorderImplementation::Komorebi),
+                    DEFAULT_CONFIG.border_implementation,
                     None,
                 ),
                 opt_helpers::color(
@@ -273,7 +273,7 @@ impl Border {
                         .border_colours
                         .as_ref()
                         .and_then(|bc| bc.single.map(into_color)),
-                    Some(iced::color!(66, 165, 245)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.single.map(into_color)),
                     Message::ToggleSinglePicker,
                     |v| Message::ConfigChange(ConfigChange::SingleColor(v)),
                     None,
@@ -286,7 +286,7 @@ impl Border {
                         .border_colours
                         .as_ref()
                         .and_then(|bc| bc.unfocused.map(into_color)),
-                    Some(iced::color!(128, 128, 128)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused.map(into_color)),
                     Message::ToggleUnfocusedPicker,
                     |v| Message::ConfigChange(ConfigChange::UnfocusedColor(v)),
                     None,
@@ -299,7 +299,7 @@ impl Border {
                         .border_colours
                         .as_ref()
                         .and_then(|bc| bc.monocle.map(into_color)),
-                    Some(iced::color!(255, 51, 153)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.monocle.map(into_color)),
                     Message::ToggleMonoclePicker,
                     |v| Message::ConfigChange(ConfigChange::MonocleColor(v)),
                     None,
@@ -312,7 +312,7 @@ impl Border {
                         .border_colours
                         .as_ref()
                         .and_then(|bc| bc.stack.map(into_color)),
-                    Some(iced::color!(0, 165, 66)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.stack.map(into_color)),
                     Message::ToggleStackPicker,
                     |v| Message::ConfigChange(ConfigChange::StackColor(v)),
                     None,
@@ -325,7 +325,7 @@ impl Border {
                         .border_colours
                         .as_ref()
                         .and_then(|bc| bc.floating.map(into_color)),
-                    Some(iced::color!(245, 245, 165)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.floating.map(into_color)),
                     Message::ToggleFloatingPicker,
                     |v| Message::ConfigChange(ConfigChange::FloatingColor(v)),
                     None,
