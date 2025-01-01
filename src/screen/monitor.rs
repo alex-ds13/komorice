@@ -1,6 +1,6 @@
 use super::workspace::{self, WorkspaceScreen};
 
-use crate::widget::opt_helpers;
+use crate::{config::DEFAULT_MONITOR_CONFIG, widget::opt_helpers};
 
 use std::collections::HashMap;
 
@@ -315,7 +315,7 @@ impl Monitor {
                     "Window Based Work Area Offset Limit",
                     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
                     config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                    1,
+                    DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
                     move |value| {
                         Message::ConfigChange(
                             ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
