@@ -8,7 +8,7 @@ mod widget;
 use crate::apperror::AppError;
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    animation, border, general, monitors, rules, sidebar, stackbar, transparency, Screen,
+    animation, border, general, monitors, rules, sidebar, stackbar, theme, transparency, Screen,
 };
 
 use std::collections::HashMap;
@@ -63,6 +63,7 @@ enum Message {
     Rules(rules::Message),
     Sidebar(sidebar::Message),
     Stackbar(stackbar::Message),
+    Theme(theme::Message),
     Transparency(transparency::Message),
 
     // Komorebi related Messages
@@ -89,6 +90,7 @@ struct Komofig {
     stackbar: stackbar::Stackbar,
     transparency: transparency::Transparency,
     animation: animation::Animation,
+    theme_screen: theme::Theme,
     rules: rules::Rules,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
@@ -113,6 +115,7 @@ impl Default for Komofig {
             stackbar: Default::default(),
             transparency: Default::default(),
             animation: Default::default(),
+            theme_screen: Default::default(),
             rules: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
@@ -156,14 +159,6 @@ impl Komofig {
             Message::ThemeChanged(theme) => {
                 self.theme = Some(theme);
             }
-            Message::Border(message) => {
-                let (action, task) = self.border.update(message, &mut self.config);
-                let action_task = match action {
-                    border::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::Border), action_task]);
-            }
             Message::General(message) => {
                 let (action, task) = self.general.update(message, &mut self.config);
                 let action_task = match action {
@@ -171,6 +166,14 @@ impl Komofig {
                 };
                 self.check_changes();
                 return Task::batch([task.map(Message::General), action_task]);
+            }
+            Message::Border(message) => {
+                let (action, task) = self.border.update(message, &mut self.config);
+                let action_task = match action {
+                    border::Action::None => Task::none(),
+                };
+                self.check_changes();
+                return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::Monitors(message) => {
                 if let Some(monitors_config) = &mut self.config.monitors {
@@ -217,6 +220,14 @@ impl Komofig {
                     self.check_changes();
                     return Task::batch([task.map(Message::Animation), action_task]);
                 }
+            }
+            Message::Theme(message) => {
+                let (action, task) = self.theme_screen.update(message, &mut self.config);
+                let action_task = match action {
+                    theme::Action::None => Task::none(),
+                };
+                self.check_changes();
+                return Task::batch([task.map(Message::Theme), action_task]);
             }
             Message::Rules(message) => {
                 let (action, task) = self.rules.update(message, &mut self.config);
@@ -368,6 +379,10 @@ impl Komofig {
                 .animation
                 .view(self.config.animation.as_ref())
                 .map(Message::Animation),
+            Screen::Theme => self
+                .theme_screen
+                .view(&self.config)
+                .map(Message::Theme),
             Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
             Screen::Debug => {
                 let notifications = scrollable(
@@ -437,6 +452,7 @@ impl Komofig {
             | Screen::Border
             | Screen::Stackbar
             | Screen::Animations
+            | Screen::Theme
             | Screen::Debug
             | Screen::Settings => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),

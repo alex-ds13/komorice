@@ -44,6 +44,7 @@ impl Sidebar {
         let stackbar = screen_button(Screen::Stackbar, &self.selected_screen);
         let transparency = screen_button(Screen::Transparency, &self.selected_screen);
         let animation = screen_button(Screen::Animations, &self.selected_screen);
+        let theme = screen_button(Screen::Theme, &self.selected_screen);
         let rules = screen_button(Screen::Rules, &self.selected_screen);
         let debug = screen_button(Screen::Debug, &self.selected_screen);
         let settings = screen_button(Screen::Settings, &self.selected_screen);
@@ -57,6 +58,7 @@ impl Sidebar {
             stackbar,
             transparency,
             animation,
+            theme,
             rules,
             debug,
             settings,

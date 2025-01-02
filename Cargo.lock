@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "base16-egui-themes"
 version = "0.1.0"
-source = "git+https://github.com/LGUG2Z/base16-egui-themes?rev=e743e30#e743e30dbabebcb292cd2b2b6fd7a64b8f6deaac"
+source = "git+https://github.com/alex-ds13/base16-egui-themes?branch=fix%2Fderive-display-base16#b3a4a0623fd80228d19830001242638a4748d17d"
 dependencies = [
  "egui",
  "schemars",
@@ -2731,6 +2731,7 @@ dependencies = [
  "iced_aw",
  "komorebi",
  "komorebi-client",
+ "komorebi-themes",
  "lazy_static",
  "notify-debouncer-mini",
  "serde",
@@ -2741,7 +2742,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#b0316bdac506a5e094d71385512bc7230ed82b69"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#0cc5984aec4f1fe057b0a9183d2c00fd193dd877"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2787,7 +2788,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#b0316bdac506a5e094d71385512bc7230ed82b69"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#0cc5984aec4f1fe057b0a9183d2c00fd193dd877"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2797,7 +2798,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.32"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#b0316bdac506a5e094d71385512bc7230ed82b69"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#0cc5984aec4f1fe057b0a9183d2c00fd193dd877"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",

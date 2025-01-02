@@ -9,10 +9,12 @@ use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, BorderColours, BorderImplementation, BorderStyle, Colour,
-    CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, MonitorConfig, MoveBehaviour,
-    OperationBehaviour, PerAnimationPrefixConfig, Rgb, StackbarConfig, StackbarLabel, StackbarMode,
-    StaticConfig, TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
+    CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, KomorebiTheme, MonitorConfig,
+    MoveBehaviour, OperationBehaviour, PerAnimationPrefixConfig, Rgb, StackbarConfig,
+    StackbarLabel, StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour,
+    WorkspaceConfig,
 };
+use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
 use notify_debouncer_mini::{
     new_debouncer,
@@ -87,6 +89,7 @@ lazy_static! {
         slow_application_identifiers: Some(Vec::new()),
         slow_application_compensation_time: Some(20),
         bar_configurations: Some(Vec::new()),
+        remove_titlebar_applications: Some(Vec::new()),
     };
     pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
         workspaces: Vec::new(),
@@ -107,6 +110,30 @@ lazy_static! {
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
         float_override: None,
+    };
+    pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
+        name: Catppuccin::Macchiato,
+        single_border: Some(CatppuccinValue::Blue),
+        stack_border: Some(CatppuccinValue::Green),
+        monocle_border: Some(CatppuccinValue::Pink),
+        floating_border: Some(CatppuccinValue::Yellow),
+        unfocused_border: Some(CatppuccinValue::Base),
+        stackbar_focused_text: Some(CatppuccinValue::Green),
+        stackbar_unfocused_text: Some(CatppuccinValue::Text),
+        stackbar_background: Some(CatppuccinValue::Base),
+        bar_accent: Some(CatppuccinValue::Blue),
+    };
+    pub static ref DEFAULT_BASE16_THEME: KomorebiTheme = KomorebiTheme::Base16 {
+        name: Base16::Ashes,
+        single_border: Some(Base16Value::Base0D),
+        stack_border: Some(Base16Value::Base0B),
+        monocle_border: Some(Base16Value::Base0F),
+        floating_border: Some(Base16Value::Base09),
+        unfocused_border: Some(Base16Value::Base01),
+        stackbar_focused_text: Some(Base16Value::Base0B),
+        stackbar_unfocused_text: Some(Base16Value::Base05),
+        stackbar_background: Some(Base16Value::Base01),
+        bar_accent: Some(Base16Value::Base0D),
     };
 }
 
@@ -387,7 +414,119 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                 .fps
                 .or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
         }),
-        theme: config.theme.or(DEFAULT_CONFIG.theme),
+        theme: config
+            .theme
+            .map(|t| match t {
+                KomorebiTheme::Catppuccin {
+                    name,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => {
+                    if let KomorebiTheme::Catppuccin {
+                        name: _,
+                        single_border: d_single_border,
+                        stack_border: d_stack_border,
+                        monocle_border: d_monocle_border,
+                        floating_border: d_floating_border,
+                        unfocused_border: d_unfocused_border,
+                        stackbar_focused_text: d_stackbar_focused_text,
+                        stackbar_unfocused_text: d_stackbar_unfocused_text,
+                        stackbar_background: d_stackbar_background,
+                        bar_accent: d_bar_accent,
+                    } = *DEFAULT_CATPPUCCIN_THEME
+                    {
+                        KomorebiTheme::Catppuccin {
+                            name,
+                            single_border: single_border.or(d_single_border),
+                            stack_border: stack_border.or(d_stack_border),
+                            monocle_border: monocle_border.or(d_monocle_border),
+                            floating_border: floating_border.or(d_floating_border),
+                            unfocused_border: unfocused_border.or(d_unfocused_border),
+                            stackbar_focused_text: stackbar_focused_text
+                                .or(d_stackbar_focused_text),
+                            stackbar_unfocused_text: stackbar_unfocused_text
+                                .or(d_stackbar_unfocused_text),
+                            stackbar_background: stackbar_background.or(d_stackbar_background),
+                            bar_accent: bar_accent.or(d_bar_accent),
+                        }
+                    } else {
+                        KomorebiTheme::Catppuccin {
+                            name,
+                            single_border,
+                            stack_border,
+                            monocle_border,
+                            floating_border,
+                            unfocused_border,
+                            stackbar_focused_text,
+                            stackbar_unfocused_text,
+                            stackbar_background,
+                            bar_accent,
+                        }
+                    }
+                }
+                KomorebiTheme::Base16 {
+                    name,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => {
+                    if let KomorebiTheme::Base16 {
+                        name: _,
+                        single_border: d_single_border,
+                        stack_border: d_stack_border,
+                        monocle_border: d_monocle_border,
+                        floating_border: d_floating_border,
+                        unfocused_border: d_unfocused_border,
+                        stackbar_focused_text: d_stackbar_focused_text,
+                        stackbar_unfocused_text: d_stackbar_unfocused_text,
+                        stackbar_background: d_stackbar_background,
+                        bar_accent: d_bar_accent,
+                    } = *DEFAULT_BASE16_THEME
+                    {
+                        KomorebiTheme::Base16 {
+                            name,
+                            single_border: single_border.or(d_single_border),
+                            stack_border: stack_border.or(d_stack_border),
+                            monocle_border: monocle_border.or(d_monocle_border),
+                            floating_border: floating_border.or(d_floating_border),
+                            unfocused_border: unfocused_border.or(d_unfocused_border),
+                            stackbar_focused_text: stackbar_focused_text
+                                .or(d_stackbar_focused_text),
+                            stackbar_unfocused_text: stackbar_unfocused_text
+                                .or(d_stackbar_unfocused_text),
+                            stackbar_background: stackbar_background.or(d_stackbar_background),
+                            bar_accent: bar_accent.or(d_bar_accent),
+                        }
+                    } else {
+                        KomorebiTheme::Base16 {
+                            name,
+                            single_border,
+                            stack_border,
+                            monocle_border,
+                            floating_border,
+                            unfocused_border,
+                            stackbar_focused_text,
+                            stackbar_unfocused_text,
+                            stackbar_background,
+                            bar_accent,
+                        }
+                    }
+                }
+            })
+            .or(DEFAULT_CONFIG.theme),
         slow_application_identifiers: config
             .slow_application_identifiers
             .or(DEFAULT_CONFIG.slow_application_identifiers.clone()),
@@ -397,6 +536,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         bar_configurations: config
             .bar_configurations
             .or(DEFAULT_CONFIG.bar_configurations.clone()),
+        remove_titlebar_applications: config
+            .remove_titlebar_applications
+            .or(DEFAULT_CONFIG.remove_titlebar_applications.clone()),
     }
 }
 
@@ -711,9 +853,112 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                 .then_some(v)
             }),
         }),
-        theme: config
-            .theme
-            .and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
+        theme: config.theme.map(|v| match v {
+            KomorebiTheme::Catppuccin {
+                name,
+                single_border,
+                stack_border,
+                monocle_border,
+                floating_border,
+                unfocused_border,
+                stackbar_focused_text,
+                stackbar_unfocused_text,
+                stackbar_background,
+                bar_accent,
+            } => {
+                if let KomorebiTheme::Catppuccin {
+                    name: _,
+                    single_border: d_single_border,
+                    stack_border: d_stack_border,
+                    monocle_border: d_monocle_border,
+                    floating_border: d_floating_border,
+                    unfocused_border: d_unfocused_border,
+                    stackbar_focused_text: d_stackbar_focused_text,
+                    stackbar_unfocused_text: d_stackbar_unfocused_text,
+                    stackbar_background: d_stackbar_background,
+                    bar_accent: d_bar_accent,
+                } = *DEFAULT_CATPPUCCIN_THEME
+                {
+                    KomorebiTheme::Catppuccin {
+                        name,
+                        single_border: single_border.and_then(|v| (Some(v) != d_single_border).then_some(v)),
+                        stack_border: stack_border.and_then(|v| (Some(v) != d_stack_border).then_some(v)),
+                        monocle_border: monocle_border.and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
+                        floating_border: floating_border.and_then(|v| (Some(v) != d_floating_border).then_some(v)),
+                        unfocused_border: unfocused_border.and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                        stackbar_focused_text: stackbar_focused_text.and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
+                        stackbar_unfocused_text: stackbar_unfocused_text.and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
+                        stackbar_background: stackbar_background.and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
+                        bar_accent: bar_accent.and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
+                    }
+                } else {
+                    KomorebiTheme::Catppuccin {
+                        name,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    }
+                }
+            }
+            KomorebiTheme::Base16 {
+                name,
+                single_border,
+                stack_border,
+                monocle_border,
+                floating_border,
+                unfocused_border,
+                stackbar_focused_text,
+                stackbar_unfocused_text,
+                stackbar_background,
+                bar_accent,
+            } => {
+                if let KomorebiTheme::Base16 {
+                    name: _,
+                    single_border: d_single_border,
+                    stack_border: d_stack_border,
+                    monocle_border: d_monocle_border,
+                    floating_border: d_floating_border,
+                    unfocused_border: d_unfocused_border,
+                    stackbar_focused_text: d_stackbar_focused_text,
+                    stackbar_unfocused_text: d_stackbar_unfocused_text,
+                    stackbar_background: d_stackbar_background,
+                    bar_accent: d_bar_accent,
+                } = *DEFAULT_BASE16_THEME
+                {
+                    KomorebiTheme::Base16 {
+                        name,
+                        single_border: single_border.and_then(|v| (Some(v) != d_single_border).then_some(v)),
+                        stack_border: stack_border.and_then(|v| (Some(v) != d_stack_border).then_some(v)),
+                        monocle_border: monocle_border.and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
+                        floating_border: floating_border.and_then(|v| (Some(v) != d_floating_border).then_some(v)),
+                        unfocused_border: unfocused_border.and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                        stackbar_focused_text: stackbar_focused_text.and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
+                        stackbar_unfocused_text: stackbar_unfocused_text.and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
+                        stackbar_background: stackbar_background.and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
+                        bar_accent: bar_accent.and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
+                    }
+                } else {
+                    KomorebiTheme::Base16 {
+                        name,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    }
+                }
+            },
+        }).and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
         slow_application_identifiers: config.slow_application_identifiers.and_then(|v| {
             (DEFAULT_CONFIG.slow_application_identifiers.as_ref() != Some(&v)).then_some(v)
         }),
@@ -723,6 +968,9 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         bar_configurations: config
             .bar_configurations
             .and_then(|v| (DEFAULT_CONFIG.bar_configurations.as_ref() != Some(&v)).then_some(v)),
+        remove_titlebar_applications: config
+            .remove_titlebar_applications
+            .and_then(|v| (DEFAULT_CONFIG.remove_titlebar_applications.as_ref() != Some(&v)).then_some(v)),
     }
 }
 

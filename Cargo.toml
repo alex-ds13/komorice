@@ -9,6 +9,7 @@ iced = { version = "0.14.0-dev", features = ["advanced", "async-std", "debug"] }
 iced_aw = { version = "0.11", default-features = false, features = ["number_input", "color_picker"] }
 komorebi = { git = "https://github.com/LGUG2Z/komorebi.git" }
 komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
+komorebi-themes = { git = "https://github.com/LGUG2Z/komorebi.git" }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { package = "serde_json_lenient", version = "0.2" }
 dirs = "5"
@@ -25,3 +26,4 @@ iced_aw = { path = "../iced_aw/" }
 [patch.'https://github.com/LGUG2Z/komorebi.git']
 komorebi = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/derives" }
 komorebi-client = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/derives" }
+komorebi-themes = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/derives" }

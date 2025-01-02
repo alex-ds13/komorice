@@ -7,6 +7,7 @@ pub mod rule;
 pub mod rules;
 pub mod sidebar;
 pub mod stackbar;
+pub mod theme;
 pub mod transparency;
 pub mod workspace;
 
@@ -24,6 +25,7 @@ pub enum Screen {
     Stackbar,
     Transparency,
     Animations,
+    Theme,
     Rules,
     Debug,
     Settings,
@@ -39,6 +41,7 @@ impl Display for Screen {
             Screen::Stackbar => write!(f, "Stackbar"),
             Screen::Transparency => write!(f, "Transparency"),
             Screen::Animations => write!(f, "Animations"),
+            Screen::Theme => write!(f, "Theme"),
             Screen::Rules => write!(f, "Rules"),
             Screen::Debug => write!(f, "Debug"),
             Screen::Settings => write!(f, "Settings"),
