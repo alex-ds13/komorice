@@ -1,21 +1,22 @@
-use crate::utils::DisplayOptionCustom as DisplayOption;
+use crate::utils::{DisplayOption, DisplayOptionCustom};
 
 use std::fmt::{Display, Formatter};
 
+use komorebi::Axis;
 use komorebi_client::DefaultLayout;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub static ref LAYOUT_OPTIONS: [DisplayOption<Layout>; 9] = [
-        DisplayOption(None, "[None] (Floating)"),
-        DisplayOption(Some(Layout::BSP), "[None] (Floating)"),
-        DisplayOption(Some(Layout::VerticalStack), "[None] (Floating)"),
-        DisplayOption(Some(Layout::RightMainVerticalStack), "[None] (Floating)"),
-        DisplayOption(Some(Layout::UltrawideVerticalStack), "[None] (Floating)"),
-        DisplayOption(Some(Layout::HorizontalStack), "[None] (Floating)"),
-        DisplayOption(Some(Layout::Rows), "[None] (Floating)"),
-        DisplayOption(Some(Layout::Columns), "[None] (Floating)"),
-        DisplayOption(Some(Layout::Grid), "[None] (Floating)"),
+    pub static ref LAYOUT_OPTIONS: [DisplayOptionCustom<Layout>; 9] = [
+        DisplayOptionCustom(None, "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::BSP), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::VerticalStack), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::RightMainVerticalStack), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::UltrawideVerticalStack), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::HorizontalStack), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::Rows), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::Columns), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::Grid), "[None] (Floating)"),
     ];
     pub static ref LAYOUT_OPTIONS_WITHOUT_NONE: [Layout; 8] = [
         Layout::BSP,
@@ -26,6 +27,12 @@ lazy_static! {
         Layout::Rows,
         Layout::Columns,
         Layout::Grid,
+    ];
+    pub static ref LAYOUT_FLIP_OPTIONS: [DisplayOption<Axis>; 4] = [
+        DisplayOption(None),
+        DisplayOption(Some(Axis::Vertical)),
+        DisplayOption(Some(Axis::Horizontal)),
+        DisplayOption(Some(Axis::HorizontalAndVertical)),
     ];
 }
 

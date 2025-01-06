@@ -1,8 +1,10 @@
 use super::rule;
 
 use crate::config::DEFAULT_WORKSPACE_CONFIG;
-use crate::komo_interop::layout::{Layout, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE};
-use crate::utils::DisplayOptionCustom as DisplayOption;
+use crate::komo_interop::layout::{
+    Layout, LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE,
+};
+use crate::utils::{DisplayOption, DisplayOptionCustom};
 use crate::widget::icons::ICONS;
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers::to_description_text as td;
@@ -12,9 +14,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
 use iced::{Center, Element, Fill, Shrink, Subscription, Task};
-use komorebi::config_generation::MatchingRule;
-use komorebi::{WindowContainerBehaviour, WorkspaceConfig};
-use komorebi_client::DefaultLayout;
+use komorebi_client::{
+    Axis, DefaultLayout, MatchingRule, WindowContainerBehaviour, WorkspaceConfig,
+};
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -44,6 +46,7 @@ pub enum ConfigChange {
     ContainerPadding(Option<i32>),
     FloatOverride(Option<bool>),
     Layout(Option<Layout>),
+    LayoutFlip(Option<Axis>),
     LayoutRules(Option<HashMap<usize, DefaultLayout>>),
     LayoutRuleLimit((usize, i32)),
     LayoutRuleLayout((usize, Layout)),
@@ -113,6 +116,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::ContainerPadding(value) => self.container_padding = value,
                 ConfigChange::FloatOverride(value) => self.float_override = value,
                 ConfigChange::Layout(value) => self.layout = value.map(Into::into),
+                ConfigChange::LayoutFlip(value) => self.layout_flip = value,
                 ConfigChange::LayoutRules(value) => {
                     self.layout_rules = value.map(Into::into);
                 }
@@ -266,21 +270,38 @@ impl Workspace {
             Some("Layout (default: BSP)"),
             layout_options_descriptions(),
             &LAYOUT_OPTIONS[..],
-            Some(DisplayOption(
+            Some(DisplayOptionCustom(
                 ws_config.layout.map(Into::into),
                 "[None] (Floating)",
             )),
             |s| Message::ConfigChange(ConfigChange::Layout(s.and_then(|s| s.0))),
-            Some(DisplayOption(
+            Some(DisplayOptionCustom(
                 DEFAULT_WORKSPACE_CONFIG.layout.map(Into::into),
                 "[None] (Floating)",
             )),
             None,
         );
+        let layout_flip = opt_helpers::choose_with_disable_default(
+            "Layout Flip",
+            Some("Specify an axis on which to flip the selected layout (default: None)"),
+            vec![
+                Space::new(Shrink, Shrink).into(),
+                t("Selected: 'Vertical' -> Flip layout on vertical axis").into(),
+                t("Selected: 'Horizontal' -> Flip layout on horizontal axis").into(),
+                t("Selected: 'HorizontalAndVertical' -> Flip layout on both axis").into(),
+            ],
+            &LAYOUT_FLIP_OPTIONS[..],
+            Some(DisplayOption(ws_config.layout_flip)),
+            |v| Message::ConfigChange(ConfigChange::LayoutFlip(v.and_then(|v| v.0))),
+            Some(DisplayOption(DEFAULT_WORKSPACE_CONFIG.layout_flip)),
+            None,
+        );
         let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
             "Apply Window Based Work Area Offset",
             Some("Apply this monitor's window-based work area offset (default: true)"),
-            ws_config.apply_window_based_work_area_offset.or(Some(true)),
+            ws_config
+                .apply_window_based_work_area_offset
+                .or(DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset),
             DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset,
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
             None,
@@ -391,6 +412,7 @@ impl Workspace {
         column![
             name,
             layout,
+            layout_flip,
             apply_window_based_offset,
             container_padding,
             float_override,

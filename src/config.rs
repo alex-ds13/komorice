@@ -110,6 +110,7 @@ lazy_static! {
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
         float_override: None,
+        layout_flip: None,
     };
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
         name: Catppuccin::Macchiato,
@@ -173,6 +174,7 @@ pub fn fill_monitors(config: &mut StaticConfig) -> bool {
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
                         float_override: None,
+                        layout_flip: None,
                     }],
                     work_area_offset: None,
                     window_based_work_area_offset: None,
@@ -320,6 +322,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             float_override: w
                                 .float_override
                                 .or(DEFAULT_WORKSPACE_CONFIG.float_override),
+                            layout_flip: w
+                                .layout_flip
+                                .or(DEFAULT_WORKSPACE_CONFIG.layout_flip),
                         })
                         .collect(),
                     work_area_offset: m
@@ -711,6 +716,9 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             float_override: ws.float_override.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.float_override != Some(v)).then_some(v)
                             }),
+                            layout_flip: ws.layout_flip.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.layout_flip != Some(v)).then_some(v)
+                            }),
                         })
                         .collect(),
                     work_area_offset: m.work_area_offset.and_then(|v| {
@@ -1065,6 +1073,7 @@ impl ChangeConfig for StaticConfig {
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
                         float_override: None,
+                        layout_flip: None,
                     });
                 }
                 f(&mut monitor.workspaces[workspace_idx]);
