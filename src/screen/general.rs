@@ -102,7 +102,7 @@ impl General {
                     if let Some(offset) = &mut config.global_work_area_offset {
                         offset.top = value;
                     } else {
-                        config.global_work_area_offset = Some(komorebi::Rect {
+                        config.global_work_area_offset = Some(Rect {
                             left: 0,
                             top: value,
                             right: 0,
@@ -114,7 +114,7 @@ impl General {
                     if let Some(offset) = &mut config.global_work_area_offset {
                         offset.bottom = value;
                     } else {
-                        config.global_work_area_offset = Some(komorebi::Rect {
+                        config.global_work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: 0,
@@ -126,7 +126,7 @@ impl General {
                     if let Some(offset) = &mut config.global_work_area_offset {
                         offset.right = value;
                     } else {
-                        config.global_work_area_offset = Some(komorebi::Rect {
+                        config.global_work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: value,
@@ -138,7 +138,7 @@ impl General {
                     if let Some(offset) = &mut config.global_work_area_offset {
                         offset.left = value;
                     } else {
-                        config.global_work_area_offset = Some(komorebi::Rect {
+                        config.global_work_area_offset = Some(Rect {
                             left: value,
                             top: 0,
                             right: 0,

@@ -51,7 +51,7 @@ pub enum ConfigChange {
     LayoutRuleLimit((usize, i32)),
     LayoutRuleLayout((usize, Layout)),
     Name(String),
-    WindowContainerBehaviour(Option<komorebi::WindowContainerBehaviour>),
+    WindowContainerBehaviour(Option<WindowContainerBehaviour>),
     WorkspacePadding(Option<i32>),
 }
 

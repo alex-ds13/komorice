@@ -2,7 +2,9 @@ use crate::widget::opt_helpers::description_text as t;
 use crate::{config::DEFAULT_CONFIG, widget::opt_helpers};
 
 use iced::{Element, Task};
-use komorebi::{BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig};
+use komorebi_client::{
+    BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig,
+};
 
 #[derive(Clone, Debug)]
 pub enum Message {

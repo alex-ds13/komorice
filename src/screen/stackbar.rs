@@ -6,7 +6,7 @@ use iced::{
     Length::Fixed,
     Task,
 };
-use komorebi::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
+use komorebi_client::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
 
 #[derive(Clone, Debug)]
 pub enum Message {

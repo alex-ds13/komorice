@@ -1033,7 +1033,7 @@ impl ChangeConfig for StaticConfig {
             }
         } else {
             let mut monitors = vec![
-                komorebi::MonitorConfig {
+                MonitorConfig {
                     workspaces: Vec::new(),
                     work_area_offset: None,
                     window_based_work_area_offset: None,

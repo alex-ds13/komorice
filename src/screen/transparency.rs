@@ -8,8 +8,7 @@ use iced::{
     widget::{button, column, container, horizontal_rule, row, text},
     Element, Fill, Subscription, Task,
 };
-use komorebi::config_generation::MatchingRule;
-use komorebi_client::StaticConfig;
+use komorebi_client::{MatchingRule, StaticConfig};
 
 #[derive(Clone, Debug)]
 pub enum Message {

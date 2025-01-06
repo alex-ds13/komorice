@@ -248,7 +248,7 @@ pub fn get_displays() -> Vec<komorebi_client::Monitor> {
             let name = display.device_name.trim_start_matches(r"\\.\").to_string();
             let name = name.split('\\').collect::<Vec<_>>()[0].to_string();
 
-            komorebi::monitor::new(
+            komorebi_client::Monitor::new(
                 display.hmonitor,
                 display.size.into(),
                 display.work_area_size.into(),

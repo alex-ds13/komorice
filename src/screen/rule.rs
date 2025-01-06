@@ -5,10 +5,7 @@ use iced::{
     widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
     Center, Element, Fill, Right, Shrink, Subscription, Task, Top,
 };
-use komorebi::{
-    config_generation::{IdWithIdentifier, MatchingRule},
-    ApplicationIdentifier,
-};
+use komorebi_client::{ApplicationIdentifier, IdWithIdentifier, MatchingRule, MatchingStrategy};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -30,91 +27,6 @@ lazy_static! {
         MatchingStrategy::DoesNotEqual,
         MatchingStrategy::DoesNotContain,
     ];
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum MatchingStrategy {
-    Legacy,
-    Equals,
-    StartsWith,
-    EndsWith,
-    Contains,
-    Regex,
-    DoesNotEndWith,
-    DoesNotStartWith,
-    DoesNotEqual,
-    DoesNotContain,
-}
-
-impl std::fmt::Display for MatchingStrategy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MatchingStrategy::Legacy => write!(f, "Legacy"),
-            MatchingStrategy::Equals => write!(f, "Equals"),
-            MatchingStrategy::StartsWith => write!(f, "StartsWith"),
-            MatchingStrategy::EndsWith => write!(f, "EndsWith"),
-            MatchingStrategy::Contains => write!(f, "Contains"),
-            MatchingStrategy::Regex => write!(f, "Regex"),
-            MatchingStrategy::DoesNotEndWith => write!(f, "DoesNotEndWith"),
-            MatchingStrategy::DoesNotStartWith => write!(f, "DoesNotStartWith"),
-            MatchingStrategy::DoesNotEqual => write!(f, "DoesNotEqual"),
-            MatchingStrategy::DoesNotContain => write!(f, "DoesNotContain"),
-        }
-    }
-}
-
-impl From<MatchingStrategy> for komorebi::config_generation::MatchingStrategy {
-    fn from(value: MatchingStrategy) -> Self {
-        match value {
-            MatchingStrategy::Legacy => komorebi::config_generation::MatchingStrategy::Legacy,
-            MatchingStrategy::Equals => komorebi::config_generation::MatchingStrategy::Equals,
-            MatchingStrategy::StartsWith => {
-                komorebi::config_generation::MatchingStrategy::StartsWith
-            }
-            MatchingStrategy::EndsWith => komorebi::config_generation::MatchingStrategy::EndsWith,
-            MatchingStrategy::Contains => komorebi::config_generation::MatchingStrategy::Contains,
-            MatchingStrategy::Regex => komorebi::config_generation::MatchingStrategy::Regex,
-            MatchingStrategy::DoesNotEndWith => {
-                komorebi::config_generation::MatchingStrategy::DoesNotEndWith
-            }
-            MatchingStrategy::DoesNotStartWith => {
-                komorebi::config_generation::MatchingStrategy::DoesNotStartWith
-            }
-            MatchingStrategy::DoesNotEqual => {
-                komorebi::config_generation::MatchingStrategy::DoesNotEqual
-            }
-            MatchingStrategy::DoesNotContain => {
-                komorebi::config_generation::MatchingStrategy::DoesNotContain
-            }
-        }
-    }
-}
-
-impl From<&komorebi::config_generation::MatchingStrategy> for MatchingStrategy {
-    fn from(value: &komorebi::config_generation::MatchingStrategy) -> Self {
-        match value {
-            komorebi::config_generation::MatchingStrategy::Legacy => MatchingStrategy::Legacy,
-            komorebi::config_generation::MatchingStrategy::Equals => MatchingStrategy::Equals,
-            komorebi::config_generation::MatchingStrategy::StartsWith => {
-                MatchingStrategy::StartsWith
-            }
-            komorebi::config_generation::MatchingStrategy::EndsWith => MatchingStrategy::EndsWith,
-            komorebi::config_generation::MatchingStrategy::Contains => MatchingStrategy::Contains,
-            komorebi::config_generation::MatchingStrategy::Regex => MatchingStrategy::Regex,
-            komorebi::config_generation::MatchingStrategy::DoesNotEndWith => {
-                MatchingStrategy::DoesNotEndWith
-            }
-            komorebi::config_generation::MatchingStrategy::DoesNotStartWith => {
-                MatchingStrategy::DoesNotStartWith
-            }
-            komorebi::config_generation::MatchingStrategy::DoesNotEqual => {
-                MatchingStrategy::DoesNotEqual
-            }
-            komorebi::config_generation::MatchingStrategy::DoesNotContain => {
-                MatchingStrategy::DoesNotContain
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -584,9 +496,7 @@ fn rule_view<'a>(
     let matching_strategy: Element<_> = if edit {
         pick_list(
             &MATCHING_STRATEGY_OPTIONS[..],
-            rule.matching_strategy
-                .as_ref()
-                .map(Into::<MatchingStrategy>::into),
+            rule.matching_strategy.as_ref(),
             change_matching_strategy,
         )
         .width(Fill)
@@ -594,9 +504,7 @@ fn rule_view<'a>(
     } else {
         row![
             container(iced::widget::value(
-                rule.matching_strategy
-                    .as_ref()
-                    .map_or(MatchingStrategy::Legacy, Into::into),
+                rule.matching_strategy.as_ref().unwrap_or(&MatchingStrategy::Legacy),
             ))
             .width(Fill)
             .padding(5)
@@ -672,6 +580,6 @@ fn default_rule() -> IdWithIdentifier {
     IdWithIdentifier {
         kind: ApplicationIdentifier::Exe,
         id: "".into(),
-        matching_strategy: Some(MatchingStrategy::Equals.into()),
+        matching_strategy: Some(MatchingStrategy::Equals),
     }
 }

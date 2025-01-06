@@ -2,8 +2,7 @@ use crate::utils::{DisplayOption, DisplayOptionCustom};
 
 use std::fmt::{Display, Formatter};
 
-use komorebi::Axis;
-use komorebi_client::DefaultLayout;
+use komorebi_client::{Axis, DefaultLayout};
 use lazy_static::lazy_static;
 
 lazy_static! {

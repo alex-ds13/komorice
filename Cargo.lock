@@ -2729,7 +2729,6 @@ dependencies = [
  "dirs 5.0.1",
  "iced",
  "iced_aw",
- "komorebi",
  "komorebi-client",
  "komorebi-themes",
  "lazy_static",
@@ -2742,7 +2741,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.33"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#638bafcac0ede28964158d40ada24da732da6ff0"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#eb96eb96c563b51e57adab33ba9b9d62961490b7"
 dependencies = [
  "bitflags 2.6.0",
  "clap",
@@ -2788,7 +2787,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.33"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#638bafcac0ede28964158d40ada24da732da6ff0"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#eb96eb96c563b51e57adab33ba9b9d62961490b7"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2798,7 +2797,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.33"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#638bafcac0ede28964158d40ada24da732da6ff0"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#eb96eb96c563b51e57adab33ba9b9d62961490b7"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",

@@ -8,7 +8,7 @@ use iced::{
     widget::{button, row, text},
     Element, Subscription, Task,
 };
-use komorebi_client::{MonitorConfig, WorkspaceConfig};
+use komorebi_client::{MonitorConfig, Rect, WorkspaceConfig};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -32,13 +32,13 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
-    WindowBasedWorkAreaOffset(Option<komorebi::Rect>),
+    WindowBasedWorkAreaOffset(Option<Rect>),
     WindowBasedWorkAreaOffsetTop(i32),
     WindowBasedWorkAreaOffsetBottom(i32),
     WindowBasedWorkAreaOffsetRight(i32),
     WindowBasedWorkAreaOffsetLeft(i32),
     WindowBasedWorkAreaOffsetLimit(i32),
-    WorkAreaOffset(Option<komorebi::Rect>),
+    WorkAreaOffset(Option<Rect>),
     WorkAreaOffsetTop(i32),
     WorkAreaOffsetBottom(i32),
     WorkAreaOffsetRight(i32),
@@ -78,7 +78,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.top = value;
                     } else {
-                        config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(Rect {
                             left: 0,
                             top: value,
                             right: 0,
@@ -90,7 +90,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.bottom = value;
                     } else {
-                        config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: 0,
@@ -102,7 +102,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.right = value;
                     } else {
-                        config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: value,
@@ -114,7 +114,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.window_based_work_area_offset {
                         offset.left = value;
                     } else {
-                        config.window_based_work_area_offset = Some(komorebi::Rect {
+                        config.window_based_work_area_offset = Some(Rect {
                             left: value,
                             top: 0,
                             right: 0,
@@ -133,7 +133,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.work_area_offset {
                         offset.top = value;
                     } else {
-                        config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(Rect {
                             left: 0,
                             top: value,
                             right: 0,
@@ -145,7 +145,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.work_area_offset {
                         offset.bottom = value;
                     } else {
-                        config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: 0,
@@ -157,7 +157,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.work_area_offset {
                         offset.right = value;
                     } else {
-                        config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(Rect {
                             left: 0,
                             top: 0,
                             right: value,
@@ -169,7 +169,7 @@ impl Monitor {
                     if let Some(offset) = &mut config.work_area_offset {
                         offset.left = value;
                     } else {
-                        config.work_area_offset = Some(komorebi::Rect {
+                        config.work_area_offset = Some(Rect {
                             left: value,
                             top: 0,
                             right: 0,
@@ -308,7 +308,7 @@ impl Monitor {
                     Some(opt_helpers::DisableArgs {
                         disable: config.window_based_work_area_offset.is_none(),
                         label: Some("Global"),
-                        on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
+                        on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(Rect::default()))),
                     }),
                 ),
                 opt_helpers::number_with_disable_default(
@@ -361,7 +361,7 @@ impl Monitor {
                     Some(opt_helpers::DisableArgs {
                         disable: config.work_area_offset.is_none(),
                         label: Some("Global"),
-                        on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(komorebi::Rect::default()))),
+                        on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(Rect::default()))),
                     }),
                 ),
                 opt_helpers::opt_button(
