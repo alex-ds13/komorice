@@ -5,7 +5,7 @@ use crate::{
     widget::opt_helpers::{self, DisableArgs},
 };
 
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use iced::{Element, Task};
 use komorebi_client::{
@@ -36,7 +36,6 @@ pub enum ConfigChange {
     CrossMonitorMoveBehaviour(Option<MoveBehaviour>),
     DefaultContainerPadding(Option<i32>),
     DefaultWorkspacePadding(Option<i32>),
-    DisplayIndexPreferences(Option<HashMap<usize, String>>),
     FloatOverride(Option<bool>),
     FocusFollowsMouse(Option<FocusFollowsMouseImplementation>),
     GlobalWorkAreaOffset(Option<Rect>),
@@ -85,9 +84,6 @@ impl General {
                 }
                 ConfigChange::DefaultWorkspacePadding(value) => {
                     config.default_workspace_padding = value;
-                }
-                ConfigChange::DisplayIndexPreferences(value) => {
-                    config.display_index_preferences = value;
                 }
                 ConfigChange::FloatOverride(value) => {
                     config.float_override = value;
@@ -184,12 +180,14 @@ impl General {
         opt_helpers::section_view(
             "General:",
             [
-                opt_helpers::input(
+                opt_helpers::input_with_disable_default(
                     "App Specific Configuration Path",
                     Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
                     "",
                     config.app_specific_configuration_path.as_ref().map_or("", |p| p.to_str().unwrap_or_default()),
+                    DEFAULT_CONFIG.app_specific_configuration_path.as_ref().map_or("".into(), |p| p.display().to_string()),
                     |value| Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(Some(PathBuf::from(value)))),
+                    None,
                     None,
                 ),
                 opt_helpers::choose_with_disable_default(

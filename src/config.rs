@@ -1,6 +1,7 @@
 use crate::apperror::{AppError, AppErrorKind};
 use crate::{config, Message};
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -35,7 +36,9 @@ lazy_static! {
         unmanaged_window_operation_behaviour: Some(OperationBehaviour::Op),
         focus_follows_mouse: None,
         mouse_follows_focus: Some(true),
-        app_specific_configuration_path: None,
+        app_specific_configuration_path: Some(unresolve_home_path(
+            home_path().0.join("applications.json")
+        )),
         border_width: Some(8),
         border_offset: Some(-1),
         border: Some(false),
@@ -239,6 +242,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
             .app_specific_configuration_path
             .as_ref()
             .cloned()
+            .map(unresolve_home_path)
             .or(DEFAULT_CONFIG.app_specific_configuration_path.clone()),
         border_width: config.border_width.or(DEFAULT_CONFIG.border_width),
         border_offset: config.border_offset.or(DEFAULT_CONFIG.border_offset),
@@ -322,9 +326,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             float_override: w
                                 .float_override
                                 .or(DEFAULT_WORKSPACE_CONFIG.float_override),
-                            layout_flip: w
-                                .layout_flip
-                                .or(DEFAULT_WORKSPACE_CONFIG.layout_flip),
+                            layout_flip: w.layout_flip.or(DEFAULT_WORKSPACE_CONFIG.layout_flip),
                         })
                         .collect(),
                     work_area_offset: m
@@ -587,7 +589,12 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
             .mouse_follows_focus
             .and_then(|v| (DEFAULT_CONFIG.mouse_follows_focus != Some(v)).then_some(v)),
         app_specific_configuration_path: config.app_specific_configuration_path.and_then(|v| {
-            (DEFAULT_CONFIG.app_specific_configuration_path.as_ref() != Some(&v)).then_some(v)
+            (DEFAULT_CONFIG
+                .app_specific_configuration_path
+                .as_ref()
+                .map(|v| unresolve_home_path(v.clone()))
+                != Some(unresolve_home_path(v.clone())))
+            .then_some(unresolve_home_path(v))
         }),
         border_width: config
             .border_width
@@ -861,112 +868,133 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                 .then_some(v)
             }),
         }),
-        theme: config.theme.map(|v| match v {
-            KomorebiTheme::Catppuccin {
-                name,
-                single_border,
-                stack_border,
-                monocle_border,
-                floating_border,
-                unfocused_border,
-                stackbar_focused_text,
-                stackbar_unfocused_text,
-                stackbar_background,
-                bar_accent,
-            } => {
-                if let KomorebiTheme::Catppuccin {
-                    name: _,
-                    single_border: d_single_border,
-                    stack_border: d_stack_border,
-                    monocle_border: d_monocle_border,
-                    floating_border: d_floating_border,
-                    unfocused_border: d_unfocused_border,
-                    stackbar_focused_text: d_stackbar_focused_text,
-                    stackbar_unfocused_text: d_stackbar_unfocused_text,
-                    stackbar_background: d_stackbar_background,
-                    bar_accent: d_bar_accent,
-                } = *DEFAULT_CATPPUCCIN_THEME
-                {
-                    KomorebiTheme::Catppuccin {
-                        name,
-                        single_border: single_border.and_then(|v| (Some(v) != d_single_border).then_some(v)),
-                        stack_border: stack_border.and_then(|v| (Some(v) != d_stack_border).then_some(v)),
-                        monocle_border: monocle_border.and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
-                        floating_border: floating_border.and_then(|v| (Some(v) != d_floating_border).then_some(v)),
-                        unfocused_border: unfocused_border.and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
-                        stackbar_focused_text: stackbar_focused_text.and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
-                        stackbar_unfocused_text: stackbar_unfocused_text.and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
-                        stackbar_background: stackbar_background.and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
-                        bar_accent: bar_accent.and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
-                    }
-                } else {
-                    KomorebiTheme::Catppuccin {
-                        name,
-                        single_border,
-                        stack_border,
-                        monocle_border,
-                        floating_border,
-                        unfocused_border,
-                        stackbar_focused_text,
-                        stackbar_unfocused_text,
-                        stackbar_background,
-                        bar_accent,
-                    }
-                }
-            }
-            KomorebiTheme::Base16 {
-                name,
-                single_border,
-                stack_border,
-                monocle_border,
-                floating_border,
-                unfocused_border,
-                stackbar_focused_text,
-                stackbar_unfocused_text,
-                stackbar_background,
-                bar_accent,
-            } => {
-                if let KomorebiTheme::Base16 {
-                    name: _,
-                    single_border: d_single_border,
-                    stack_border: d_stack_border,
-                    monocle_border: d_monocle_border,
-                    floating_border: d_floating_border,
-                    unfocused_border: d_unfocused_border,
-                    stackbar_focused_text: d_stackbar_focused_text,
-                    stackbar_unfocused_text: d_stackbar_unfocused_text,
-                    stackbar_background: d_stackbar_background,
-                    bar_accent: d_bar_accent,
-                } = *DEFAULT_BASE16_THEME
-                {
-                    KomorebiTheme::Base16 {
-                        name,
-                        single_border: single_border.and_then(|v| (Some(v) != d_single_border).then_some(v)),
-                        stack_border: stack_border.and_then(|v| (Some(v) != d_stack_border).then_some(v)),
-                        monocle_border: monocle_border.and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
-                        floating_border: floating_border.and_then(|v| (Some(v) != d_floating_border).then_some(v)),
-                        unfocused_border: unfocused_border.and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
-                        stackbar_focused_text: stackbar_focused_text.and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
-                        stackbar_unfocused_text: stackbar_unfocused_text.and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
-                        stackbar_background: stackbar_background.and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
-                        bar_accent: bar_accent.and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
-                    }
-                } else {
-                    KomorebiTheme::Base16 {
-                        name,
-                        single_border,
-                        stack_border,
-                        monocle_border,
-                        floating_border,
-                        unfocused_border,
-                        stackbar_focused_text,
-                        stackbar_unfocused_text,
-                        stackbar_background,
-                        bar_accent,
+        theme: config
+            .theme
+            .map(|v| match v {
+                KomorebiTheme::Catppuccin {
+                    name,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => {
+                    if let KomorebiTheme::Catppuccin {
+                        name: _,
+                        single_border: d_single_border,
+                        stack_border: d_stack_border,
+                        monocle_border: d_monocle_border,
+                        floating_border: d_floating_border,
+                        unfocused_border: d_unfocused_border,
+                        stackbar_focused_text: d_stackbar_focused_text,
+                        stackbar_unfocused_text: d_stackbar_unfocused_text,
+                        stackbar_background: d_stackbar_background,
+                        bar_accent: d_bar_accent,
+                    } = *DEFAULT_CATPPUCCIN_THEME
+                    {
+                        KomorebiTheme::Catppuccin {
+                            name,
+                            single_border: single_border
+                                .and_then(|v| (Some(v) != d_single_border).then_some(v)),
+                            stack_border: stack_border
+                                .and_then(|v| (Some(v) != d_stack_border).then_some(v)),
+                            monocle_border: monocle_border
+                                .and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
+                            floating_border: floating_border
+                                .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
+                            unfocused_border: unfocused_border
+                                .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                            stackbar_focused_text: stackbar_focused_text
+                                .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
+                            stackbar_unfocused_text: stackbar_unfocused_text
+                                .and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
+                            stackbar_background: stackbar_background
+                                .and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
+                            bar_accent: bar_accent
+                                .and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
+                        }
+                    } else {
+                        KomorebiTheme::Catppuccin {
+                            name,
+                            single_border,
+                            stack_border,
+                            monocle_border,
+                            floating_border,
+                            unfocused_border,
+                            stackbar_focused_text,
+                            stackbar_unfocused_text,
+                            stackbar_background,
+                            bar_accent,
+                        }
                     }
                 }
-            },
-        }).and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
+                KomorebiTheme::Base16 {
+                    name,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => {
+                    if let KomorebiTheme::Base16 {
+                        name: _,
+                        single_border: d_single_border,
+                        stack_border: d_stack_border,
+                        monocle_border: d_monocle_border,
+                        floating_border: d_floating_border,
+                        unfocused_border: d_unfocused_border,
+                        stackbar_focused_text: d_stackbar_focused_text,
+                        stackbar_unfocused_text: d_stackbar_unfocused_text,
+                        stackbar_background: d_stackbar_background,
+                        bar_accent: d_bar_accent,
+                    } = *DEFAULT_BASE16_THEME
+                    {
+                        KomorebiTheme::Base16 {
+                            name,
+                            single_border: single_border
+                                .and_then(|v| (Some(v) != d_single_border).then_some(v)),
+                            stack_border: stack_border
+                                .and_then(|v| (Some(v) != d_stack_border).then_some(v)),
+                            monocle_border: monocle_border
+                                .and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
+                            floating_border: floating_border
+                                .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
+                            unfocused_border: unfocused_border
+                                .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                            stackbar_focused_text: stackbar_focused_text
+                                .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
+                            stackbar_unfocused_text: stackbar_unfocused_text
+                                .and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
+                            stackbar_background: stackbar_background
+                                .and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
+                            bar_accent: bar_accent
+                                .and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
+                        }
+                    } else {
+                        KomorebiTheme::Base16 {
+                            name,
+                            single_border,
+                            stack_border,
+                            monocle_border,
+                            floating_border,
+                            unfocused_border,
+                            stackbar_focused_text,
+                            stackbar_unfocused_text,
+                            stackbar_background,
+                            bar_accent,
+                        }
+                    }
+                }
+            })
+            .and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
         slow_application_identifiers: config.slow_application_identifiers.and_then(|v| {
             (DEFAULT_CONFIG.slow_application_identifiers.as_ref() != Some(&v)).then_some(v)
         }),
@@ -976,9 +1004,9 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         bar_configurations: config
             .bar_configurations
             .and_then(|v| (DEFAULT_CONFIG.bar_configurations.as_ref() != Some(&v)).then_some(v)),
-        remove_titlebar_applications: config
-            .remove_titlebar_applications
-            .and_then(|v| (DEFAULT_CONFIG.remove_titlebar_applications.as_ref() != Some(&v)).then_some(v)),
+        remove_titlebar_applications: config.remove_titlebar_applications.and_then(|v| {
+            (DEFAULT_CONFIG.remove_titlebar_applications.as_ref() != Some(&v)).then_some(v)
+        }),
     }
 }
 
@@ -1296,19 +1324,51 @@ pub async fn save(config: StaticConfig) -> Result<(), AppError> {
     Ok(())
 }
 
-pub fn config_path() -> std::path::PathBuf {
-    let home_dir: std::path::PathBuf = std::env::var("KOMOREBI_CONFIG_HOME").map_or_else(
-        |_| dirs::home_dir().expect("there is no home directory"),
+#[derive(Clone, Debug, Default)]
+pub enum HomePathType {
+    #[default]
+    Default,
+    EnvVar,
+}
+
+pub fn home_path() -> (PathBuf, HomePathType) {
+    std::env::var("KOMOREBI_CONFIG_HOME").map_or_else(
+        |_| (dirs::home_dir().expect("there is no home directory"), HomePathType::Default),
         |home_path| {
-            let home = std::path::PathBuf::from(&home_path);
+            let home = PathBuf::from(&home_path);
 
             if home.as_path().is_dir() {
-                home
+                (home, HomePathType::EnvVar)
             } else {
                 panic!("$Env:KOMOREBI_CONFIG_HOME is set to '{home_path}', which is not a valid directory");
             }
         },
-    );
+    )
+}
+
+pub fn unresolve_home_path(path: PathBuf) -> PathBuf {
+    let user_profile =
+        komorebi_client::resolve_home_path(PathBuf::from("$Env:USERPROFILE")).unwrap_or_default();
+    let komorebi_config_home =
+        komorebi_client::resolve_home_path(PathBuf::from("$Env:KOMOREBI_CONFIG_HOME"))
+            .unwrap_or_default();
+    let path = komorebi_client::resolve_home_path(path).unwrap_or_default();
+
+    if path == user_profile {
+        PathBuf::from("$Env:USERPROFILE")
+    } else if path == komorebi_config_home {
+        PathBuf::from("$Env:KOMOREBI_CONFIG_HOME")
+    } else if let Ok(rest) = path.strip_prefix(&komorebi_config_home) {
+        PathBuf::from("$Env:KOMOREBI_CONFIG_HOME").join(rest)
+    } else if let Ok(rest) = path.strip_prefix(&user_profile) {
+        PathBuf::from("$Env:USERPROFILE").join(rest)
+    } else {
+        path
+    }
+}
+
+pub fn config_path() -> PathBuf {
+    let (home_dir, _) = home_path();
 
     home_dir.join("komorebi.json")
 }
