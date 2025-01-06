@@ -440,7 +440,6 @@ impl Komofig {
             save_buttons,
         ];
         row![sidebar, vertical_rule(2.0), right_col]
-            .spacing(10)
             .padding(10)
             .into()
     }

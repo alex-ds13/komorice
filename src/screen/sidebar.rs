@@ -1,7 +1,8 @@
 use crate::{Screen, SCREENS_TO_RESET};
 
 use iced::{
-    widget::{button, column, container, Container, Space},
+    padding,
+    widget::{button, column, container, scrollable, Container, Space},
     Element,
     Length::{Fill, Shrink},
     Task,
@@ -49,22 +50,25 @@ impl Sidebar {
         let debug = screen_button(Screen::Debug, &self.selected_screen);
         let settings = screen_button(Screen::Settings, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
-        column![
-            fixed_width,
-            home,
-            general,
-            monitors,
-            border,
-            stackbar,
-            transparency,
-            animation,
-            theme,
-            rules,
-            debug,
-            settings,
-        ]
-        .spacing(10)
-        .width(Shrink)
+        scrollable(
+            column![
+                fixed_width,
+                home,
+                general,
+                monitors,
+                border,
+                stackbar,
+                transparency,
+                animation,
+                theme,
+                rules,
+                debug,
+                settings,
+            ]
+            .spacing(10)
+            .padding(padding::right(15).left(5))
+            .width(Shrink),
+        )
         .into()
     }
 }
