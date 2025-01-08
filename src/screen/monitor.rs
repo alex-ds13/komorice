@@ -28,6 +28,9 @@ pub enum Message {
     SetSubScreenWorkspace(usize),
     ToggleWorkspacesHover(bool),
     ToggleWorkspaceHover(usize, bool),
+    DeleteWorkspace(usize),
+    MoveUpWorkspace(usize),
+    MoveDownWorkspace(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -248,6 +251,46 @@ impl Monitor {
                 let ws = self.workspaces.entry(idx).or_default();
                 ws.is_hovered = hover;
             }
+            Message::DeleteWorkspace(idx) => {
+                config.workspaces.remove(idx);
+                println!("REMOVED: {idx}");
+                if idx < self.workspaces.len() - 1 {
+                    for i in (self.workspaces.len() - 1)..(idx + 1) {
+                        println!("MOVING: {i} to {}", i - 1);
+                        if let Some(w) = self.workspaces.remove(&i) {
+                            self.workspaces.insert(i - 1, w);
+                        }
+                    }
+                } else {
+                    self.workspaces.remove(&idx);
+                }
+            }
+            Message::MoveUpWorkspace(idx) => {
+                let new_idx = if idx == 0 {
+                    self.workspaces.len() - 1
+                } else {
+                    idx - 1
+                };
+                if let (Some(current), Some(target)) = (
+                    self.workspaces.remove(&idx),
+                    self.workspaces.remove(&new_idx),
+                ) {
+                    self.workspaces.insert(new_idx, current);
+                    self.workspaces.insert(idx, target);
+                    config.workspaces.swap(idx, new_idx);
+                }
+            }
+            Message::MoveDownWorkspace(idx) => {
+                let new_idx = (idx + 1) % self.workspaces.len();
+                if let (Some(current), Some(target)) = (
+                    self.workspaces.remove(&idx),
+                    self.workspaces.remove(&new_idx),
+                ) {
+                    self.workspaces.insert(new_idx, current);
+                    self.workspaces.insert(idx, target);
+                    config.workspaces.swap(idx, new_idx);
+                }
+            }
         }
         Task::none()
     }
@@ -387,11 +430,16 @@ impl Monitor {
             .into(),
             workspaces.iter().enumerate().map(|(i, w)| {
                 let title = text!("Workspace [{}] - \"{}\":", i, w.name);
-                opt_helpers::opt_button(
+                opt_helpers::opt_button_add_move(
                     title,
                     None,
                     self.workspaces[&i].is_hovered,
+                    i > 0,
+                    i < workspaces.len() - 1,
                     Message::SetSubScreenWorkspace(i),
+                    Message::DeleteWorkspace(i),
+                    Message::MoveUpWorkspace(i),
+                    Message::MoveDownWorkspace(i),
                     |v| Message::ToggleWorkspaceHover(i, v),
                 )
             }),

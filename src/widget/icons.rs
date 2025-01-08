@@ -15,12 +15,12 @@ pub fn icon<'a>(unicode: char) -> Text<'a> {
 }
 
 pub fn down_chevron_icon<'a>() -> Text<'a> {
-    icon('\u{F106}')
+    icon('\u{F107}')
 }
 
 pub fn up_chevron_icon<'a>() -> Text<'a> {
     // icon('\u{F139}')
-    icon('\u{F107}')
+    icon('\u{F106}')
 }
 
 pub fn left_chevron_icon<'a>() -> Text<'a> {
