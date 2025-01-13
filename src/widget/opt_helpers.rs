@@ -256,33 +256,41 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
                 }
             }),
     )
-    .padding(padding::left(10));
+    .padding(padding::left(5));
 
-    let delete_button = button(icons::delete_icon().size(25))
+    let delete_button = button(icons::delete_icon().size(18))
         .on_press(on_delete.clone())
-        .padding(padding::left(10).right(10))
+        .padding(padding::left(5).right(5))
         .style(button::danger);
 
     let move_buttons = Column::new()
         .push_maybe(
             show_up.then_some(
-                button(icons::up_chevron_icon().size(12.5))
+                button(icons::up_chevron_icon().size(10))
                     .on_press(on_move_up.clone())
                     .style(button::secondary)
-                    .padding(padding::left(10).right(10)),
+                    .padding(padding::left(5).right(5)),
             ),
         )
         .push_maybe(
             show_down.then_some(
-                button(icons::down_chevron_icon().size(12.5))
+                button(icons::down_chevron_icon().size(10))
                     .on_press(on_move_down.clone())
                     .style(button::secondary)
-                    .padding(padding::left(10).right(10)),
+                    .padding(padding::left(5).right(5)),
             ),
         )
         .spacing(2.5);
+    let move_buttons = container(move_buttons).align_y(match (show_up, show_down) {
+        (true, false) => iced::Top,
+        (false, true) => iced::Bottom,
+        _ => iced::Center.into(),
+    }).height(Fill);
 
-    let element = row![delete_button, move_buttons, right_button].spacing(5);
+    let element = row![delete_button, move_buttons, right_button]
+        .spacing(10)
+        .height(iced::Shrink)
+        .align_y(Center);
 
     opt_custom_button(name, description, on_press, on_hover, element)
 }
