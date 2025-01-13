@@ -264,6 +264,8 @@ impl Monitor {
                 } else {
                     self.workspaces.remove(&idx);
                 }
+                let ws = self.workspaces.entry(idx).or_default();
+                ws.is_hovered = true;
             }
             Message::MoveUpWorkspace(idx) => {
                 let new_idx = if idx == 0 {
@@ -278,6 +280,10 @@ impl Monitor {
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
+                    let ws = self.workspaces.entry(new_idx).or_default();
+                    ws.is_hovered = false;
+                    let ws = self.workspaces.entry(idx).or_default();
+                    ws.is_hovered = true;
                 }
             }
             Message::MoveDownWorkspace(idx) => {
@@ -289,6 +295,10 @@ impl Monitor {
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
+                    let ws = self.workspaces.entry(new_idx).or_default();
+                    ws.is_hovered = false;
+                    let ws = self.workspaces.entry(idx).or_default();
+                    ws.is_hovered = true;
                 }
             }
         }
