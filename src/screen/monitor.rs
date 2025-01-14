@@ -257,7 +257,8 @@ impl Monitor {
                 if idx < self.workspaces.len() - 1 {
                     for i in (self.workspaces.len() - 1)..(idx + 1) {
                         println!("MOVING: {i} to {}", i - 1);
-                        if let Some(w) = self.workspaces.remove(&i) {
+                        if let Some(mut w) = self.workspaces.remove(&i) {
+                            w.index = i - 1;
                             self.workspaces.insert(i - 1, w);
                         }
                     }
@@ -273,10 +274,12 @@ impl Monitor {
                 } else {
                     idx - 1
                 };
-                if let (Some(current), Some(target)) = (
+                if let (Some(mut current), Some(mut target)) = (
                     self.workspaces.remove(&idx),
                     self.workspaces.remove(&new_idx),
                 ) {
+                    current.index = new_idx;
+                    target.index = idx;
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
@@ -288,10 +291,12 @@ impl Monitor {
             }
             Message::MoveDownWorkspace(idx) => {
                 let new_idx = (idx + 1) % self.workspaces.len();
-                if let (Some(current), Some(target)) = (
+                if let (Some(mut current), Some(mut target)) = (
                     self.workspaces.remove(&idx),
                     self.workspaces.remove(&new_idx),
                 ) {
+                    current.index = new_idx;
+                    target.index = idx;
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
