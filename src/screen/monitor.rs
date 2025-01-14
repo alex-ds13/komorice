@@ -1,6 +1,9 @@
 use super::workspace::{self, WorkspaceScreen};
 
-use crate::{config::DEFAULT_MONITOR_CONFIG, widget::opt_helpers};
+use crate::{
+    config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    widget::opt_helpers,
+};
 
 use std::collections::HashMap;
 
@@ -29,6 +32,8 @@ pub enum Message {
     ToggleWorkspacesHover(bool),
     ToggleWorkspaceHover(usize, bool),
     DeleteWorkspace(usize),
+    AddWorkspaceUp(usize),
+    AddWorkspaceDown(usize),
     MoveUpWorkspace(usize),
     MoveDownWorkspace(usize),
 }
@@ -268,6 +273,49 @@ impl Monitor {
                 let ws = self.workspaces.entry(idx).or_default();
                 ws.is_hovered = true;
             }
+            Message::AddWorkspaceUp(idx) => {
+                config
+                    .workspaces
+                    .insert(idx, DEFAULT_WORKSPACE_CONFIG.clone());
+                let mut previous_ws = self.workspaces.insert(
+                    idx,
+                    workspace::Workspace {
+                        index: idx,
+                        is_hovered: true,
+                        ..Default::default()
+                    },
+                );
+                for i in (idx + 1)..(self.workspaces.len() + 1) {
+                    if let Some(mut w) = previous_ws {
+                        w.index = i;
+                        w.is_hovered = false;
+                        previous_ws = self.workspaces.insert(i, w)
+                    }
+                }
+            }
+            Message::AddWorkspaceDown(idx) => {
+                if idx + 1 >= config.workspaces.len() {
+                    config.workspaces.push(DEFAULT_WORKSPACE_CONFIG.clone());
+                } else {
+                    config
+                        .workspaces
+                        .insert(idx + 1, DEFAULT_WORKSPACE_CONFIG.clone());
+                }
+                let mut previous_ws = self.workspaces.insert(
+                    idx + 1,
+                    workspace::Workspace {
+                        index: idx + 1,
+                        ..Default::default()
+                    },
+                );
+                for i in (idx + 2)..(self.workspaces.len() + 1) {
+                    if let Some(mut w) = previous_ws {
+                        w.index = i;
+                        w.is_hovered = false;
+                        previous_ws = self.workspaces.insert(i, w)
+                    }
+                }
+            }
             Message::MoveUpWorkspace(idx) => {
                 let new_idx = if idx == 0 {
                     self.workspaces.len() - 1
@@ -453,6 +501,8 @@ impl Monitor {
                     i < workspaces.len() - 1,
                     Message::SetSubScreenWorkspace(i),
                     Message::DeleteWorkspace(i),
+                    Message::AddWorkspaceUp(i),
+                    Message::AddWorkspaceDown(i),
                     Message::MoveUpWorkspace(i),
                     Message::MoveDownWorkspace(i),
                     |v| Message::ToggleWorkspaceHover(i, v),

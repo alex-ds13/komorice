@@ -240,6 +240,8 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
     show_down: bool,
     on_press: Message,
     on_delete: Message,
+    on_add_up: Message,
+    on_add_down: Message,
     on_move_up: Message,
     on_move_down: Message,
     on_hover: impl Fn(bool) -> Message,
@@ -257,6 +259,19 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
             }),
     )
     .padding(padding::left(5));
+
+    let add_buttons = Column::new()
+        .push(
+            button(row![text("+").size(10), icons::level_up_icon().size(10)].spacing(2.5))
+                .on_press(on_add_up.clone())
+                .padding(padding::left(5).right(5)),
+        )
+        .push(
+            button(row![text("+").size(10), icons::level_down_icon().size(10)].spacing(2.5))
+                .on_press(on_add_down.clone())
+                .padding(padding::left(5).right(5)),
+        )
+        .spacing(2.5);
 
     let delete_button = button(icons::delete_icon().size(18))
         .on_press(on_delete.clone())
@@ -281,16 +296,26 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
             ),
         )
         .spacing(2.5);
-    let move_buttons = container(move_buttons).align_y(match (show_up, show_down) {
-        (true, false) => iced::Top,
-        (false, true) => iced::Bottom,
-        _ => iced::Center.into(),
-    }).height(Fill);
 
-    let element = row![delete_button, move_buttons, right_button]
-        .spacing(10)
-        .height(iced::Shrink)
-        .align_y(Center);
+    let align_buttons = |el| {
+        container(el)
+            .align_y(match (show_up, show_down) {
+                (true, false) => iced::Top,
+                (false, true) => iced::Bottom,
+                _ => iced::Center.into(),
+            })
+            .height(Fill)
+    };
+
+    let element = row![
+        align_buttons(add_buttons),
+        delete_button,
+        align_buttons(move_buttons),
+        right_button
+    ]
+    .spacing(10)
+    .height(iced::Shrink)
+    .align_y(Center);
 
     opt_custom_button(name, description, on_press, on_hover, element)
 }
