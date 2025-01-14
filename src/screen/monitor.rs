@@ -258,10 +258,8 @@ impl Monitor {
             }
             Message::DeleteWorkspace(idx) => {
                 config.workspaces.remove(idx);
-                println!("REMOVED: {idx}");
                 if idx < self.workspaces.len() - 1 {
                     for i in (self.workspaces.len() - 1)..(idx + 1) {
-                        println!("MOVING: {i} to {}", i - 1);
                         if let Some(mut w) = self.workspaces.remove(&i) {
                             w.index = i - 1;
                             self.workspaces.insert(i - 1, w);
