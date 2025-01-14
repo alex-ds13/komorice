@@ -504,7 +504,9 @@ fn rule_view<'a>(
     } else {
         row![
             container(iced::widget::value(
-                rule.matching_strategy.as_ref().unwrap_or(&MatchingStrategy::Legacy),
+                rule.matching_strategy
+                    .as_ref()
+                    .unwrap_or(&MatchingStrategy::Legacy),
             ))
             .width(Fill)
             .padding(5)

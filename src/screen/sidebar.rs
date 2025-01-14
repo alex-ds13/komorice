@@ -47,7 +47,7 @@ impl Sidebar {
         let animation = screen_button(Screen::Animations, &self.selected_screen);
         let theme = screen_button(Screen::Theme, &self.selected_screen);
         let rules = screen_button(Screen::Rules, &self.selected_screen);
-        let debug = screen_button(Screen::Debug, &self.selected_screen);
+        let debug = screen_button(Screen::LiveDebug, &self.selected_screen);
         let settings = screen_button(Screen::Settings, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
         scrollable(

@@ -1,4 +1,4 @@
-use crate::Message;
+use crate::live_debug::Message;
 
 use std::io::BufReader;
 use std::io::Read;

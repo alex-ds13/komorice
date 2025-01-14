@@ -1,6 +1,7 @@
 pub mod animation;
 pub mod border;
 pub mod general;
+pub mod live_debug;
 pub mod monitor;
 pub mod monitors;
 pub mod rule;
@@ -27,7 +28,7 @@ pub enum Screen {
     Animations,
     Theme,
     Rules,
-    Debug,
+    LiveDebug,
     Settings,
 }
 
@@ -43,7 +44,7 @@ impl Display for Screen {
             Screen::Animations => write!(f, "Animations"),
             Screen::Theme => write!(f, "Theme"),
             Screen::Rules => write!(f, "Rules"),
-            Screen::Debug => write!(f, "Debug"),
+            Screen::LiveDebug => write!(f, "Live Debug"),
             Screen::Settings => write!(f, "Settings"),
         }
     }

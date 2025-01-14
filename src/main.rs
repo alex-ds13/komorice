@@ -8,7 +8,8 @@ mod widget;
 use crate::apperror::AppError;
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    animation, border, general, monitors, rules, sidebar, stackbar, theme, transparency, Screen,
+    animation, border, general, live_debug, monitors, rules, sidebar, stackbar, theme,
+    transparency, Screen,
 };
 
 use std::collections::HashMap;
@@ -17,7 +18,7 @@ use std::sync::Arc;
 use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
 use iced::{
     padding,
-    widget::{column, container, horizontal_rule, row, scrollable, text, vertical_rule},
+    widget::{column, container, horizontal_rule, row, text, vertical_rule},
     Center, Element, Fill, Font, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
@@ -36,7 +37,8 @@ lazy_static! {
         f
     };
     static ref NONE_STR: Arc<str> = Arc::from("[None]");
-    static ref SCREENS_TO_RESET: [Screen; 2] = [Screen::Rules, Screen::Transparency];
+    static ref SCREENS_TO_RESET: [Screen; 3] =
+        [Screen::Rules, Screen::Transparency, Screen::LiveDebug];
 }
 
 fn main() -> iced::Result {
@@ -59,15 +61,13 @@ enum Message {
     Animation(animation::Message),
     Border(border::Message),
     General(general::Message),
+    LiveDebug(live_debug::Message),
     Monitors(monitors::Message),
     Rules(rules::Message),
     Sidebar(sidebar::Message),
     Stackbar(stackbar::Message),
     Theme(theme::Message),
     Transparency(transparency::Message),
-
-    // Komorebi related Messages
-    KomorebiNotification(Arc<komorebi_client::Notification>),
 
     // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
@@ -81,8 +81,6 @@ enum Message {
 struct Komofig {
     sidebar: sidebar::Sidebar,
     main_screen: Screen,
-    notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
-    komorebi_state: Option<Arc<komorebi_client::State>>,
     display_info: HashMap<usize, (String, komorebi_client::Rect)>,
     monitors: monitors::Monitors,
     border: border::Border,
@@ -92,6 +90,7 @@ struct Komofig {
     animation: animation::Animation,
     theme_screen: theme::Theme,
     rules: rules::Rules,
+    live_debug: live_debug::LiveDebug,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
     loaded_config: Arc<komorebi_client::StaticConfig>,
@@ -106,8 +105,6 @@ impl Default for Komofig {
         Self {
             sidebar: Default::default(),
             main_screen: Default::default(),
-            notifications: Default::default(),
-            komorebi_state: Default::default(),
             display_info: Default::default(),
             monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
@@ -117,6 +114,7 @@ impl Default for Komofig {
             animation: Default::default(),
             theme_screen: Default::default(),
             rules: Default::default(),
+            live_debug: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
             loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
@@ -174,6 +172,18 @@ impl Komofig {
                 };
                 self.check_changes();
                 return Task::batch([task.map(Message::Border), action_task]);
+            }
+            Message::LiveDebug(message) => {
+                let (action, task) = self.live_debug.update(message, &self.display_info);
+                let action_task = match action {
+                    live_debug::Action::None => Task::none(),
+                    live_debug::Action::Error(apperror) => {
+                        println!("Received AppError: {apperror:#?}");
+                        self.errors.push(apperror);
+                        Task::none()
+                    }
+                };
+                return Task::batch([task.map(Message::LiveDebug), action_task]);
             }
             Message::Monitors(message) => {
                 if let Some(monitors_config) = &mut self.config.monitors {
@@ -243,10 +253,28 @@ impl Komofig {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::UpdateMainScreen(screen) => {
                         if SCREENS_TO_RESET.contains(&screen) {
-                            if matches!(screen, Screen::Rules) {
-                                self.rules = rules::Rules::default();
-                            } else if matches!(screen, Screen::Transparency) {
-                                self.transparency = transparency::Transparency::default();
+                            match screen {
+                                Screen::Home => {
+                                    unreachable!("should never try to reset home screen!")
+                                }
+                                Screen::General => self.general = general::General::default(),
+                                Screen::Monitors => {
+                                    self.monitors = monitors::Monitors::new(&self.config)
+                                }
+                                Screen::Border => self.border = border::Border::default(),
+                                Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
+                                Screen::Transparency => {
+                                    self.transparency = transparency::Transparency::default()
+                                }
+                                Screen::Animations => {
+                                    self.animation = animation::Animation::default()
+                                }
+                                Screen::Theme => self.theme_screen = theme::Theme::default(),
+                                Screen::Rules => self.rules = rules::Rules::default(),
+                                Screen::LiveDebug => self.live_debug.reset_screen(),
+                                Screen::Settings => {
+                                    unreachable!("should never try to reset settings screen!")
+                                }
                             }
                         }
                         self.main_screen = screen;
@@ -254,25 +282,6 @@ impl Komofig {
                     }
                 };
                 return Task::batch([task.map(Message::Sidebar), action_task]);
-            }
-            Message::KomorebiNotification(notification) => {
-                if let Some(notification) = Arc::into_inner(notification) {
-                    self.notifications.push(Arc::from(notification.event));
-                    let should_update_monitors =
-                        notification.state.monitors.elements().len() > self.monitors.monitors.len();
-                    self.komorebi_state = Some(Arc::from(notification.state));
-                    if should_update_monitors {
-                        self.is_dirty = self.populate_monitors() || self.is_dirty;
-                    }
-                } else {
-                    self.errors.push(AppError {
-                        title: "Failed to get notification properly.".into(),
-                        description: Some(
-                            "There were other references to the same notification `Arc`".into(),
-                        ),
-                        kind: apperror::AppErrorKind::Warning,
-                    });
-                }
             }
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
@@ -360,7 +369,7 @@ impl Komofig {
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
                     self.monitors
-                        .view(&self.komorebi_state, monitors_config, &self.display_info)
+                        .view(monitors_config, &self.display_info)
                         .map(Message::Monitors)
                 } else {
                     iced::widget::horizontal_space().into()
@@ -379,32 +388,12 @@ impl Komofig {
                 .animation
                 .view(self.config.animation.as_ref())
                 .map(Message::Animation),
-            Screen::Theme => self
-                .theme_screen
-                .view(&self.config)
-                .map(Message::Theme),
+            Screen::Theme => self.theme_screen.view(&self.config).map(Message::Theme),
             Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
-            Screen::Debug => {
-                let notifications = scrollable(
-                    self.notifications
-                        .iter()
-                        .fold(column![], |col, notification| {
-                            col.push(text(format!("-> {:?}", notification)))
-                        })
-                        .spacing(10)
-                        .width(Fill)
-                        .padding(padding::top(10).bottom(10).right(20)),
-                );
-                column![
-                    text("Notifications:").size(20).font(*BOLD_FONT),
-                    horizontal_rule(2.0),
-                    notifications,
-                ]
-                .spacing(10)
-                .width(Fill)
-                .height(Fill)
-                .into()
-            }
+            Screen::LiveDebug => self
+                .live_debug
+                .view(&self.display_info)
+                .map(Message::LiveDebug),
             Screen::Settings => {
                 let title = text("Settings:").size(20).font(*BOLD_FONT);
                 let theme = row![
@@ -452,7 +441,7 @@ impl Komofig {
             | Screen::Stackbar
             | Screen::Animations
             | Screen::Theme
-            | Screen::Debug
+            | Screen::LiveDebug
             | Screen::Settings => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
             Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
@@ -460,7 +449,7 @@ impl Komofig {
         };
 
         Subscription::batch([
-            komo_interop::connect(),
+            komo_interop::connect().map(Message::LiveDebug),
             config::worker(),
             screen_subscription,
         ])
