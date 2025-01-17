@@ -1,15 +1,19 @@
 use super::{
-    monitor::{self, Monitor},
+    monitor::{self, Monitor, MonitorView},
     workspace,
 };
 
-use crate::{widget::monitors_viewer, BOLD_FONT};
+use crate::{
+    config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    widget::{monitors_viewer, opt_helpers},
+    BOLD_FONT,
+};
 
 use std::collections::HashMap;
 
 use iced::{
     padding,
-    widget::{checkbox, column, container, horizontal_rule, scrollable, text},
+    widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text},
     Center, Element, Fill, Subscription, Task,
 };
 use komorebi_client::{MonitorConfig, Rect};
@@ -18,6 +22,13 @@ use komorebi_client::{MonitorConfig, Rect};
 pub enum Message {
     ConfigMonitor(usize),
     MonitorConfigChanged(usize, monitor::Message),
+    ToggleShowMonitorsList,
+    DeleteMonitor(usize),
+    AddMonitorUp(usize),
+    AddMonitorDown(usize),
+    MoveUpMonitor(usize),
+    MoveDownMonitor(usize),
+    ToggleMonitorButtonHover(usize, bool),
 }
 
 #[derive(Clone, Debug)]
@@ -29,6 +40,8 @@ pub enum Action {
 pub struct Monitors {
     pub monitors: HashMap<usize, Monitor>,
     pub monitor_to_config: Option<usize>,
+    pub show_monitors_list: bool,
+    pub monitors_buttons_hovered: Vec<bool>,
 }
 
 impl Monitors {
@@ -60,16 +73,22 @@ impl Monitors {
                 .collect()
         });
 
+        let monitors_buttons_hovered = config.monitors.as_ref().map_or(Vec::new(), |monitors| {
+            monitors.iter().map(|_| false).collect()
+        });
+
         Monitors {
             monitors,
             monitor_to_config: None,
+            show_monitors_list: false,
+            monitors_buttons_hovered,
         }
     }
 
     pub fn update(
         &mut self,
         message: Message,
-        monitors_config: &mut [MonitorConfig],
+        monitors_config: &mut Vec<MonitorConfig>,
         display_info: &HashMap<usize, (String, Rect)>,
     ) -> (Action, Task<Message>) {
         match message {
@@ -82,6 +101,15 @@ impl Monitors {
                         device_id
                     );
                     self.monitor_to_config = Some(idx);
+                    if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
+                        *hovered = false;
+                    }
+                } else {
+                    println!("Go to ConfigMonitor screen for monitor {idx} which doesn't exist");
+                    self.monitor_to_config = Some(idx);
+                    if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
+                        *hovered = false;
+                    }
                 }
             }
             Message::MonitorConfigChanged(idx, message) => {
@@ -95,6 +123,114 @@ impl Monitors {
                     );
                 }
             }
+            Message::ToggleShowMonitorsList => {
+                self.show_monitors_list = !self.show_monitors_list;
+            }
+            Message::DeleteMonitor(idx) => {
+                monitors_config.remove(idx);
+                self.monitors_buttons_hovered.remove(idx);
+                if idx < self.monitors.len() - 1 {
+                    for i in (self.monitors.len() - 1)..(idx + 1) {
+                        if let Some(mut m) = self.monitors.remove(&i) {
+                            m.index = i - 1;
+                            self.monitors.insert(i - 1, m);
+                        }
+                    }
+                } else {
+                    self.monitors.remove(&idx);
+                }
+            }
+            Message::AddMonitorUp(idx) => {
+                monitors_config.insert(
+                    idx,
+                    MonitorConfig {
+                        workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
+                        ..*DEFAULT_MONITOR_CONFIG
+                    },
+                );
+                if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
+                    *hovered = false;
+                }
+                self.monitors_buttons_hovered.insert(idx, true);
+                let mut previous_m = self.monitors.insert(
+                    idx,
+                    monitor::Monitor {
+                        index: idx,
+                        workspaces: HashMap::from([(0, workspace::Workspace::new(0))]),
+                        ..Default::default()
+                    },
+                );
+                for i in (idx + 1)..(self.monitors.len() + 1) {
+                    if let Some(mut w) = previous_m {
+                        w.index = i;
+                        previous_m = self.monitors.insert(i, w)
+                    }
+                }
+            }
+            Message::AddMonitorDown(idx) => {
+                if idx + 1 >= monitors_config.len() {
+                    monitors_config.push(MonitorConfig {
+                        workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
+                        ..*DEFAULT_MONITOR_CONFIG
+                    });
+                    self.monitors_buttons_hovered.push(false);
+                } else {
+                    monitors_config.insert(
+                        idx + 1,
+                        MonitorConfig {
+                            workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
+                            ..*DEFAULT_MONITOR_CONFIG
+                        },
+                    );
+                    self.monitors_buttons_hovered.insert(idx + 1, false);
+                }
+                let mut previous_m = self.monitors.insert(
+                    idx + 1,
+                    monitor::Monitor {
+                        index: idx,
+                        workspaces: HashMap::from([(0, workspace::Workspace::new(0))]),
+                        ..Default::default()
+                    },
+                );
+                for i in (idx + 2)..(self.monitors.len() + 1) {
+                    if let Some(mut w) = previous_m {
+                        w.index = i;
+                        previous_m = self.monitors.insert(i, w)
+                    }
+                }
+            }
+            Message::MoveUpMonitor(idx) => {
+                let new_idx = if idx == 0 {
+                    self.monitors.len() - 1
+                } else {
+                    idx - 1
+                };
+                if let (Some(mut current), Some(mut target)) =
+                    (self.monitors.remove(&idx), self.monitors.remove(&new_idx))
+                {
+                    current.index = new_idx;
+                    target.index = idx;
+                    self.monitors.insert(new_idx, current);
+                    self.monitors.insert(idx, target);
+                    monitors_config.swap(idx, new_idx);
+                }
+            }
+            Message::MoveDownMonitor(idx) => {
+                let new_idx = (idx + 1) % self.monitors.len();
+                if let (Some(mut current), Some(mut target)) =
+                    (self.monitors.remove(&idx), self.monitors.remove(&new_idx))
+                {
+                    current.index = new_idx;
+                    target.index = idx;
+                    self.monitors.insert(new_idx, current);
+                    self.monitors.insert(idx, target);
+                    monitors_config.swap(idx, new_idx);
+                }
+            }
+            Message::ToggleMonitorButtonHover(idx, hover) => {
+                if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
+                    *hovered = hover;
+                }
             }
         }
         (Action::None, Task::none())
@@ -105,39 +241,79 @@ impl Monitors {
         monitors_config: &'a [MonitorConfig],
         display_info: &'a HashMap<usize, (String, Rect)>,
     ) -> Element<'a, Message> {
-        let title = text("Monitors:").size(20).font(*BOLD_FONT);
-        let monitors: Element<Message> = {
-            let mut col = column![].spacing(10).padding(padding::bottom(10).right(20));
+        let mut main_title = if let Some(idx) = self.monitor_to_config {
+            row![button(text("Monitors > ").size(20).font(*BOLD_FONT))
+                .on_press(Message::ConfigMonitor(idx))
+                .padding(0)
+                .style(button::text)]
+        } else {
+            row![text("Monitors:").size(20).font(*BOLD_FONT)]
+        };
 
-            let m: Element<Message> = monitors_viewer::Monitors::new(display_info)
+        let mut col = column![].spacing(10).padding(padding::bottom(10).right(20));
+
+        if let Some((Some(monitor), Some(m_config))) = self
+            .monitor_to_config
+            .map(|idx| (self.monitors.get(&idx), monitors_config.get(idx)))
+        {
+            let monitor_idx = self.monitor_to_config.expect("unreachable");
+            let MonitorView { title, contents } = monitor
+                .view(m_config)
+                .map(move |message| Message::MonitorConfigChanged(monitor_idx, message));
+            main_title = main_title.push(title);
+            col = col.extend(contents);
+        } else if self.show_monitors_list {
+            col = monitors_config
+                .iter()
+                .enumerate()
+                .fold(col, |col, (idx, _monitor)| {
+                    col.push(opt_helpers::opt_button_add_move(
+                        text!(
+                            "Monitor [{}] - {}",
+                            idx,
+                            display_info
+                                .get(&idx)
+                                .map_or("[Display Not Found]", |d| d.0.as_str())
+                        ),
+                        None,
+                        self.monitors_buttons_hovered.get(idx).map_or(false, |v| *v),
+                        idx > 0,
+                        idx < monitors_config.len() - 1,
+                        Message::ConfigMonitor(idx),
+                        Message::DeleteMonitor(idx),
+                        Message::AddMonitorUp(idx),
+                        Message::AddMonitorDown(idx),
+                        Message::MoveUpMonitor(idx),
+                        Message::MoveDownMonitor(idx),
+                        |v| Message::ToggleMonitorButtonHover(idx, v),
+                    ))
+                });
+        };
+
+        let contents = scrollable(col).id(scrollable::Id::new("monitors_scrollable"));
+
+        let show_monitors_display = container(
+            checkbox("Show Monitors", !self.show_monitors_list)
+                .on_toggle(|_| Message::ToggleShowMonitorsList),
+        )
+        .padding(padding::top(10));
+
+        let monitors_display = (!self.show_monitors_list).then(|| {
+            let monitors = monitors_viewer::Monitors::new(display_info)
                 .selected(self.monitor_to_config)
-                .on_selected(Message::ConfigMonitor)
-                .into();
-            // let m = m.explain(iced::color!(0x00aaff));
-            let m = container(m)
+                .on_selected(Message::ConfigMonitor);
+            // let m = Element::from(m).explain(iced::color!(0x00aaff));
+
+            container(monitors)
                 .padding(10)
                 .width(Fill)
                 .align_x(Center)
-                .style(container::rounded_box);
-            col = col.push(m);
+                .style(container::rounded_box)
+        });
 
-            if let Some((Some(monitor), Some(m_config))) = self
-                .monitor_to_config
-                .map(|idx| (self.monitors.get(&idx), monitors_config.get(idx)))
-            {
-                let monitor_idx = self.monitor_to_config.expect("unreachable");
-                col = col.push(
-                    monitor
-                        .view(m_config)
-                        .map(move |message| Message::MonitorConfigChanged(monitor_idx, message)),
-                );
-            }
-            scrollable(col)
-                .id(scrollable::Id::new("monitors_scrollable"))
-                .into()
-        };
-
-        column![title, horizontal_rule(2.0), monitors]
+        column![main_title, horizontal_rule(2.0), show_monitors_display]
+            .push_maybe(monitors_display)
+            .push(contents)
             .spacing(10)
             .into()
     }

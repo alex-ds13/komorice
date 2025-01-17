@@ -3,6 +3,7 @@ use super::workspace::{self, WorkspaceScreen};
 use crate::{
     config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     widget::opt_helpers,
+    BOLD_FONT,
 };
 
 use std::collections::HashMap;
@@ -61,6 +62,28 @@ pub enum SubScreen {
     Workspace(usize),
     WorkspaceRules(usize),
     InitialWorkspaceRules(usize),
+}
+
+pub struct MonitorView<'a, M> {
+    pub title: Element<'a, M>,
+    pub contents: Vec<Element<'a, M>>,
+}
+
+impl<'a, M> MonitorView<'a, M> {
+    pub fn map<B>(self, f: impl Fn(M) -> B + Clone + 'a) -> MonitorView<'a, B>
+    where
+        M: 'a,
+        B: 'a,
+    {
+        MonitorView {
+            title: self.title.map(f.clone()),
+            contents: self
+                .contents
+                .into_iter()
+                .map(|el| el.map(f.clone()))
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -356,7 +379,7 @@ impl Monitor {
         Task::none()
     }
 
-    pub fn view<'a>(&'a self, config: &'a MonitorConfig) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, config: &'a MonitorConfig) -> MonitorView<'a, Message> {
         match self.sub_screen {
             SubScreen::Monitor => self.monitor_view(config),
             SubScreen::Workspaces => self.workspaces_view(&config.workspaces),
@@ -370,126 +393,121 @@ impl Monitor {
         }
     }
 
-    pub fn monitor_view(&self, config: &MonitorConfig) -> Element<Message> {
-        opt_helpers::sub_section_view(
-            text!("Monitor [{}]:", self.index).size(18).into(),
-            [
-                opt_helpers::expandable_with_disable_default(
-                    "Window Based Work Area Offset",
-                    Some("Window based work area offset (default: global)"),
-                    [
-                        opt_helpers::number(
-                            "left",
-                            None,
-                            config.window_based_work_area_offset.map_or(0, |r| r.left),
-                            move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
-                        ),
-                        opt_helpers::number(
-                            "top",
-                            None,
-                            config.window_based_work_area_offset.map_or(0, |r| r.top),
-                            move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
-                        ),
-                        opt_helpers::number(
-                            "bottom",
-                            None,
-                            config.window_based_work_area_offset.map_or(0, |r| r.bottom),
-                            move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
-                        ),
-                        opt_helpers::number(
-                            "right",
-                            None,
-                            config.window_based_work_area_offset.map_or(0, |r| r.right),
-                            move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
-                        ),
-                    ],
-                    self.window_based_work_area_offset_expanded,
-                    self.window_based_work_area_offset_hovered,
-                    Message::ToggleWindowBasedWorkAreaOffsetExpand,
-                    Message::ToggleWindowBasedWorkAreaOffsetHover,
-                    config.window_based_work_area_offset.is_some(),
-                    Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
-                    Some(opt_helpers::DisableArgs {
-                        disable: config.window_based_work_area_offset.is_none(),
-                        label: Some("Global"),
-                        on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(Rect::default()))),
-                    }),
-                ),
-                opt_helpers::number_with_disable_default(
-                    "Window Based Work Area Offset Limit",
-                    Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
-                    config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                    DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                    move |value| {
-                        Message::ConfigChange(
-                            ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
-                        )
-                    },
-                    None,
-                ),
-                opt_helpers::expandable_with_disable_default(
-                    "Work Area Offset",
-                    Some("Monitor-specific work area offset (default: global)"),
-                    [
-                        opt_helpers::number(
-                            "left",
-                            None,
-                            config.work_area_offset.map_or(0, |r| r.left),
-                            move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetLeft(value)),
-                        ),
-                        opt_helpers::number(
-                            "top",
-                            None,
-                            config.work_area_offset.map_or(0, |r| r.top),
-                            move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetTop(value)),
-                        ),
-                        opt_helpers::number(
-                            "bottom",
-                            None,
-                            config.work_area_offset.map_or(0, |r| r.bottom),
-                            move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetBottom(value)),
-                        ),
-                        opt_helpers::number(
-                            "right",
-                            None,
-                            config.work_area_offset.map_or(0, |r| r.right),
-                            move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
-                        ),
-                    ],
-                    self.work_area_offset_expanded,
-                    self.work_area_offset_hovered,
-                    Message::ToggleWorkAreaOffsetExpand,
-                    Message::ToggleWorkAreaOffsetHover,
-                    config.work_area_offset.is_some(),
-                    Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
-                    Some(opt_helpers::DisableArgs {
-                        disable: config.work_area_offset.is_none(),
-                        label: Some("Global"),
-                        on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(Rect::default()))),
-                    }),
-                ),
-                opt_helpers::opt_button(
-                    "Workspaces",
-                    None,
-                    self.workspaces_button_hovered,
-                    Message::SetSubScreenWorkspaces,
-                    Message::ToggleWorkspacesHover,
-                ),
-            ]
-        )
+    pub fn monitor_view(&self, config: &MonitorConfig) -> MonitorView<Message> {
+        let title = self.get_sub_section_title(None);
+        let contents = vec![
+            opt_helpers::expandable_with_disable_default(
+                "Window Based Work Area Offset",
+                Some("Window based work area offset (default: global)"),
+                [
+                    opt_helpers::number(
+                        "left",
+                        None,
+                        config.window_based_work_area_offset.map_or(0, |r| r.left),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
+                    ),
+                    opt_helpers::number(
+                        "top",
+                        None,
+                        config.window_based_work_area_offset.map_or(0, |r| r.top),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
+                    ),
+                    opt_helpers::number(
+                        "bottom",
+                        None,
+                        config.window_based_work_area_offset.map_or(0, |r| r.bottom),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
+                    ),
+                    opt_helpers::number(
+                        "right",
+                        None,
+                        config.window_based_work_area_offset.map_or(0, |r| r.right),
+                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
+                    ),
+                ],
+                self.window_based_work_area_offset_expanded,
+                self.window_based_work_area_offset_hovered,
+                Message::ToggleWindowBasedWorkAreaOffsetExpand,
+                Message::ToggleWindowBasedWorkAreaOffsetHover,
+                config.window_based_work_area_offset.is_some(),
+                Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
+                Some(opt_helpers::DisableArgs {
+                    disable: config.window_based_work_area_offset.is_none(),
+                    label: Some("Global"),
+                    on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(Rect::default()))),
+                }),
+            ),
+            opt_helpers::number_with_disable_default(
+                "Window Based Work Area Offset Limit",
+                Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
+                config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+                DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+                move |value| {
+                    Message::ConfigChange(
+                        ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
+                    )
+                },
+                None,
+            ),
+            opt_helpers::expandable_with_disable_default(
+                "Work Area Offset",
+                Some("Monitor-specific work area offset (default: global)"),
+                [
+                    opt_helpers::number(
+                        "left",
+                        None,
+                        config.work_area_offset.map_or(0, |r| r.left),
+                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetLeft(value)),
+                    ),
+                    opt_helpers::number(
+                        "top",
+                        None,
+                        config.work_area_offset.map_or(0, |r| r.top),
+                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetTop(value)),
+                    ),
+                    opt_helpers::number(
+                        "bottom",
+                        None,
+                        config.work_area_offset.map_or(0, |r| r.bottom),
+                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetBottom(value)),
+                    ),
+                    opt_helpers::number(
+                        "right",
+                        None,
+                        config.work_area_offset.map_or(0, |r| r.right),
+                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
+                    ),
+                ],
+                self.work_area_offset_expanded,
+                self.work_area_offset_hovered,
+                Message::ToggleWorkAreaOffsetExpand,
+                Message::ToggleWorkAreaOffsetHover,
+                config.work_area_offset.is_some(),
+                Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
+                Some(opt_helpers::DisableArgs {
+                    disable: config.work_area_offset.is_none(),
+                    label: Some("Global"),
+                    on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(Rect::default()))),
+                }),
+            ),
+            opt_helpers::opt_button(
+                "Workspaces",
+                None,
+                self.workspaces_button_hovered,
+                Message::SetSubScreenWorkspaces,
+                Message::ToggleWorkspacesHover,
+            ),
+        ];
+
+        MonitorView { title, contents }
     }
 
-    pub fn workspaces_view(&self, workspaces: &[WorkspaceConfig]) -> Element<Message> {
-        opt_helpers::sub_section_view(
-            row![
-                nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
-                ),
-                text("> Workspaces").size(18)
-            ]
-            .into(),
-            workspaces.iter().enumerate().map(|(i, w)| {
+    pub fn workspaces_view(&self, workspaces: &[WorkspaceConfig]) -> MonitorView<Message> {
+        let title = self.get_sub_section_title(None);
+        let contents = workspaces
+            .iter()
+            .enumerate()
+            .map(|(i, w)| {
                 let title = text!("Workspace [{}] - \"{}\":", i, w.name);
                 opt_helpers::opt_button_add_move(
                     title,
@@ -505,79 +523,49 @@ impl Monitor {
                     Message::MoveDownWorkspace(i),
                     |v| Message::ToggleWorkspaceHover(i, v),
                 )
-            }),
-        )
+            })
+            .collect();
+
+        MonitorView { title, contents }
     }
 
     pub fn workspace_view<'a>(
         &'a self,
         idx: usize,
         workspace: &'a WorkspaceConfig,
-    ) -> Element<'a, Message> {
-        opt_helpers::sub_section_view(
-            row![
-                nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
-                ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                text!(" > Workspace [{}] - \"{}\"", idx, workspace.name).size(18),
-            ]
-            .into(),
-            [workspace
-                .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m))],
-        )
+    ) -> MonitorView<'a, Message> {
+        let title = self.get_sub_section_title(Some(workspace));
+        let contents = vec![workspace
+            .view(&self.workspaces[&idx])
+            .map(move |m| Message::Workspace(idx, m))];
+
+        MonitorView { title, contents }
     }
 
     pub fn workspace_rules_view<'a>(
         &'a self,
         idx: usize,
         workspace: &'a WorkspaceConfig,
-    ) -> Element<'a, Message> {
-        opt_helpers::sub_section_view(
-            row![
-                nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
-                ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                nav_button(
-                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.name),
-                    Message::SetSubScreenWorkspace(idx)
-                ),
-                text("> Workspace Rules").size(18),
-            ]
-            .into(),
-            [workspace
-                .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m))],
-        )
+    ) -> MonitorView<'a, Message> {
+        let title = self.get_sub_section_title(Some(workspace));
+        let contents = vec![workspace
+            .view(&self.workspaces[&idx])
+            .map(move |m| Message::Workspace(idx, m))];
+
+        MonitorView { title, contents }
     }
 
     pub fn initial_workspace_rules_view<'a>(
         &'a self,
         idx: usize,
         workspace: &'a WorkspaceConfig,
-    ) -> Element<'a, Message> {
-        opt_helpers::sub_section_view(
-            row![
-                nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
-                ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                nav_button(
-                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.name),
-                    Message::SetSubScreenWorkspace(idx)
-                ),
-                text("> Initial Workspace Rules").size(18),
-            ]
-            .into(),
-            [workspace
-                .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m))],
-        )
+    ) -> MonitorView<'a, Message> {
+        let title = self.get_sub_section_title(Some(workspace));
+        let contents = vec![workspace
+            .view(&self.workspaces[&idx])
+            .map(move |m| Message::Workspace(idx, m))];
+
+        MonitorView { title, contents }
     }
 
     pub fn subscription(&self) -> Subscription<(usize, usize, Message)> {
@@ -594,13 +582,67 @@ impl Monitor {
             }
         }
     }
+
+    fn get_sub_section_title(&self, workspace: Option<&WorkspaceConfig>) -> Element<Message> {
+        match self.sub_screen {
+            SubScreen::Monitor => text!("Monitor [{}]:", self.index)
+                .size(20)
+                .font(*BOLD_FONT)
+                .into(),
+            SubScreen::Workspaces => row![
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
+                text("> Workspaces").size(20).font(*BOLD_FONT)
+            ]
+            .into(),
+            SubScreen::Workspace(idx) => row![
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
+                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name)
+                    .size(20)
+                    .font(*BOLD_FONT),
+            ]
+            .into(),
+            SubScreen::WorkspaceRules(idx) => row![
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
+                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                nav_button(
+                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
+                    Message::SetSubScreenWorkspace(idx)
+                ),
+                text("> Workspace Rules").size(20).font(*BOLD_FONT),
+            ]
+            .into(),
+            SubScreen::InitialWorkspaceRules(idx) => row![
+                nav_button(
+                    text!("Monitor [{}] ", self.index),
+                    Message::SetSubScreenMonitor
+                ),
+                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                nav_button(
+                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
+                    Message::SetSubScreenWorkspace(idx)
+                ),
+                text("> Initial Workspace Rules").size(20).font(*BOLD_FONT),
+            ]
+            .into(),
+        }
+    }
 }
 
 fn nav_button<'a>(
     content: impl Into<iced::widget::Text<'a>>,
     on_press: Message,
 ) -> iced::widget::Button<'a, Message> {
-    button(content.into().size(18))
+    button(content.into().size(20).font(*BOLD_FONT))
         .on_press(on_press)
         .padding(0)
         .style(button::text)
