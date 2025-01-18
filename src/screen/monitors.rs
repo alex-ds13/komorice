@@ -277,6 +277,7 @@ impl Monitors {
                         ),
                         None,
                         self.monitors_buttons_hovered.get(idx).map_or(false, |v| *v),
+                        monitors_config.len() > 1,
                         idx > 0,
                         idx < monitors_config.len() - 1,
                         Message::ConfigMonitor(idx),

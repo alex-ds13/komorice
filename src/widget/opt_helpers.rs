@@ -236,6 +236,7 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     hovered: bool,
+    show_delete: bool,
     show_up: bool,
     show_down: bool,
     on_press: Message,
@@ -273,10 +274,14 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
         )
         .spacing(2.5);
 
-    let delete_button = button(icons::delete_icon().size(18))
-        .on_press(on_delete.clone())
-        .padding(padding::left(5).right(5))
-        .style(button::danger);
+    let delete_button = Column::new().push_maybe(
+        show_delete.then_some(
+            button(icons::delete_icon().size(18))
+                .on_press(on_delete.clone())
+                .padding(padding::left(5).right(5))
+                .style(button::danger),
+        ),
+    );
 
     let move_buttons = Column::new()
         .push_maybe(

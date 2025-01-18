@@ -513,6 +513,7 @@ impl Monitor {
                     title,
                     None,
                     self.workspaces[&i].is_hovered,
+                    workspaces.len() > 1,
                     i > 0,
                     i < workspaces.len() - 1,
                     Message::SetSubScreenWorkspace(i),
