@@ -386,7 +386,7 @@ pub fn input_with_disable_default<'a, Message: 'a + Clone>(
     on_submit: Option<Message>,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let is_dirty = value != default_value && !should_disable;
     let label = if is_dirty {
         row![name, reset_button(on_change(default_value))]
@@ -449,7 +449,7 @@ pub fn number_with_disable<'a, Message: 'a + Clone>(
     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let on_change = move |v| {
         if should_disable {
             on_change(value)
@@ -487,7 +487,7 @@ pub fn number_with_disable_default<'a, Message: 'a + Clone>(
     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let is_dirty = value != default_value && !should_disable;
     let label = if is_dirty {
         row![name, reset_button(on_change(default_value))]
@@ -536,7 +536,7 @@ pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
     on_change: impl Fn(Option<i32>) -> Message + 'a + Copy + 'static,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let default_value_internal = default_value.unwrap_or_default();
     let value_internal = value.unwrap_or(default_value_internal);
     let is_dirty = ((value_internal != default_value_internal)
@@ -605,7 +605,7 @@ pub fn color<'a, Message: 'a + Clone + 'static, F>(
 where
     F: 'static + Fn(Option<Color>) -> Message,
 {
-    let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let default_color_internal = default_color.unwrap_or_default();
     let color_internal = color.unwrap_or(default_color_internal);
     let is_dirty = ((color_internal != default_color_internal)

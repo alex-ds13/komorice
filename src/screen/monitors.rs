@@ -276,7 +276,7 @@ impl Monitors {
                                 .map_or("[Display Not Found]", |d| d.0.as_str())
                         ),
                         None,
-                        self.monitors_buttons_hovered.get(idx).map_or(false, |v| *v),
+                        self.monitors_buttons_hovered.get(idx).is_some_and(|v| *v),
                         monitors_config.len() > 1,
                         idx > 0,
                         idx < monitors_config.len() - 1,
