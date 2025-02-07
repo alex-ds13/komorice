@@ -1003,21 +1003,56 @@ pub fn expandable_with_disable_default<'a, Message: 'a + Clone>(
     on_default: Message,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
-    // let should_disable = disable_args.as_ref().map_or(false, |args| args.disable);
-    let right_button = button(if expanded {
-        text("▲").size(10)
-    } else {
-        text("▼").size(10)
-    })
-    .on_press(on_press.clone())
-    .style(move |t, s| {
-        if hovered {
-            button::secondary(t, button::Status::Active)
+    let on_press_clone = on_press.clone();
+    let right_button = |hovered: bool| {
+        button(if expanded {
+            text("▲").size(10)
         } else {
-            button::text(t, s)
-        }
-    });
+            text("▼").size(10)
+        })
+        .on_press(on_press_clone)
+        .style(move |t, s| {
+            if hovered {
+                button::secondary(t, button::Status::Active)
+            } else {
+                button::text(t, s)
+            }
+        })
+        .into()
+    };
 
+    expandable_with_disable_default_custom(
+        name,
+        description,
+        right_button,
+        children,
+        expanded,
+        hovered,
+        Some(on_press),
+        Some(on_hover),
+        is_dirty,
+        on_default,
+        disable_args,
+    )
+}
+
+///Creates an expandable option with children options to be shown when expanded.
+///
+///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
+pub fn expandable_with_disable_default_custom<'a, Message: 'a + Clone>(
+    name: impl Into<Text<'a>>,
+    description: Option<&'a str>,
+    right_element: impl FnOnce(bool) -> Element<'a, Message>,
+    children: impl IntoIterator<Item = Element<'a, Message>>,
+    expanded: bool,
+    hovered: bool,
+    on_press: Option<Message>,
+    on_hover: Option<impl Fn(bool) -> Message>,
+    is_dirty: bool,
+    on_default: Message,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
     let label = if is_dirty {
         row![name.into(), reset_button(on_default)]
             .spacing(5)
@@ -1028,17 +1063,22 @@ pub fn expandable_with_disable_default<'a, Message: 'a + Clone>(
     };
     let main = row![label_element_with_description(label, description)]
         .push_maybe(disable_checkbox(disable_args))
-        .push(right_button)
+        .push(right_element(hovered))
         .align_y(Center)
         .padding(padding::right(10))
         .spacing(10);
 
-    let area = |el| {
-        mouse_area(el)
-            .on_press(on_press)
-            .on_enter(on_hover(true))
-            .on_exit(on_hover(false))
-            .interaction(iced::mouse::Interaction::Pointer)
+    let area = |el: Container<'a, Message>| -> Element<'a, Message> {
+        if let (Some(on_press), Some(on_hover)) = (on_press, on_hover) {
+            mouse_area(el)
+                .on_press(on_press)
+                .on_enter(on_hover(true))
+                .on_exit(on_hover(false))
+                .interaction(iced::mouse::Interaction::Pointer)
+                .into()
+        } else {
+            el.into()
+        }
     };
     // let disable_area = |el| {
     //     mouse_area(container(el).width(Fill).height(Fill))
@@ -1060,7 +1100,7 @@ pub fn expandable_with_disable_default<'a, Message: 'a + Clone>(
         // };
         column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
     } else {
-        area(opt_box(main)).into()
+        area(opt_box(main))
     };
     element
 }

@@ -29,6 +29,12 @@ pub enum Message {
     ChangeNewLayoutRuleLayout(Layout),
     AddNewLayoutRule,
     RemoveLayoutRule(usize),
+    ToggleBehaviourRulesExpand,
+    BehaviourRulesHover(bool),
+    ChangeNewBehaviourRuleLimit(i32),
+    ChangeNewBehaviourRuleBehaviour(WindowContainerBehaviour),
+    AddNewBehaviourRule,
+    RemoveBehaviourRule(usize),
     WorkspaceRulesHover(bool),
     InitialWorkspaceRulesHover(bool),
     Rule(rule::Message),
@@ -52,6 +58,9 @@ pub enum ConfigChange {
     LayoutRuleLayout((usize, Layout)),
     Name(String),
     WindowContainerBehaviour(Option<WindowContainerBehaviour>),
+    BehaviourRules(Option<HashMap<usize, WindowContainerBehaviour>>),
+    BehaviourRuleLimit((usize, i32)),
+    BehaviourRuleBehaviour((usize, WindowContainerBehaviour)),
     WorkspacePadding(Option<i32>),
 }
 
@@ -81,6 +90,10 @@ pub struct Workspace {
     pub layout_rules_hovered: bool,
     pub new_layout_rule_limit: usize,
     pub new_layout_rule_layout: Layout,
+    pub behaviour_rules_expanded: bool,
+    pub behaviour_rules_hovered: bool,
+    pub new_behaviour_rule_limit: usize,
+    pub new_behaviour_rule_behaviour: WindowContainerBehaviour,
     pub workspace_rules_hovered: bool,
     pub initial_workspace_rules_hovered: bool,
 }
@@ -140,6 +153,28 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::Name(value) => self.name = value,
                 ConfigChange::WindowContainerBehaviour(value) => {
                     self.window_container_behaviour = value;
+                }
+                ConfigChange::BehaviourRules(value) => {
+                    self.window_container_behaviour_rules = value;
+                }
+                ConfigChange::BehaviourRuleLimit((previous_limit, new_limit)) => {
+                    if let Ok(new_limit) = new_limit.try_into() {
+                        if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
+                            if !behaviour_rules.contains_key(&new_limit) {
+                                if let Some(layout) = behaviour_rules.remove(&previous_limit) {
+                                    behaviour_rules.insert(new_limit, layout);
+                                }
+                            }
+                        }
+                    }
+                }
+                ConfigChange::BehaviourRuleBehaviour((limit, new_behaviour)) => {
+                    if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
+                        let rule_behaviour = behaviour_rules
+                            .entry(limit)
+                            .or_insert(WindowContainerBehaviour::Create);
+                        *rule_behaviour = new_behaviour;
+                    }
                 }
                 ConfigChange::WorkspacePadding(value) => self.workspace_padding = value,
             },
@@ -209,6 +244,44 @@ impl WorkspaceScreen for WorkspaceConfig {
             Message::RemoveLayoutRule(limit) => {
                 if let Some(layout_rules) = &mut self.layout_rules {
                     layout_rules.remove(&limit);
+                }
+            }
+            Message::ToggleBehaviourRulesExpand => {
+                workspace.behaviour_rules_expanded = !workspace.behaviour_rules_expanded;
+            }
+            Message::BehaviourRulesHover(hover) => {
+                workspace.behaviour_rules_hovered = hover;
+            }
+            Message::ChangeNewBehaviourRuleLimit(limit) => {
+                if let Ok(limit) = limit.try_into() {
+                    workspace.new_behaviour_rule_limit = limit;
+                }
+            }
+            Message::ChangeNewBehaviourRuleBehaviour(behaviour) => {
+                workspace.new_behaviour_rule_behaviour = behaviour;
+            }
+            Message::AddNewBehaviourRule => {
+                if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        behaviour_rules.entry(workspace.new_behaviour_rule_limit)
+                    {
+                        e.insert(workspace.new_behaviour_rule_behaviour);
+                        workspace.new_behaviour_rule_limit = 0;
+                        workspace.new_behaviour_rule_behaviour = WindowContainerBehaviour::Create;
+                    }
+                } else {
+                    let rules = HashMap::from([(
+                        workspace.new_behaviour_rule_limit,
+                        workspace.new_behaviour_rule_behaviour,
+                    )]);
+                    self.window_container_behaviour_rules = Some(rules);
+                    workspace.new_behaviour_rule_limit = 0;
+                    workspace.new_behaviour_rule_behaviour = WindowContainerBehaviour::Create;
+                }
+            }
+            Message::RemoveBehaviourRule(limit) => {
+                if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
+                    behaviour_rules.remove(&limit);
                 }
             }
             Message::WorkspaceRulesHover(hover) => {
@@ -378,6 +451,33 @@ impl Workspace {
                 },
             }),
         );
+        let window_container_behaviour_rules = opt_helpers::expandable_with_disable_default(
+            "Window Container Behaviour Rules",
+            Some(
+                "Window Container Behaviour rules (default: None)\n\n\
+                Define rules to automatically change the window container behaviour \
+                on a specified workspace when a threshold of window containers is met.\n\n\
+                However, if you add workspace window container behaviour rules, you \
+                will not be able to manually change the layout of a workspace until \
+                all behaviour rules for that workspace have been cleared.",
+            ),
+            behaviour_rules_children(&ws_config.window_container_behaviour_rules, self),
+            self.behaviour_rules_expanded,
+            self.behaviour_rules_hovered,
+            Message::ToggleBehaviourRulesExpand,
+            Message::BehaviourRulesHover,
+            ws_config.window_container_behaviour_rules.is_some(),
+            Message::ConfigChange(ConfigChange::BehaviourRules(None)),
+            Some(opt_helpers::DisableArgs {
+                disable: ws_config.window_container_behaviour_rules.is_none(),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::BehaviourRules(
+                        (!v).then_some(HashMap::new()),
+                    ))
+                },
+            }),
+        );
         let workspace_padding = opt_helpers::number_with_disable_default_option(
             "Workspace Padding",
             Some("Workspace padding (default: global)"),
@@ -418,6 +518,7 @@ impl Workspace {
             float_override,
             layout_rules,
             window_container_behaviour,
+            window_container_behaviour_rules,
             workspace_padding,
             initial_workspace_rules_button,
             workspace_rules_button,
@@ -540,6 +641,112 @@ fn layout_rules_children<'a>(
                     },
                     move |new_layout| {
                         Message::ConfigChange(ConfigChange::LayoutRuleLayout((limit, new_layout)))
+                    },
+                    false,
+                )
+            })
+            .collect()
+    });
+    if rules.is_empty() {
+        rules.push(text("Rules:").into());
+        // The 30.8 height came from trial and error to make it so the space is the
+        // same as the one from one rule. Why isn't it 30, I don't know?! Any other
+        // value other 30.8 would result in the UI adjusting when adding first rule.
+        rules.push(Space::new(Shrink, 30.8).into());
+    } else {
+        rules.insert(0, text("Rules:").into());
+    }
+    children.push(horizontal_rule(2.0).into());
+    children.extend(rules);
+    children
+}
+
+fn behaviour_rule<'a>(
+    limit: usize,
+    behaviour: WindowContainerBehaviour,
+    limit_message: impl Fn(i32) -> Message + Copy + 'static,
+    behaviour_message: impl Fn(WindowContainerBehaviour) -> Message + 'a,
+    is_add: bool,
+) -> Element<'a, Message> {
+    let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    let choose = container(
+        pick_list(
+            [
+                WindowContainerBehaviour::Create,
+                WindowContainerBehaviour::Append,
+            ],
+            Some(behaviour),
+            behaviour_message,
+        )
+        .font(ICONS)
+        .text_shaping(text::Shaping::Advanced),
+    )
+    .max_width(200)
+    .width(Fill);
+    let final_button = if is_add {
+        let add_button = button(icons::plus_icon().style(|t| text::Style {
+            color: t.palette().primary.into(),
+        }))
+        .on_press(Message::AddNewBehaviourRule)
+        .style(button::text);
+        add_button
+    } else {
+        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+            color: t.palette().danger.into(),
+        }))
+        .on_press(Message::RemoveBehaviourRule(limit))
+        .style(button::text);
+        remove_button
+    };
+    row![
+        text("If windows open >="),
+        number,
+        text("change behaviour to "),
+        choose,
+        final_button,
+    ]
+    .spacing(5)
+    .align_y(Center)
+    .into()
+}
+
+fn behaviour_rules_children<'a>(
+    behaviour_rules: &Option<HashMap<usize, WindowContainerBehaviour>>,
+    workspace: &Workspace,
+) -> Vec<Element<'a, Message>> {
+    let mut children = Vec::new();
+    let new_rule = opt_helpers::opt_box(
+        column![
+            text("Add New Rule:"),
+            behaviour_rule(
+                workspace.new_behaviour_rule_limit,
+                workspace.new_behaviour_rule_behaviour,
+                Message::ChangeNewBehaviourRuleLimit,
+                Message::ChangeNewBehaviourRuleBehaviour,
+                true,
+            ),
+        ]
+        .spacing(10),
+    );
+    children.push(new_rule.into());
+    let mut rules = behaviour_rules.as_ref().map_or(Vec::new(), |br| {
+        br.iter()
+            .collect::<BTreeMap<&usize, &WindowContainerBehaviour>>()
+            .into_iter()
+            .map(|(limit, behaviour)| {
+                let limit = *limit;
+                let behaviour = *behaviour;
+                behaviour_rule(
+                    limit,
+                    behaviour,
+                    move |new_limit| {
+                        Message::ConfigChange(ConfigChange::BehaviourRuleLimit((limit, new_limit)))
+                    },
+                    move |new_behaviour| {
+                        Message::ConfigChange(ConfigChange::BehaviourRuleBehaviour((
+                            limit,
+                            new_behaviour,
+                        )))
                     },
                     false,
                 )

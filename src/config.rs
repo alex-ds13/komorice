@@ -1,19 +1,22 @@
-use crate::apperror::{AppError, AppErrorKind};
-use crate::{config, Message};
+use crate::{
+    apperror::{AppError, AppErrorKind},
+    screen::monitors::DisplayInfo,
+    Message,
+};
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{collections::HashMap, path::PathBuf};
 
 use async_std::channel::{self, Receiver};
 use iced::futures::{SinkExt, StreamExt};
 use iced::Subscription;
 use komorebi_client::{
-    AnimationStyle, AnimationsConfig, BorderColours, BorderImplementation, BorderStyle, Colour,
-    CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, KomorebiTheme, MonitorConfig,
-    MoveBehaviour, OperationBehaviour, PerAnimationPrefixConfig, Rgb, StackbarConfig,
-    StackbarLabel, StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour,
-    WorkspaceConfig,
+    AnimationStyle, AnimationsConfig, AspectRatio, BorderColours, BorderImplementation,
+    BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, KomorebiTheme,
+    MonitorConfig, MoveBehaviour, OperationBehaviour, PerAnimationPrefixConfig,
+    PredefinedAspectRatio, Rgb, StackbarConfig, StackbarLabel, StackbarMode, StaticConfig,
+    TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
 };
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -67,6 +70,7 @@ lazy_static! {
         tray_and_multi_window_applications: Some(Vec::new()),
         layered_applications: Some(Vec::new()),
         object_name_change_applications: Some(Vec::new()),
+        object_name_change_title_ignore_list: Some(Vec::new()),
         monitor_index_preferences: None,
         display_index_preferences: None,
         stackbar: Some(StackbarConfig {
@@ -93,6 +97,9 @@ lazy_static! {
         slow_application_compensation_time: Some(20),
         bar_configurations: Some(Vec::new()),
         remove_titlebar_applications: Some(Vec::new()),
+        floating_window_aspect_ratio: Some(AspectRatio::Predefined(
+            PredefinedAspectRatio::Standard
+        )),
     };
     pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
         workspaces: Vec::new(),
@@ -112,6 +119,7 @@ lazy_static! {
         workspace_rules: Some(Vec::new()),
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
+        window_container_behaviour_rules: None,
         float_override: None,
         layout_flip: None,
     };
@@ -145,8 +153,7 @@ lazy_static! {
 /// amount of `MonitorConfig` on the `config` is less than the physical amount then it adds default
 /// `MonitorConfig` until it has the same amount.
 /// Returns a bool that says wether changes were made or not.
-pub fn fill_monitors(config: &mut StaticConfig) -> bool {
-    let monitors = crate::monitors::get_displays();
+pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, DisplayInfo>) -> bool {
     if let Some(config_monitors) = &mut config.monitors {
         let physical_monitors_len = monitors.len();
         let config_monitors_len = config_monitors.len();
@@ -176,6 +183,7 @@ pub fn fill_monitors(config: &mut StaticConfig) -> bool {
                         workspace_rules: None,
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
+                        window_container_behaviour_rules: None,
                         float_override: None,
                         layout_flip: None,
                     }],
@@ -323,6 +331,11 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             window_container_behaviour: w
                                 .window_container_behaviour
                                 .or(DEFAULT_WORKSPACE_CONFIG.window_container_behaviour),
+                            window_container_behaviour_rules: w
+                                .window_container_behaviour_rules
+                                .or(DEFAULT_WORKSPACE_CONFIG
+                                    .window_container_behaviour_rules
+                                    .clone()),
                             float_override: w
                                 .float_override
                                 .or(DEFAULT_WORKSPACE_CONFIG.float_override),
@@ -364,6 +377,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         object_name_change_applications: config
             .object_name_change_applications
             .or(DEFAULT_CONFIG.object_name_change_applications.clone()),
+        object_name_change_title_ignore_list: config
+            .object_name_change_title_ignore_list
+            .or(DEFAULT_CONFIG.object_name_change_title_ignore_list.clone()),
         monitor_index_preferences: config
             .monitor_index_preferences
             .or(DEFAULT_CONFIG.monitor_index_preferences.clone()),
@@ -546,6 +562,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         remove_titlebar_applications: config
             .remove_titlebar_applications
             .or(DEFAULT_CONFIG.remove_titlebar_applications.clone()),
+        floating_window_aspect_ratio: config
+            .floating_window_aspect_ratio
+            .or(DEFAULT_CONFIG.floating_window_aspect_ratio),
     }
 }
 
@@ -720,6 +739,15 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                                         .then_some(v)
                                 },
                             ),
+                            window_container_behaviour_rules: ws
+                                .window_container_behaviour_rules
+                                .and_then(|v| {
+                                    (DEFAULT_WORKSPACE_CONFIG
+                                        .window_container_behaviour_rules
+                                        .as_ref()
+                                        != Some(&v))
+                                    .then_some(v)
+                                }),
                             float_override: ws.float_override.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.float_override != Some(v)).then_some(v)
                             }),
@@ -774,6 +802,12 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         object_name_change_applications: config.object_name_change_applications.and_then(|v| {
             (DEFAULT_CONFIG.object_name_change_applications.as_ref() != Some(&v)).then_some(v)
         }),
+        object_name_change_title_ignore_list: config.object_name_change_title_ignore_list.and_then(
+            |v| {
+                (DEFAULT_CONFIG.object_name_change_title_ignore_list.as_ref() != Some(&v))
+                    .then_some(v)
+            },
+        ),
         monitor_index_preferences: config.monitor_index_preferences.and_then(|v| {
             (DEFAULT_CONFIG.monitor_index_preferences.as_ref() != Some(&v)).then_some(v)
         }),
@@ -1007,6 +1041,9 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         remove_titlebar_applications: config.remove_titlebar_applications.and_then(|v| {
             (DEFAULT_CONFIG.remove_titlebar_applications.as_ref() != Some(&v)).then_some(v)
         }),
+        floating_window_aspect_ratio: config
+            .floating_window_aspect_ratio
+            .and_then(|v| (DEFAULT_CONFIG.floating_window_aspect_ratio != Some(v)).then_some(v)),
     }
 }
 
@@ -1100,6 +1137,7 @@ impl ChangeConfig for StaticConfig {
                         workspace_rules: None,
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
+                        window_container_behaviour_rules: None,
                         float_override: None,
                         layout_flip: None,
                     });
@@ -1283,7 +1321,7 @@ pub async fn load() -> Result<StaticConfig, AppError> {
 pub async fn save(config: StaticConfig) -> Result<(), AppError> {
     use async_std::prelude::*;
 
-    let unmerged_config = config::unmerge_default(config);
+    let unmerged_config = unmerge_default(config);
     let json = serde_json::to_string_pretty(&unmerged_config).map_err(|e| AppError {
         title: "Error writing to 'komorebi.json' file".into(),
         description: Some(e.to_string()),

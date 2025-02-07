@@ -1,3 +1,5 @@
+use crate::screen::monitors::DisplayInfo;
+
 use std::collections::HashMap;
 
 use iced::{
@@ -17,7 +19,7 @@ use iced::{
 use iced::{alignment, Length, Rectangle, Size};
 
 pub struct Monitors<'a, Message> {
-    monitors: &'a HashMap<usize, (String, komorebi_client::Rect)>,
+    monitors: &'a HashMap<usize, DisplayInfo>,
     selected: Option<usize>,
     on_selected: Option<Box<dyn Fn(usize) -> Message + 'a>>,
 }
@@ -32,7 +34,7 @@ impl<'a, Message> Monitors<'a, Message> {
     /// The default padding of a monitor rectangle
     const DEFAULT_PADDING: f32 = 5.0;
 
-    pub fn new(monitors: &'a HashMap<usize, (String, komorebi_client::Rect)>) -> Self {
+    pub fn new(monitors: &'a HashMap<usize, DisplayInfo>) -> Self {
         Monitors {
             monitors,
             selected: None,
@@ -58,7 +60,7 @@ impl<'a, Message> Monitors<'a, Message> {
         let rects = self
             .monitors
             .iter()
-            .map(|(_, (_, size))| {
+            .map(|(_, DisplayInfo { size, .. })| {
                 let x = size.left as f32 / 10.0;
                 let y = size.top as f32 / 10.0;
                 let width = size.right as f32 / 10.0;
@@ -229,7 +231,9 @@ where
         let border_color: iced::Color = iced::color!(0x000000);
         let hover_border_color: iced::Color = iced::color!(0x333333);
         let selected_border_color: iced::Color = iced::color!(0x45ccff);
-        for ((idx, (device_id, _)), child_layout) in self.monitors.iter().zip(layout.children()) {
+        for ((idx, DisplayInfo { device_id, .. }), child_layout) in
+            self.monitors.iter().zip(layout.children())
+        {
             let bounds = child_layout.children().next().unwrap().bounds();
             let is_hover = _cursor.position_over(bounds).is_some();
             let background = if matches!(self.selected, Some(i) if i == *idx) {

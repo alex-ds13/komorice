@@ -89,13 +89,13 @@ impl Monitors {
         &mut self,
         message: Message,
         monitors_config: &mut Vec<MonitorConfig>,
-        display_info: &HashMap<usize, (String, Rect)>,
+        display_info: &HashMap<usize, DisplayInfo>,
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
                     self.monitor_to_config = None;
-                } else if let Some((device_id, _)) = display_info.get(&idx) {
+                } else if let Some(DisplayInfo { device_id, .. }) = display_info.get(&idx) {
                     println!(
                         "Go to ConfigMonitor screen for monitor {idx} with id: {}",
                         device_id
@@ -239,7 +239,8 @@ impl Monitors {
     pub fn view<'a>(
         &'a self,
         monitors_config: &'a [MonitorConfig],
-        display_info: &'a HashMap<usize, (String, Rect)>,
+        display_info: &'a HashMap<usize, DisplayInfo>,
+        display_index_preferences: &'a Option<HashMap<usize, String>>,
     ) -> Element<'a, Message> {
         let mut main_title = if let Some(idx) = self.monitor_to_config {
             row![button(text("Monitors > ").size(20).font(*BOLD_FONT))
@@ -267,14 +268,14 @@ impl Monitors {
                 .iter()
                 .enumerate()
                 .fold(col, |col, (idx, _monitor)| {
+                    let info = display_index_preferences.as_ref().map_or(
+                        display_info
+                            .get(&idx)
+                            .map_or("[Display Not Found]", |d| &d.device_id),
+                        |dip| dip.get(&idx).map_or("[Display Not Found]", |d| d),
+                    );
                     col.push(opt_helpers::opt_button_add_move(
-                        text!(
-                            "Monitor [{}] - {}",
-                            idx,
-                            display_info
-                                .get(&idx)
-                                .map_or("[Display Not Found]", |d| d.0.as_str())
-                        ),
+                        text!("Monitor [{}] - {}", idx, info),
                         None,
                         self.monitors_buttons_hovered.get(idx).is_some_and(|v| *v),
                         monitors_config.len() > 1,
@@ -333,57 +334,83 @@ impl Monitors {
     }
 }
 
-pub fn get_display_information() -> HashMap<usize, (String, Rect)> {
-    win32_display_data::connected_displays_physical()
-        .flatten()
-        .enumerate()
-        .map(|(i, display)| {
-            let path = display.device_path.clone();
-
-            let (_device, device_id) = if path.is_empty() {
-                (String::from("UNKNOWN"), String::from("UNKNOWN"))
-            } else {
-                let mut split: Vec<_> = path.split('#').collect();
-                split.remove(0);
-                split.remove(split.len() - 1);
-                let device = split[0].to_string();
-                let device_id = split.join("-");
-                (device, device_id)
-            };
-
-            (i, (device_id, display.size.into()))
-        })
-        .collect()
+#[derive(Debug, Default, Clone)]
+pub struct DisplayInfo {
+    pub device_id: String,
+    pub serial_number_id: Option<String>,
+    pub size: Rect,
 }
 
-pub fn get_displays() -> Vec<komorebi_client::Monitor> {
-    win32_display_data::connected_displays_physical()
-        .flatten()
-        .map(|display| {
-            let path = display.device_path.clone();
+pub fn get_display_information(
+    display_index_preferences: &Option<HashMap<usize, String>>,
+) -> HashMap<usize, DisplayInfo> {
+    let devices = std::thread::spawn(|| {
+        // Since `win32_display_data` has some `COMLibrary` thing going on it can't be called on
+        // the main thread otherwise it panics with:
+        // ```
+        // OleInitialize failed! Result was: `RPC_E_CHANGED_MODE`. Make sure other crates are not
+        // using multithreaded COM library on the same thread or disable drag and drop support.
+        // ```
+        // To prevent this we spawn a new thread and join it immediately to get the result.
+        win32_display_data::connected_displays_physical()
+            .flatten()
+            .map(|display| {
+                let path = display.device_path.clone();
 
-            let (device, device_id) = if path.is_empty() {
-                (String::from("UNKNOWN"), String::from("UNKNOWN"))
+                let (_device, device_id) = if path.is_empty() {
+                    (String::from("UNKNOWN"), String::from("UNKNOWN"))
+                } else {
+                    let mut split: Vec<_> = path.split('#').collect();
+                    split.remove(0);
+                    split.remove(split.len() - 1);
+                    let device = split[0].to_string();
+                    let device_id = split.join("-");
+                    (device, device_id)
+                };
+
+                DisplayInfo {
+                    device_id,
+                    serial_number_id: display.serial_number_id,
+                    size: display.size.into(),
+                }
+            })
+            .collect::<Vec<_>>()
+    })
+    .join()
+    .unwrap_or_default();
+
+    let configs_with_preference = display_index_preferences
+        .as_ref()
+        .map_or(Vec::new(), |dip| dip.keys().copied().collect());
+    let mut configs_used = Vec::new();
+
+    let devices_count = devices.len();
+    let res = devices
+        .into_iter()
+        .flat_map(|display| {
+            let preferred_config_idx = display_index_preferences.as_ref().and_then(|dpi| {
+                dpi.iter().find_map(|(c_idx, id)| {
+                    (display.serial_number_id.as_ref().is_some_and(|sn| sn == id)
+                        || &display.device_id == id)
+                        .then_some(*c_idx)
+                })
+            });
+            let idx = preferred_config_idx.or({
+                // Display without preferred config idx.
+                // Get index of first config that is not a preferred config of some other display
+                // and that has not been used yet. This might return `None` as well, in that case
+                // this display won't have a config tied to it.
+                (0..devices_count)
+                    .find(|i| !configs_with_preference.contains(i) && !configs_used.contains(i))
+            });
+            if let Some(idx) = idx {
+                configs_used.push(idx);
+                Some((idx, display))
             } else {
-                let mut split: Vec<_> = path.split('#').collect();
-                split.remove(0);
-                split.remove(split.len() - 1);
-                let device = split[0].to_string();
-                let device_id = split.join("-");
-                (device, device_id)
-            };
-
-            let name = display.device_name.trim_start_matches(r"\\.\").to_string();
-            let name = name.split('\\').collect::<Vec<_>>()[0].to_string();
-
-            komorebi_client::Monitor::new(
-                display.hmonitor,
-                display.size.into(),
-                display.work_area_size.into(),
-                name,
-                device,
-                device_id,
-            )
+                None
+            }
         })
-        .collect()
+        .collect();
+    dbg!(&res);
+    res
 }

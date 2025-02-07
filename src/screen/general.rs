@@ -7,10 +7,11 @@ use crate::{
 
 use std::path::PathBuf;
 
-use iced::{Element, Task};
+use iced::{widget::pick_list, Element, Task};
 use komorebi_client::{
-    CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour,
-    OperationBehaviour, Rect, StaticConfig, WindowContainerBehaviour,
+    AspectRatio, CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour,
+    MoveBehaviour, OperationBehaviour, PredefinedAspectRatio, Rect, StaticConfig,
+    WindowContainerBehaviour,
 };
 use lazy_static::lazy_static;
 
@@ -49,6 +50,9 @@ pub enum ConfigChange {
     UnmanagedWindowBehaviour(Option<OperationBehaviour>),
     WindowContainerBehaviour(Option<WindowContainerBehaviour>),
     WindowHidingBehaviour(Option<HidingBehaviour>),
+    FloatingWindowAspectRatio(Option<AspectRatio>),
+    FloatingWindowAspectRatioWidth(i32),
+    FloatingWindowAspectRatioHeight(i32),
 }
 
 #[derive(Clone, Debug)]
@@ -164,6 +168,31 @@ impl General {
                 }
                 ConfigChange::WindowHidingBehaviour(value) => {
                     config.window_hiding_behaviour = value;
+                }
+                ConfigChange::FloatingWindowAspectRatio(value) => {
+                    config.floating_window_aspect_ratio = value;
+                }
+                ConfigChange::FloatingWindowAspectRatioWidth(value) => {
+                    let ratio = if let Some(ratio) = config.floating_window_aspect_ratio {
+                        match ratio {
+                            AspectRatio::Predefined(_) => AspectRatio::Custom(value, 3),
+                            AspectRatio::Custom(_, h) => AspectRatio::Custom(value, h),
+                        }
+                    } else {
+                        AspectRatio::Custom(value, 3)
+                    };
+                    config.floating_window_aspect_ratio = Some(ratio);
+                }
+                ConfigChange::FloatingWindowAspectRatioHeight(value) => {
+                    let ratio = if let Some(ratio) = config.floating_window_aspect_ratio {
+                        match ratio {
+                            AspectRatio::Predefined(_) => AspectRatio::Custom(4, value),
+                            AspectRatio::Custom(w, _) => AspectRatio::Custom(w, value),
+                        }
+                    } else {
+                        AspectRatio::Custom(4, value)
+                    };
+                    config.floating_window_aspect_ratio = Some(ratio);
                 }
             },
             Message::ToggleGlobalWorkAreaOffsetExpand => {
@@ -364,7 +393,114 @@ impl General {
                     DEFAULT_CONFIG.window_hiding_behaviour,
                     None,
                 ),
+                opt_helpers::expandable_with_disable_default_custom(
+                    "Floating Window Aspect Ratio",
+                    get_aspect_ratio_description(
+                        config.floating_window_aspect_ratio
+                            .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
+                            .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into)
+                    ),
+                    |_| pick_list(
+                        [
+                            crate::komo_interop::aspect_ratio::AspectRatio::Standard,
+                            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
+                            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide,
+                            crate::komo_interop::aspect_ratio::AspectRatio::Custom(
+                                config.floating_window_aspect_ratio.map_or(4, |ar| {
+                                    match ar {
+                                        AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                            PredefinedAspectRatio::Ultrawide => 21,
+                                            PredefinedAspectRatio::Widescreen => 16,
+                                            PredefinedAspectRatio::Standard => 4,
+                                        }
+                                        AspectRatio::Custom(w, _) => w,
+                                    }
+                                }),
+                                config.floating_window_aspect_ratio.map_or(3, |ar| {
+                                    match ar {
+                                        AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                            PredefinedAspectRatio::Ultrawide => 9,
+                                            PredefinedAspectRatio::Widescreen => 9,
+                                            PredefinedAspectRatio::Standard => 3,
+                                        }
+                                        AspectRatio::Custom(_, h) => h,
+                                    }
+                                }),
+                            ),
+                        ],
+                        config.floating_window_aspect_ratio
+                            .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
+                            .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
+                        |selected| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(selected.into()))),
+                    ).into(),
+                    [
+                        opt_helpers::number(
+                            "width:",
+                            None,
+                            config.floating_window_aspect_ratio.map_or(0, |ar| {
+                                match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                        PredefinedAspectRatio::Ultrawide => 21,
+                                        PredefinedAspectRatio::Widescreen => 16,
+                                        PredefinedAspectRatio::Standard => 4,
+                                    }
+                                    AspectRatio::Custom(w, _) => w,
+                                }
+                            }),
+                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioWidth(v)),
+                        ),
+                        opt_helpers::number(
+                            "height:",
+                            None,
+                            config.floating_window_aspect_ratio.map_or(0, |ar| {
+                                match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                        PredefinedAspectRatio::Ultrawide => 9,
+                                        PredefinedAspectRatio::Widescreen => 9,
+                                        PredefinedAspectRatio::Standard => 3,
+                                    }
+                                    AspectRatio::Custom(_, h) => h,
+                                }
+                            }),
+                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
+                        ),
+                    ],
+                    matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
+                    false,
+                    None,
+                    Option::<Box<dyn Fn(bool) -> Message>>::None,
+                    config.floating_window_aspect_ratio != DEFAULT_CONFIG.floating_window_aspect_ratio,
+                    Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(DEFAULT_CONFIG.floating_window_aspect_ratio)),
+                    None,
+                ),
             ],
         )
+    }
+}
+
+fn get_aspect_ratio_description(
+    selected: Option<crate::komo_interop::aspect_ratio::AspectRatio>,
+) -> Option<&'static str> {
+    if let Some(selected) = selected {
+        match selected {
+            crate::komo_interop::aspect_ratio::AspectRatio::Standard => {
+                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Standard (4:3)' -> Use a 4:3 ratio when toggling windows to floating")
+            }
+            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen => {
+                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Widescreen (16:9)' -> Use a 16:9 ratio when toggling windows to floating")
+            }
+            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide => {
+                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Ultrawide (21:9)' -> Use a 21:9 ratio when toggling windows to floating")
+            }
+            crate::komo_interop::aspect_ratio::AspectRatio::Custom(_, _) => {
+                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Custom' -> Use a custom ratio when toggling windows to floating")
+            }
+        }
+    } else {
+        Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))")
     }
 }

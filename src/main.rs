@@ -81,7 +81,7 @@ enum Message {
 struct Komofig {
     sidebar: sidebar::Sidebar,
     main_screen: Screen,
-    display_info: HashMap<usize, (String, komorebi_client::Rect)>,
+    display_info: HashMap<usize, monitors::DisplayInfo>,
     monitors: monitors::Monitors,
     border: border::Border,
     general: general::General,
@@ -129,9 +129,9 @@ impl Default for Komofig {
 impl Komofig {
     pub fn initialize() -> (Self, Task<Message>) {
         let mut config = DEFAULT_CONFIG.clone();
-        config::fill_monitors(&mut config);
         let loaded_config = Arc::new(config.clone());
-        let display_info = monitors::get_display_information();
+        let display_info = monitors::get_display_information(&config.display_index_preferences);
+        config::fill_monitors(&mut config, &display_info);
         let mut init = Komofig {
             display_info,
             config,
@@ -369,7 +369,11 @@ impl Komofig {
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
                     self.monitors
-                        .view(monitors_config, &self.display_info)
+                        .view(
+                            monitors_config,
+                            &self.display_info,
+                            &self.config.display_index_preferences,
+                        )
                         .map(Message::Monitors)
                 } else {
                     iced::widget::horizontal_space().into()
@@ -466,7 +470,9 @@ impl Komofig {
     /// in case the loaded config doesn't have it already.
     /// Returns wether or not `fill_monitors` made any changes to the config.
     fn populate_monitors(&mut self) -> bool {
-        let made_changes = config::fill_monitors(&mut self.config);
+        self.display_info =
+            monitors::get_display_information(&self.config.display_index_preferences);
+        let made_changes = config::fill_monitors(&mut self.config, &self.display_info);
         self.monitors = monitors::Monitors::new(&self.config);
         made_changes
     }

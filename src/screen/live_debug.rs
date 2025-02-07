@@ -1,5 +1,6 @@
 use crate::{
     apperror::{AppError, AppErrorKind},
+    monitors::DisplayInfo,
     widget::{monitors_viewer, opt_helpers},
     BOLD_FONT,
 };
@@ -11,7 +12,6 @@ use iced::{
     widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text},
     Center, Element, Fill, Task,
 };
-use komorebi_client::Rect;
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -55,13 +55,13 @@ impl LiveDebug {
     pub fn update(
         &mut self,
         message: Message,
-        display_info: &HashMap<usize, (String, Rect)>,
+        display_info: &HashMap<usize, DisplayInfo>,
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
                     self.monitor_to_config = None;
-                } else if let Some((device_id, _)) = display_info.get(&idx) {
+                } else if let Some(DisplayInfo { device_id, .. }) = display_info.get(&idx) {
                     println!(
                         "Go to ConfigMonitor screen for monitor {idx} with id: {}",
                         device_id
@@ -111,7 +111,7 @@ impl LiveDebug {
 
     pub fn view<'a>(
         &'a self,
-        display_info: &'a HashMap<usize, (String, Rect)>,
+        display_info: &'a HashMap<usize, DisplayInfo>,
     ) -> Element<'a, Message> {
         match self.screen {
             Screen::Main => self.main_view(),
@@ -149,7 +149,7 @@ impl LiveDebug {
 
     fn monitors_view<'a>(
         &'a self,
-        display_info: &'a HashMap<usize, (String, Rect)>,
+        display_info: &'a HashMap<usize, DisplayInfo>,
     ) -> Element<'a, Message> {
         let title = row![
             button(text("Live Debug").size(20).font(*BOLD_FONT))
