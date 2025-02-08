@@ -1,7 +1,6 @@
-use crate::{
-    apperror::{AppError, AppErrorKind},
-    Message,
-};
+use crate::apperror::{AppError, AppErrorKind};
+use crate::widget::opt_helpers;
+use crate::BOLD_FONT;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -10,7 +9,8 @@ use std::time::Duration;
 use async_std::channel::{self, Receiver};
 use iced::futures::{SinkExt, StreamExt};
 use iced::theme::{Custom, Theme};
-use iced::Subscription;
+use iced::widget::{column, horizontal_rule, text};
+use iced::{padding, Element, Fill, Subscription, Task};
 use notify_debouncer_mini::{
     new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
@@ -24,6 +24,8 @@ pub struct Settings {
     #[serde(with = "ThemeDef")]
     pub theme: Theme,
     pub show_advanced: bool,
+    #[serde(skip)]
+    settings_watcher_tx: Option<async_std::channel::Sender<Input>>,
 }
 
 impl Default for Settings {
@@ -31,7 +33,88 @@ impl Default for Settings {
         Self {
             theme: Theme::TokyoNightStorm,
             show_advanced: false,
+            settings_watcher_tx: None,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    AppError(AppError),
+    LoadedSettings(Settings),
+    FailedToLoadSettings(AppError),
+    SavedSettings,
+    ThemeChanged(Theme),
+    ShowAdvancedChanged(bool),
+    SettingsFileWatcherTx(async_std::channel::Sender<Input>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    None,
+    Error(AppError),
+}
+
+impl Settings {
+    pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
+        match message {
+            Message::AppError(apperror) => {
+                return (Action::Error(apperror), Task::none());
+            }
+            Message::LoadedSettings(settings) => {
+                let sender = self.settings_watcher_tx.take();
+                *self = Settings {
+                    theme: settings.theme,
+                    show_advanced: settings.show_advanced,
+                    settings_watcher_tx: sender,
+                };
+            }
+            Message::FailedToLoadSettings(apperror) => {
+                return (Action::Error(apperror), Task::none());
+            }
+            Message::SavedSettings => {
+                if let Some(sender) = &self.settings_watcher_tx {
+                    let _ = sender.try_send(Input::IgnoreNextEvent);
+                }
+            }
+            Message::ThemeChanged(theme) => {
+                self.theme = theme;
+                return (Action::None, save_task(self.clone()));
+            }
+            Message::ShowAdvancedChanged(show_advanced) => {
+                self.show_advanced = show_advanced;
+                return (Action::None, save_task(self.clone()));
+            }
+            Message::SettingsFileWatcherTx(sender) => self.settings_watcher_tx = Some(sender),
+        }
+        (Action::None, Task::none())
+    }
+
+    pub fn view(&self) -> Element<Message> {
+        let title = text("Settings:").size(20).font(*BOLD_FONT);
+        let theme = opt_helpers::choose(
+            "Theme:",
+            Some("Theme for the Komorice app\n\nThis theme has nothing to do with komorebi!"),
+            Theme::ALL,
+            Some(&self.theme),
+            Message::ThemeChanged,
+        );
+        let show_advanced = opt_helpers::toggle(
+            "Show advanced options",
+            Some("By default Komorice tries to be as simple as possible for new users by showing \
+                only the simpler options that should be required to use and configure komorebi. If some option you \
+                    want to configure isn't showing, enable this setting."),
+                    self.show_advanced,
+                    Message::ShowAdvancedChanged,
+        );
+        let col = column![theme, show_advanced]
+            .spacing(10)
+            .padding(padding::top(10).bottom(10).right(20));
+        column![title, horizontal_rule(2.0), col]
+            .spacing(10)
+            .width(Fill)
+            .height(Fill)
+            .into()
     }
 }
 
@@ -181,6 +264,13 @@ fn handle_event(
     }
 }
 
+pub fn load_task() -> Task<Message> {
+    Task::perform(load(), |res| match res {
+        Ok(settings) => Message::LoadedSettings(settings),
+        Err(apperror) => Message::FailedToLoadSettings(apperror),
+    })
+}
+
 pub async fn load() -> Result<Settings, AppError> {
     use async_std::prelude::*;
 
@@ -212,6 +302,13 @@ pub async fn load() -> Result<Settings, AppError> {
         title: "Error reading 'komorice.json' file.".into(),
         description: Some(e.to_string()),
         kind: AppErrorKind::Error,
+    })
+}
+
+pub fn save_task(settings: Settings) -> Task<Message> {
+    Task::future(save(settings)).map(|res| match res {
+        Ok(_) => Message::SavedSettings,
+        Err(apperror) => Message::AppError(apperror),
     })
 }
 

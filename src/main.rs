@@ -56,12 +56,6 @@ fn main() -> iced::Result {
 enum Message {
     // General App Messages
     AppError(AppError),
-    LoadedSettings(settings::Settings),
-    FailedToLoadSettings(AppError),
-    SavedSettings,
-    ThemeChanged(Theme),
-    ShowAdvancedChanged(bool),
-    SettingsFileWatcherTx(async_std::channel::Sender<settings::Input>),
 
     // View/Screen related Messages
     Animation(animation::Message),
@@ -74,6 +68,7 @@ enum Message {
     Stackbar(stackbar::Message),
     Theme(theme::Message),
     Transparency(transparency::Message),
+    Settings(settings::Message),
 
     // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
@@ -104,7 +99,6 @@ struct Komorice {
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     settings: settings::Settings,
-    settings_watcher_tx: Option<async_std::channel::Sender<settings::Input>>,
 }
 
 impl Default for Komorice {
@@ -129,7 +123,6 @@ impl Default for Komorice {
             config_watcher_tx: Default::default(),
             errors: Default::default(),
             settings: Default::default(),
-            settings_watcher_tx: Default::default(),
         }
     }
 }
@@ -150,10 +143,7 @@ impl Komorice {
         (
             init,
             Task::batch([
-                Task::perform(settings::load(), |res| match res {
-                    Ok(config) => Message::LoadedSettings(config),
-                    Err(apperror) => Message::FailedToLoadSettings(apperror),
-                }),
+                settings::load_task().map(Message::Settings),
                 Task::perform(config::load(), |res| match res {
                     Ok(config) => Message::LoadedConfig(Arc::new(config)),
                     Err(apperror) => Message::FailedToLoadConfig(apperror),
@@ -168,31 +158,6 @@ impl Komorice {
                 println!("Received AppError: {apperror:#?}");
                 self.errors.push(apperror);
             }
-            Message::LoadedSettings(settings) => self.settings = settings,
-            Message::FailedToLoadSettings(apperror) => {
-                println!("Received AppError: {apperror:#?}");
-                self.errors.push(apperror);
-            }
-            Message::SavedSettings => {
-                if let Some(sender) = &self.settings_watcher_tx {
-                    let _ = sender.try_send(settings::Input::IgnoreNextEvent);
-                }
-            }
-            Message::ThemeChanged(theme) => {
-                self.settings.theme = theme;
-                return Task::future(settings::save(self.settings.clone())).map(|res| match res {
-                    Ok(_) => Message::SavedSettings,
-                    Err(apperror) => Message::AppError(apperror),
-                });
-            }
-            Message::ShowAdvancedChanged(show_advanced) => {
-                self.settings.show_advanced = show_advanced;
-                return Task::future(settings::save(self.settings.clone())).map(|res| match res {
-                    Ok(_) => Message::SavedSettings,
-                    Err(apperror) => Message::AppError(apperror),
-                });
-            }
-            Message::SettingsFileWatcherTx(sender) => self.settings_watcher_tx = Some(sender),
             Message::General(message) => {
                 let (action, task) = self.general.update(message, &mut self.config);
                 let action_task = match action {
@@ -256,6 +221,18 @@ impl Komorice {
                 };
                 self.check_changes();
                 return Task::batch([task.map(Message::Transparency), action_task]);
+            }
+            Message::Settings(message) => {
+                let (action, task) = self.settings.update(message);
+                let action_task = match action {
+                    settings::Action::None => Task::none(),
+                    settings::Action::Error(apperror) => {
+                        println!("Received AppError: {apperror:#?}");
+                        self.errors.push(apperror);
+                        Task::none()
+                    }
+                };
+                return Task::batch([task.map(Message::Settings), action_task]);
             }
             Message::Animation(message) => {
                 if self.config.animation.is_none() {
@@ -443,34 +420,7 @@ impl Komorice {
                 .view(&self.config, self.settings.show_advanced)
                 .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
-            Screen::Settings => {
-                let title = text("Settings:").size(20).font(*BOLD_FONT);
-                let theme = widget::opt_helpers::choose(
-                    "Theme:",
-                    Some(
-                        "Theme for the Komorice app\n\nThis theme has nothing to do with komorebi!",
-                    ),
-                    Theme::ALL,
-                    Some(&self.settings.theme),
-                    Message::ThemeChanged,
-                );
-                let show_advanced = widget::opt_helpers::toggle(
-                    "Show advanced options",
-                    Some("By default Komorice tries to be as simple as possible for new users by showing \
-                    only the simpler options that should be required to use and configure komorebi. If some option you \
-                    want to configure isn't showing, enable this setting."),
-                    self.settings.show_advanced,
-                    Message::ShowAdvancedChanged,
-                );
-                let col = column![theme, show_advanced]
-                    .spacing(10)
-                    .padding(padding::top(10).bottom(10).right(20));
-                column![title, horizontal_rule(2.0), col]
-                    .spacing(10)
-                    .width(Fill)
-                    .height(Fill)
-                    .into()
-            }
+            Screen::Settings => self.settings.view().map(Message::Settings),
         };
 
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
@@ -512,7 +462,7 @@ impl Komorice {
         Subscription::batch([
             komo_interop::connect().map(Message::LiveDebug),
             config::worker(),
-            settings::worker(),
+            settings::worker().map(Message::Settings),
             screen_subscription,
         ])
     }
