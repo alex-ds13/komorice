@@ -148,7 +148,7 @@ impl Komorice {
                     Ok(config) => Message::LoadedConfig(Arc::new(config)),
                     Err(apperror) => Message::FailedToLoadConfig(apperror),
                 }),
-            ])
+            ]),
         )
     }
 

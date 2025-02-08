@@ -127,7 +127,11 @@ impl Rules {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: &'a StaticConfig, show_advanced: bool) -> Element<'a, Message> {
+    pub fn view<'a>(
+        &'a self,
+        config: &'a StaticConfig,
+        show_advanced: bool,
+    ) -> Element<'a, Message> {
         if let Some((rule, screen)) = &self.rule_screen {
             let title = row![
                 nav_button(text!("{}", self.title()), Message::SetMainRulesScreen),
@@ -249,9 +253,9 @@ impl Rules {
                 horizontal_rule(2.0),
                 scrollable(
                     Column::with_children(children)
-                    .spacing(10)
-                    .width(Fill)
-                    .padding(padding::top(10).bottom(10).right(20))
+                        .spacing(10)
+                        .width(Fill)
+                        .padding(padding::top(10).bottom(10).right(20))
                 )
             ]
             .spacing(10)
