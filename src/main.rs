@@ -42,13 +42,13 @@ lazy_static! {
 }
 
 fn main() -> iced::Result {
-    iced::application("Komofig", Komofig::update, Komofig::view)
-        .subscription(Komofig::subscription)
-        .theme(Komofig::theme)
+    iced::application("Komorice", Komorice::update, Komorice::view)
+        .subscription(Komorice::subscription)
+        .theme(Komorice::theme)
         .default_font(*DEFAULT_FONT)
         .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
         .font(include_bytes!("../assets/icons.ttf"))
-        .run_with(Komofig::initialize)
+        .run_with(Komorice::initialize)
 }
 
 #[derive(Debug, Clone)]
@@ -78,7 +78,7 @@ enum Message {
     Saved,
 }
 
-struct Komofig {
+struct Komorice {
     sidebar: sidebar::Sidebar,
     main_screen: Screen,
     display_info: HashMap<usize, monitors::DisplayInfo>,
@@ -100,7 +100,7 @@ struct Komofig {
     theme: Option<Theme>,
 }
 
-impl Default for Komofig {
+impl Default for Komorice {
     fn default() -> Self {
         Self {
             sidebar: Default::default(),
@@ -126,13 +126,13 @@ impl Default for Komofig {
     }
 }
 
-impl Komofig {
+impl Komorice {
     pub fn initialize() -> (Self, Task<Message>) {
         let mut config = DEFAULT_CONFIG.clone();
         let loaded_config = Arc::new(config.clone());
         let display_info = monitors::get_display_information(&config.display_index_preferences);
         config::fill_monitors(&mut config, &display_info);
-        let mut init = Komofig {
+        let mut init = Komorice {
             display_info,
             config,
             loaded_config,

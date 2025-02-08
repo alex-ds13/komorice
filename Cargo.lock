@@ -2774,24 +2774,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
-name = "komofig"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "clipboard-win",
- "dirs 5.0.1",
- "iced",
- "iced_aw",
- "komorebi-client",
- "komorebi-themes",
- "lazy_static",
- "notify-debouncer-mini",
- "serde",
- "serde_json_lenient",
- "win32-display-data",
-]
-
-[[package]]
 name = "komorebi"
 version = "0.1.34"
 source = "git+https://github.com/LGUG2Z/komorebi.git#2d2b6e5c1552b046b783517f4875647a88a3e00b"
@@ -2859,6 +2841,24 @@ dependencies = [
  "serde",
  "serde_variant",
  "strum",
+]
+
+[[package]]
+name = "komorice"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "clipboard-win",
+ "dirs 5.0.1",
+ "iced",
+ "iced_aw",
+ "komorebi-client",
+ "komorebi-themes",
+ "lazy_static",
+ "notify-debouncer-mini",
+ "serde",
+ "serde_json_lenient",
+ "win32-display-data",
 ]
 
 [[package]]
