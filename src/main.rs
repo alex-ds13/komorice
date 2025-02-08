@@ -174,7 +174,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::LiveDebug(message) => {
-                let (action, task) = self.live_debug.update(message, &self.display_info);
+                let (action, task) = self.live_debug.update(message);
                 let action_task = match action {
                     live_debug::Action::None => Task::none(),
                     live_debug::Action::Error(apperror) => {
@@ -394,10 +394,7 @@ impl Komorice {
                 .map(Message::Animation),
             Screen::Theme => self.theme_screen.view(&self.config).map(Message::Theme),
             Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
-            Screen::LiveDebug => self
-                .live_debug
-                .view(&self.display_info)
-                .map(Message::LiveDebug),
+            Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => {
                 let title = text("Settings:").size(20).font(*BOLD_FONT);
                 let theme = row![

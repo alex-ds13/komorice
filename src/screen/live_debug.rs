@@ -49,19 +49,18 @@ pub struct LiveDebug {
     pub komorebi_state: Option<Arc<komorebi_client::State>>,
     pub monitors_button_hovered: bool,
     pub notifications_button_hovered: bool,
+    pub actual_display_info: HashMap<usize, DisplayInfo>,
 }
 
 impl LiveDebug {
-    pub fn update(
-        &mut self,
-        message: Message,
-        display_info: &HashMap<usize, DisplayInfo>,
-    ) -> (Action, Task<Message>) {
+    pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
                     self.monitor_to_config = None;
-                } else if let Some(DisplayInfo { device_id, .. }) = display_info.get(&idx) {
+                } else if let Some(DisplayInfo { device_id, .. }) =
+                    self.actual_display_info.get(&idx)
+                {
                     println!(
                         "Go to ConfigMonitor screen for monitor {idx} with id: {}",
                         device_id
@@ -86,12 +85,24 @@ impl LiveDebug {
             Message::KomorebiNotification(notification) => {
                 if let Some(notification) = Arc::into_inner(notification) {
                     self.notifications.push(Arc::from(notification.event));
-                    // let should_update_monitors =
-                    //     notification.state.monitors.elements().len() > self.monitors.monitors.len();
+                    self.actual_display_info = notification
+                        .state
+                        .monitors
+                        .elements()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, monitor)| {
+                            (
+                                i,
+                                DisplayInfo {
+                                    device_id: monitor.device_id().clone(),
+                                    serial_number_id: monitor.serial_number_id().clone(),
+                                    size: *monitor.size(),
+                                },
+                            )
+                        })
+                        .collect();
                     self.komorebi_state = Some(Arc::from(notification.state));
-                    // if should_update_monitors {
-                    //     self.is_dirty = self.populate_monitors() || self.is_dirty;
-                    // }
                 } else {
                     return (
                         Action::Error(AppError {
@@ -109,13 +120,10 @@ impl LiveDebug {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(
-        &'a self,
-        display_info: &'a HashMap<usize, DisplayInfo>,
-    ) -> Element<'a, Message> {
+    pub fn view(&self) -> Element<Message> {
         match self.screen {
             Screen::Main => self.main_view(),
-            Screen::Monitors => self.monitors_view(display_info),
+            Screen::Monitors => self.monitors_view(),
             Screen::Notifications => self.notifications_view(),
         }
     }
@@ -147,10 +155,7 @@ impl LiveDebug {
         .into()
     }
 
-    fn monitors_view<'a>(
-        &'a self,
-        display_info: &'a HashMap<usize, DisplayInfo>,
-    ) -> Element<'a, Message> {
+    fn monitors_view(&self) -> Element<Message> {
         let title = row![
             button(text("Live Debug").size(20).font(*BOLD_FONT))
                 .padding(0)
@@ -161,7 +166,7 @@ impl LiveDebug {
         let monitors: Element<Message> = {
             let mut col = column![].spacing(10).padding(padding::bottom(10).right(20));
 
-            let m: Element<Message> = monitors_viewer::Monitors::new(display_info)
+            let m: Element<Message> = monitors_viewer::Monitors::new(&self.actual_display_info)
                 .selected(self.monitor_to_config)
                 .on_selected(Message::ConfigMonitor)
                 .into();
