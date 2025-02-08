@@ -187,8 +187,8 @@ impl Komorice {
             }
             Message::ShowAdvancedChanged(show_advanced) => {
                 self.settings.show_advanced = show_advanced;
-                return Task::future(config::save(self.config.clone())).map(|res| match res {
-                    Ok(_) => Message::Saved,
+                return Task::future(settings::save(self.settings.clone())).map(|res| match res {
+                    Ok(_) => Message::SavedSettings,
                     Err(apperror) => Message::AppError(apperror),
                 });
             }
