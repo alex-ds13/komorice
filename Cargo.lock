@@ -107,7 +107,7 @@ dependencies = [
  "accesskit_unix",
  "accesskit_windows",
  "raw-window-handle",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -772,9 +772,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.12"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "755717a7de9ec452bf7f3f1a3099085deabd7f2962b861dae91ecd7a365903d2"
+checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
 dependencies = [
  "jobserver",
  "libc",
@@ -1449,7 +1449,7 @@ dependencies = [
  "web-time",
  "winapi",
  "windows-sys 0.59.0",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -1484,7 +1484,7 @@ dependencies = [
  "type-map",
  "web-time",
  "wgpu",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -1503,7 +1503,7 @@ dependencies = [
  "smithay-clipboard",
  "web-time",
  "webbrowser",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -1521,7 +1521,7 @@ dependencies = [
  "profiling",
  "wasm-bindgen",
  "web-sys",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -2079,7 +2079,7 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "glutin",
  "raw-window-handle",
- "winit 0.30.8",
+ "winit 0.30.9",
 ]
 
 [[package]]
@@ -2119,7 +2119,7 @@ dependencies = [
  "cosmic-text",
  "etagere",
  "lru",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "wgpu",
 ]
 
@@ -2333,7 +2333,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "palette",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "smol_str",
  "thiserror 1.0.69",
  "web-time",
@@ -2355,7 +2355,7 @@ dependencies = [
  "futures",
  "iced_core",
  "log",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "wasm-bindgen-futures",
  "wasm-timer",
 ]
@@ -2375,7 +2375,7 @@ dependencies = [
  "lyon_path",
  "once_cell",
  "raw-window-handle",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "thiserror 1.0.69",
  "unicode-segmentation",
 ]
@@ -2414,7 +2414,7 @@ dependencies = [
  "iced_graphics",
  "kurbo",
  "log",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "softbuffer",
  "tiny-skia",
 ]
@@ -2434,7 +2434,7 @@ dependencies = [
  "log",
  "lyon",
  "once_cell",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "thiserror 1.0.69",
  "wgpu",
 ]
@@ -2448,7 +2448,7 @@ dependencies = [
  "iced_runtime",
  "num-traits",
  "once_cell",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "thiserror 1.0.69",
  "unicode-segmentation",
 ]
@@ -2462,7 +2462,7 @@ dependencies = [
  "iced_graphics",
  "iced_runtime",
  "log",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "thiserror 1.0.69",
  "tracing",
  "wasm-bindgen-futures",
@@ -2794,7 +2794,7 @@ dependencies = [
 [[package]]
 name = "komorebi"
 version = "0.1.34"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#4de38d114713f86a2704e59503621b4a88f8b622"
+source = "git+https://github.com/LGUG2Z/komorebi.git#2d2b6e5c1552b046b783517f4875647a88a3e00b"
 dependencies = [
  "bitflags 2.8.0",
  "clap",
@@ -2840,7 +2840,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.34"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#4de38d114713f86a2704e59503621b4a88f8b622"
+source = "git+https://github.com/LGUG2Z/komorebi.git#2d2b6e5c1552b046b783517f4875647a88a3e00b"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2850,7 +2850,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.34"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fderives#4de38d114713f86a2704e59503621b4a88f8b622"
+source = "git+https://github.com/LGUG2Z/komorebi.git#2d2b6e5c1552b046b783517f4875647a88a3e00b"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
@@ -3649,9 +3649,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.20.2"
+version = "1.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
+checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
 
 [[package]]
 name = "option-ext"
@@ -4231,9 +4231,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fb8039b3032c191086b10f11f319a6e99e1e82889c5cc6046f515c9db1d497"
+checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustix"
@@ -5631,9 +5631,9 @@ dependencies = [
 
 [[package]]
 name = "which"
-version = "7.0.1"
+version = "7.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb4a9e33648339dc1642b0e36e21b3385e6148e289226f657c809dee59df5028"
+checksum = "2774c861e1f072b3aadc02f8ba886c26ad6321567ecc294c935434cad06f1283"
 dependencies = [
  "either",
  "env_home",
@@ -6218,9 +6218,9 @@ dependencies = [
 
 [[package]]
 name = "winit"
-version = "0.30.8"
+version = "0.30.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5d74280aabb958072864bff6cfbcf9025cf8bfacdde5e32b5e12920ef703b0f"
+checksum = "a809eacf18c8eca8b6635091543f02a5a06ddf3dad846398795460e6e0ae3cc0"
 dependencies = [
  "ahash 0.8.11",
  "android-activity",
