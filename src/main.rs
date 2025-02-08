@@ -16,7 +16,7 @@ use crate::screen::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use iced::widget::{button, center, horizontal_space, stack, vertical_space};
+use iced::widget::{button, center, horizontal_space, stack};
 use iced::{
     padding,
     widget::{column, container, horizontal_rule, row, text, vertical_rule},
@@ -364,25 +364,22 @@ impl Komorice {
                 let col = column![title, subtitle].spacing(20);
                 stack([
                     center(col).padding(20).into(),
-                    column![
-                        vertical_space(),
-                        container(
-                            text!(
-                                "Config was {} loaded from \"{}\"!",
-                                if self.has_loaded_config {
-                                    "successfully"
-                                } else {
-                                    "not"
-                                },
-                                config::config_path().display()
-                            )
-                            .font(*ITALIC_FONT)
-                            .size(12)
+                    container(
+                        text!(
+                            "Config was {} loaded from \"{}\"!",
+                            if self.has_loaded_config {
+                                "successfully"
+                            } else {
+                                "not"
+                            },
+                            config::config_path().display()
                         )
-                        .width(Fill)
-                        .align_x(Center)
-                        .align_y(iced::Bottom)
-                    ]
+                        .font(*ITALIC_FONT)
+                        .size(18)
+                    )
+                    .center_x(Fill)
+                    .align_bottom(Fill)
+                    .padding(padding::bottom(10))
                     .into(),
                 ])
                 .into()
