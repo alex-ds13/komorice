@@ -11,7 +11,7 @@ komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
 komorebi-themes = { git = "https://github.com/LGUG2Z/komorebi.git" }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { package = "serde_json_lenient", version = "0.2" }
-dirs = "5"
+dirs = "6"
 notify-debouncer-mini = "*"
 lazy_static = "1"
 clipboard-win= "5"

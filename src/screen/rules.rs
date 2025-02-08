@@ -127,7 +127,7 @@ impl Rules {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, config: &'a StaticConfig, show_advanced: bool) -> Element<'a, Message> {
         if let Some((rule, screen)) = &self.rule_screen {
             let title = row![
                 nav_button(text!("{}", self.title()), Message::SetMainRulesScreen),
@@ -219,31 +219,36 @@ impl Rules {
                 Message::SetScreen(Screen::BorderOverflowApplications),
                 Message::BorderOverflowApplicationsHover,
             );
+            let mut children = vec![
+                ignore_rules_button,
+                floating_applications_button,
+                manage_rules_button,
+            ];
+            if show_advanced {
+                children.extend([
+                    row![
+                        text("Advanced Rules:").size(18).font(*BOLD_FONT),
+                        text("(You shouldn't need to mess with these ones...)")
+                            .size(12)
+                            .font(*ITALIC_FONT)
+                    ]
+                    .padding(padding::top(20))
+                    .spacing(5)
+                    .align_y(Center)
+                    .into(),
+                    horizontal_rule(2.0).into(),
+                    tray_and_multi_window_applications_button,
+                    object_name_change_apps_button,
+                    slow_application_identifiers_button,
+                    layered_applications_button,
+                    border_overflow_applications_button,
+                ]);
+            }
             column![
                 text!("{}:", self.title()).size(20).font(*BOLD_FONT),
                 horizontal_rule(2.0),
                 scrollable(
-                    Column::with_children([
-                        ignore_rules_button,
-                        floating_applications_button,
-                        manage_rules_button,
-                        row![
-                            text("Advanced Rules:").size(18).font(*BOLD_FONT),
-                            text("(You shouldn't need to mess with these ones...)")
-                                .size(12)
-                                .font(*ITALIC_FONT)
-                        ]
-                        .padding(padding::top(20))
-                        .spacing(5)
-                        .align_y(Center)
-                        .into(),
-                        horizontal_rule(2.0).into(),
-                        tray_and_multi_window_applications_button,
-                        object_name_change_apps_button,
-                        slow_application_identifiers_button,
-                        layered_applications_button,
-                        border_overflow_applications_button,
-                    ])
+                    Column::with_children(children)
                     .spacing(10)
                     .width(Fill)
                     .padding(padding::top(10).bottom(10).right(20))

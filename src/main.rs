@@ -2,6 +2,7 @@ mod apperror;
 mod config;
 mod komo_interop;
 mod screen;
+mod settings;
 mod utils;
 mod widget;
 
@@ -15,7 +16,7 @@ use crate::screen::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use iced::widget::{button, center, horizontal_space, pick_list, stack, vertical_space};
+use iced::widget::{button, center, horizontal_space, stack, vertical_space};
 use iced::{
     padding,
     widget::{column, container, horizontal_rule, row, text, vertical_rule},
@@ -55,7 +56,12 @@ fn main() -> iced::Result {
 enum Message {
     // General App Messages
     AppError(AppError),
+    LoadedSettings(settings::Settings),
+    FailedToLoadSettings(AppError),
+    SavedSettings,
     ThemeChanged(Theme),
+    ShowAdvancedChanged(bool),
+    SettingsFileWatcherTx(async_std::channel::Sender<settings::Input>),
 
     // View/Screen related Messages
     Animation(animation::Message),
@@ -97,7 +103,8 @@ struct Komorice {
     is_dirty: bool,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
-    theme: Option<Theme>,
+    settings: settings::Settings,
+    settings_watcher_tx: Option<async_std::channel::Sender<settings::Input>>,
 }
 
 impl Default for Komorice {
@@ -121,7 +128,8 @@ impl Default for Komorice {
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
             errors: Default::default(),
-            theme: Default::default(),
+            settings: Default::default(),
+            settings_watcher_tx: Default::default(),
         }
     }
 }
@@ -141,10 +149,16 @@ impl Komorice {
         init.populate_monitors();
         (
             init,
-            Task::perform(config::load(), |res| match res {
-                Ok(config) => Message::LoadedConfig(Arc::new(config)),
-                Err(apperror) => Message::FailedToLoadConfig(apperror),
-            }),
+            Task::batch([
+                Task::perform(settings::load(), |res| match res {
+                    Ok(config) => Message::LoadedSettings(config),
+                    Err(apperror) => Message::FailedToLoadSettings(apperror),
+                }),
+                Task::perform(config::load(), |res| match res {
+                    Ok(config) => Message::LoadedConfig(Arc::new(config)),
+                    Err(apperror) => Message::FailedToLoadConfig(apperror),
+                }),
+            ])
         )
     }
 
@@ -154,9 +168,31 @@ impl Komorice {
                 println!("Received AppError: {apperror:#?}");
                 self.errors.push(apperror);
             }
-            Message::ThemeChanged(theme) => {
-                self.theme = Some(theme);
+            Message::LoadedSettings(settings) => self.settings = settings,
+            Message::FailedToLoadSettings(apperror) => {
+                println!("Received AppError: {apperror:#?}");
+                self.errors.push(apperror);
             }
+            Message::SavedSettings => {
+                if let Some(sender) = &self.settings_watcher_tx {
+                    let _ = sender.try_send(settings::Input::IgnoreNextEvent);
+                }
+            }
+            Message::ThemeChanged(theme) => {
+                self.settings.theme = theme;
+                return Task::future(settings::save(self.settings.clone())).map(|res| match res {
+                    Ok(_) => Message::SavedSettings,
+                    Err(apperror) => Message::AppError(apperror),
+                });
+            }
+            Message::ShowAdvancedChanged(show_advanced) => {
+                self.settings.show_advanced = show_advanced;
+                return Task::future(config::save(self.config.clone())).map(|res| match res {
+                    Ok(_) => Message::Saved,
+                    Err(apperror) => Message::AppError(apperror),
+                });
+            }
+            Message::SettingsFileWatcherTx(sender) => self.settings_watcher_tx = Some(sender),
             Message::General(message) => {
                 let (action, task) = self.general.update(message, &mut self.config);
                 let action_task = match action {
@@ -402,18 +438,33 @@ impl Komorice {
                 .view(self.config.animation.as_ref())
                 .map(Message::Animation),
             Screen::Theme => self.theme_screen.view(&self.config).map(Message::Theme),
-            Screen::Rules => self.rules.view(&self.config).map(Message::Rules),
+            Screen::Rules => self
+                .rules
+                .view(&self.config, self.settings.show_advanced)
+                .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => {
                 let title = text("Settings:").size(20).font(*BOLD_FONT);
-                let theme = row![
+                let theme = widget::opt_helpers::choose(
                     "Theme:",
-                    horizontal_space(),
-                    pick_list(Theme::ALL, self.theme.as_ref(), Message::ThemeChanged),
-                ]
-                .align_y(Center)
-                .spacing(10);
-                let col = column![theme].padding(padding::top(10).bottom(10).right(20));
+                    Some(
+                        "Theme for the Komorice app\n\nThis theme has nothing to do with komorebi!",
+                    ),
+                    Theme::ALL,
+                    Some(&self.settings.theme),
+                    Message::ThemeChanged,
+                );
+                let show_advanced = widget::opt_helpers::toggle(
+                    "Show advanced options",
+                    Some("By default Komorice tries to be as simple as possible for new users by showing \
+                    only the simpler options that should be required to use and configure komorebi. If some option you \
+                    want to configure isn't showing, enable this setting."),
+                    self.settings.show_advanced,
+                    Message::ShowAdvancedChanged,
+                );
+                let col = column![theme, show_advanced]
+                    .spacing(10)
+                    .padding(padding::top(10).bottom(10).right(20));
                 column![title, horizontal_rule(2.0), col]
                     .spacing(10)
                     .width(Fill)
@@ -461,15 +512,13 @@ impl Komorice {
         Subscription::batch([
             komo_interop::connect().map(Message::LiveDebug),
             config::worker(),
+            settings::worker(),
             screen_subscription,
         ])
     }
 
     pub fn theme(&self) -> Theme {
-        match &self.theme {
-            Some(theme) => theme.clone(),
-            None => Theme::TokyoNightStorm,
-        }
+        self.settings.theme.clone()
     }
 
     /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
