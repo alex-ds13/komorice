@@ -603,6 +603,5 @@ pub fn get_display_information(
             }
         })
         .collect();
-    dbg!(&res);
     res
 }

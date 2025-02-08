@@ -173,7 +173,6 @@ pub fn worker() -> Subscription<Message> {
                         .unwrap();
 
                         let path = config_path();
-                        dbg!(&path);
                         if matches!(std::fs::exists(&path), Ok(false) | Err(_)) {
                             if let Err(apperror) = save(Settings::default()).await {
                                 match output.send(Message::AppError(apperror)).await {
