@@ -187,9 +187,12 @@ impl Komorice {
             }
             Message::Monitors(message) => {
                 if let Some(monitors_config) = &mut self.config.monitors {
-                    let (action, task) =
-                        self.monitors
-                            .update(message, monitors_config, &self.display_info);
+                    let (action, task) = self.monitors.update(
+                        message,
+                        monitors_config,
+                        &mut self.config.display_index_preferences,
+                        &mut self.display_info,
+                    );
                     let action_task = match action {
                         monitors::Action::None => Task::none(),
                     };
@@ -315,8 +318,14 @@ impl Komorice {
                 self.is_dirty = false;
             }
             Message::DiscardChanges => {
+                let update_display_info = self.config.display_index_preferences
+                    != self.loaded_config.display_index_preferences;
                 self.config = (*self.loaded_config).clone();
                 self.is_dirty = false;
+                if update_display_info {
+                    self.display_info =
+                        monitors::get_display_information(&self.config.display_index_preferences);
+                }
             }
         }
         Task::none()

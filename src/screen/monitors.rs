@@ -5,16 +5,16 @@ use super::{
 
 use crate::{
     config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
-    widget::{monitors_viewer, opt_helpers},
+    widget::{icons, monitors_viewer, opt_helpers},
     BOLD_FONT,
 };
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use iced::{
     padding,
-    widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text},
-    Center, Element, Fill, Subscription, Task,
+    widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text, Space},
+    Center, Element, Fill, Shrink, Subscription, Task,
 };
 use komorebi_client::{MonitorConfig, Rect};
 
@@ -29,6 +29,15 @@ pub enum Message {
     MoveUpMonitor(usize),
     MoveDownMonitor(usize),
     ToggleMonitorButtonHover(usize, bool),
+    ToggleIndexPreferenceExpand,
+    IndexPreferenceHover(bool),
+    ChangeNewIndexPreferenceIndex(i32),
+    ChangeNewIndexPreferenceId(String),
+    AddNewIndexPreference,
+    RemoveIndexPreference(usize),
+    ChangeIndexPreferenceIndex(usize, i32),
+    ChangeIndexPreferenceId(usize, String),
+    ChangeDisplayIndexPreferences(Option<HashMap<usize, String>>),
 }
 
 #[derive(Clone, Debug)]
@@ -42,6 +51,10 @@ pub struct Monitors {
     pub monitor_to_config: Option<usize>,
     pub show_monitors_list: bool,
     pub monitors_buttons_hovered: Vec<bool>,
+    pub index_preferences_expanded: bool,
+    pub index_preferences_hovered: bool,
+    pub new_idx_preference_index: usize,
+    pub new_idx_preference_id: String,
 }
 
 impl Monitors {
@@ -82,6 +95,10 @@ impl Monitors {
             monitor_to_config: None,
             show_monitors_list: false,
             monitors_buttons_hovered,
+            index_preferences_expanded: false,
+            index_preferences_hovered: false,
+            new_idx_preference_id: String::new(),
+            new_idx_preference_index: 0,
         }
     }
 
@@ -89,7 +106,8 @@ impl Monitors {
         &mut self,
         message: Message,
         monitors_config: &mut Vec<MonitorConfig>,
-        display_info: &HashMap<usize, DisplayInfo>,
+        display_index_preferences: &mut Option<HashMap<usize, String>>,
+        display_info: &mut HashMap<usize, DisplayInfo>,
     ) -> (Action, Task<Message>) {
         match message {
             Message::ConfigMonitor(idx) => {
@@ -232,6 +250,59 @@ impl Monitors {
                     *hovered = hover;
                 }
             }
+            Message::ToggleIndexPreferenceExpand => {
+                self.index_preferences_expanded = !self.index_preferences_expanded
+            }
+            Message::IndexPreferenceHover(hover) => self.index_preferences_hovered = hover,
+            Message::ChangeNewIndexPreferenceIndex(idx) => {
+                if let Ok(idx) = idx.try_into() {
+                    self.new_idx_preference_index = idx;
+                }
+            }
+            Message::ChangeNewIndexPreferenceId(id) => self.new_idx_preference_id = id,
+            Message::AddNewIndexPreference => {
+                if let Some(dip) = display_index_preferences {
+                    let id = std::mem::take(&mut self.new_idx_preference_id);
+                    dip.insert(self.new_idx_preference_index, id);
+                    self.new_idx_preference_index = 0;
+                } else {
+                    let mut dip = HashMap::new();
+                    let id = std::mem::take(&mut self.new_idx_preference_id);
+                    dip.insert(self.new_idx_preference_index, id);
+                    self.new_idx_preference_index = 0;
+                    *display_index_preferences = Some(dip);
+                }
+                *display_info = get_display_information(display_index_preferences);
+            }
+            Message::RemoveIndexPreference(idx) => {
+                if display_index_preferences
+                    .as_mut()
+                    .and_then(|dip| dip.remove(&idx))
+                    .is_some()
+                {
+                    *display_info = get_display_information(display_index_preferences);
+                }
+            }
+            Message::ChangeIndexPreferenceIndex(idx, new_idx) => {
+                if let Ok(new_idx) = new_idx.try_into() {
+                    if let Some(dip) = display_index_preferences {
+                        if let Some(preference) = dip.remove(&idx) {
+                            dip.insert(new_idx, preference);
+                            *display_info = get_display_information(display_index_preferences);
+                        }
+                    }
+                }
+            }
+            Message::ChangeIndexPreferenceId(idx, new_id) => {
+                if let Some(dip) = display_index_preferences {
+                    dip.insert(idx, new_id);
+                    *display_info = get_display_information(display_index_preferences);
+                }
+            }
+            Message::ChangeDisplayIndexPreferences(dip) => {
+                *display_index_preferences = dip;
+                *display_info = get_display_information(display_index_preferences);
+            }
         }
         (Action::None, Task::none())
     }
@@ -292,6 +363,36 @@ impl Monitors {
                 });
         };
 
+        let dip = self.monitor_to_config.is_none().then(|| {
+            opt_helpers::expandable_with_disable_default(
+                "Display Index Preferences",
+                Some(
+                    "Set display index preferences (default: None)\n\n\
+                    Define which config index to use for a specific monitor, using its id. \
+                    This id can either be the 'serial_number_id' or 'device_id'. You can get \
+                    these values by running the command:\n\
+                    > 'komorebic monitor-info'\n\
+                    Sometimes the 'device_id' might change on restart, so it is better to use \
+                    the 'serial_number_id' instead!",
+                ),
+                self.display_index_preference_children(display_index_preferences),
+                self.index_preferences_expanded,
+                self.index_preferences_hovered,
+                Message::ToggleIndexPreferenceExpand,
+                Message::IndexPreferenceHover,
+                display_index_preferences.is_some(),
+                Message::ChangeDisplayIndexPreferences(None),
+                Some(opt_helpers::DisableArgs {
+                    disable: display_index_preferences.is_none(),
+                    label: Some("None"),
+                    on_toggle: |v| {
+                        Message::ChangeDisplayIndexPreferences((!v).then_some(HashMap::new()))
+                    },
+                }),
+            )
+        });
+
+        col = col.push_maybe(dip);
         let contents = scrollable(col).id(scrollable::Id::new("monitors_scrollable"));
 
         let show_monitors_display = container(
@@ -332,6 +433,97 @@ impl Monitors {
             Subscription::none()
         }
     }
+
+    fn display_index_preference_children<'a>(
+        &'a self,
+        display_index_preferences: &'a Option<HashMap<usize, String>>,
+    ) -> Vec<Element<'a, Message>> {
+        let mut children = Vec::new();
+        let new_preference = opt_helpers::opt_box(
+            column![
+                text("Add New Display Index Preference:"),
+                index_preference(
+                    self.new_idx_preference_index,
+                    &self.new_idx_preference_id,
+                    Message::ChangeNewIndexPreferenceIndex,
+                    Message::ChangeNewIndexPreferenceId,
+                    true,
+                ),
+            ]
+            .spacing(10),
+        );
+        children.push(new_preference.into());
+        let mut preferences = display_index_preferences
+            .as_ref()
+            .map_or(Vec::new(), |dip| {
+                dip.iter()
+                    .collect::<BTreeMap<&usize, &String>>()
+                    .into_iter()
+                    .map(|(index, id)| {
+                        let index = *index;
+                        index_preference(
+                            index,
+                            id,
+                            move |new_index| Message::ChangeIndexPreferenceIndex(index, new_index),
+                            move |new_behaviour| {
+                                Message::ChangeIndexPreferenceId(index, new_behaviour)
+                            },
+                            false,
+                        )
+                    })
+                    .collect()
+            });
+        if preferences.is_empty() {
+            preferences.push(text("Preferences:").into());
+            // The 30.8 height came from trial and error to make it so the space is the
+            // same as the one from one rule. Why isn't it 30, I don't know?! Any other
+            // value other 30.8 would result in the UI adjusting when adding first rule.
+            preferences.push(Space::new(Shrink, 30.8).into());
+        } else {
+            preferences.insert(0, text("Preferences:").into());
+        }
+        children.push(horizontal_rule(2.0).into());
+        children.extend(preferences);
+        children
+    }
+}
+
+fn index_preference<'a>(
+    index: usize,
+    id: &'a str,
+    index_message: impl Fn(i32) -> Message + Copy + 'static,
+    id_changed_message: impl Fn(String) -> Message + 'a,
+    is_add: bool,
+) -> Element<'a, Message> {
+    let number = opt_helpers::number_simple(index as i32, index_message).content_width(50);
+    let input = container(crate::widget::input("", id, id_changed_message, None))
+        .max_width(200)
+        .width(Fill);
+    let final_button = if is_add {
+        let add_button = button(icons::plus_icon().style(|t| text::Style {
+            color: t.palette().primary.into(),
+        }))
+        .on_press(Message::AddNewIndexPreference)
+        .style(button::text);
+        add_button
+    } else {
+        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+            color: t.palette().danger.into(),
+        }))
+        .on_press(Message::RemoveIndexPreference(index))
+        .style(button::text);
+        remove_button
+    };
+    row![
+        text("Use config index "),
+        number,
+        text("for monitor with id "),
+        input,
+        final_button,
+    ]
+    .spacing(5)
+    .align_y(Center)
+    .into()
 }
 
 #[derive(Debug, Default, Clone)]
