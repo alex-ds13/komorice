@@ -607,14 +607,10 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         mouse_follows_focus: config
             .mouse_follows_focus
             .and_then(|v| (DEFAULT_CONFIG.mouse_follows_focus != Some(v)).then_some(v)),
-        app_specific_configuration_path: config.app_specific_configuration_path.and_then(|v| {
-            (DEFAULT_CONFIG
-                .app_specific_configuration_path
-                .as_ref()
-                .map(|v| unresolve_home_path(v.clone()))
-                != Some(unresolve_home_path(v.clone())))
-            .then_some(unresolve_home_path(v))
-        }),
+        app_specific_configuration_path: config
+            .app_specific_configuration_path
+            .map(unresolve_home_path)
+            .or(DEFAULT_CONFIG.app_specific_configuration_path.clone()),
         border_width: config
             .border_width
             .and_then(|v| (DEFAULT_CONFIG.border_width != Some(v)).then_some(v)),
