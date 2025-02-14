@@ -25,6 +25,7 @@ use iced::{
 use lazy_static::lazy_static;
 
 lazy_static! {
+    static ref KOMOREBI_VERSION: &'static str = "master";
     static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI");
     static ref EMOJI_FONT: Font = Font::with_name("Segoe UI Emoji");
     static ref ITALIC_FONT: Font = {
@@ -375,7 +376,7 @@ impl Komorice {
                             config::config_path().display()
                         )
                         .font(*ITALIC_FONT)
-                        .size(18)
+                        .size(18),
                     )
                     .center_x(Fill)
                     .align_bottom(Fill)

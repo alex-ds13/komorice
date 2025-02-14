@@ -1,7 +1,7 @@
 use crate::{
     apperror::{AppError, AppErrorKind},
     screen::monitors::DisplayInfo,
-    Message,
+    Message, KOMOREBI_VERSION,
 };
 
 use std::sync::Arc;
@@ -1323,6 +1323,11 @@ pub async fn save(config: StaticConfig) -> Result<(), AppError> {
         description: Some(e.to_string()),
         kind: AppErrorKind::Error,
     })?;
+    let schema = format!(
+        "{{\n  \"$schema\": \"https://raw.githubusercontent.com/LGUG2Z/komorebi/{}/schema.json\",\n",
+        *KOMOREBI_VERSION,
+    );
+    let json = [schema.as_bytes(), &json.as_bytes()[2..]].concat();
 
     let path = config_path();
 
@@ -1344,13 +1349,11 @@ pub async fn save(config: StaticConfig) -> Result<(), AppError> {
             kind: AppErrorKind::Error,
         })?;
 
-    file.write_all(json.as_bytes())
-        .await
-        .map_err(|e| AppError {
-            title: "Error saving 'komorebi.json' file".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
+    file.write_all(&json).await.map_err(|e| AppError {
+        title: "Error saving 'komorebi.json' file".into(),
+        description: Some(e.to_string()),
+        kind: AppErrorKind::Error,
+    })?;
 
     // This is a simple way to save at most once every couple seconds
     // async_std::task::sleep(std::time::Duration::from_secs(2)).await;
