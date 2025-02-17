@@ -145,10 +145,7 @@ impl Komorice {
             init,
             Task::batch([
                 settings::load_task().map(Message::Settings),
-                Task::perform(config::load(), |res| match res {
-                    Ok(config) => Message::LoadedConfig(Arc::new(config)),
-                    Err(apperror) => Message::FailedToLoadConfig(apperror),
-                }),
+                config::load_task(),
             ]),
         )
     }
@@ -319,10 +316,7 @@ impl Komorice {
                 self.config_watcher_tx = Some(sender);
             }
             Message::Save => {
-                return Task::future(config::save(self.config.clone())).map(|res| match res {
-                    Ok(_) => Message::Saved,
-                    Err(apperror) => Message::AppError(apperror),
-                });
+                return config::save_task(self.config.clone());
             }
             Message::Saved => {
                 if let Some(sender) = &self.config_watcher_tx {

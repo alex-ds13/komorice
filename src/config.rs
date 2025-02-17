@@ -9,8 +9,10 @@ use std::time::Duration;
 use std::{collections::HashMap, path::PathBuf};
 
 use async_std::channel::{self, Receiver};
-use iced::futures::{SinkExt, StreamExt};
-use iced::Subscription;
+use iced::{
+    futures::{SinkExt, StreamExt},
+    Subscription, Task,
+};
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, AspectRatio, BorderColours, BorderImplementation,
     BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, KomorebiTheme,
@@ -1280,7 +1282,14 @@ fn handle_event(
     }
 }
 
-pub async fn load() -> Result<StaticConfig, AppError> {
+pub fn load_task() -> Task<Message> {
+    Task::perform(load(), |res| match res {
+        Ok(config) => Message::LoadedConfig(Arc::new(config)),
+        Err(apperror) => Message::FailedToLoadConfig(apperror),
+    })
+}
+
+async fn load() -> Result<StaticConfig, AppError> {
     use async_std::prelude::*;
 
     let mut contents = String::new();
@@ -1314,7 +1323,14 @@ pub async fn load() -> Result<StaticConfig, AppError> {
     })
 }
 
-pub async fn save(config: StaticConfig) -> Result<(), AppError> {
+pub fn save_task(config: StaticConfig) -> Task<Message> {
+    Task::future(save(config)).map(|res| match res {
+        Ok(_) => Message::Saved,
+        Err(apperror) => Message::AppError(apperror),
+    })
+}
+
+async fn save(config: StaticConfig) -> Result<(), AppError> {
     use async_std::prelude::*;
 
     let unmerged_config = unmerge_default(config);
