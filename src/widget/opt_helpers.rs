@@ -414,7 +414,7 @@ pub fn input_with_disable_default<'a, Message: 'a + Clone>(
 ///If `Some(description)` is given, it adds the description below the label.
 pub fn number_simple<'a, Message: 'a + Clone>(
     value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+    on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
 ) -> iced_aw::NumberInput<'a, i32, Message> {
     iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style)
 }
@@ -427,7 +427,7 @@ pub fn number<'a, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
     value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+    on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
 ) -> Element<'a, Message> {
     let element = row![
         label_with_description(name, description),
@@ -533,7 +533,7 @@ pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
     description: Option<&'a str>,
     value: Option<i32>,
     default_value: Option<i32>,
-    on_change: impl Fn(Option<i32>) -> Message + 'a + Copy + 'static,
+    on_change: impl Fn(Option<i32>) -> Message + 'a + Clone + 'static,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
