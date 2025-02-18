@@ -85,50 +85,30 @@ enum Message {
 }
 
 struct Komorice {
-    sidebar: sidebar::Sidebar,
     main_screen: Screen,
     display_info: HashMap<usize, monitors::DisplayInfo>,
-    monitors: monitors::Monitors,
-    border: border::Border,
-    general: general::General,
-    stackbar: stackbar::Stackbar,
-    transparency: transparency::Transparency,
-    animation: animation::Animation,
-    theme_screen: theme::Theme,
-    rules: rules::Rules,
-    live_debug: live_debug::LiveDebug,
+    screens: screen::Screens,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
     loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
-    settings: settings::Settings,
     show_save_config_modal: bool,
 }
 
 impl Default for Komorice {
     fn default() -> Self {
         Self {
-            sidebar: Default::default(),
             main_screen: Default::default(),
             display_info: Default::default(),
-            monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
-            border: Default::default(),
-            general: Default::default(),
-            stackbar: Default::default(),
-            transparency: Default::default(),
-            animation: Default::default(),
-            theme_screen: Default::default(),
-            rules: Default::default(),
-            live_debug: Default::default(),
+            screens: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
             loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
             errors: Default::default(),
-            settings: Default::default(),
             show_save_config_modal: Default::default(),
         }
     }
@@ -163,7 +143,7 @@ impl Komorice {
                 self.errors.push(apperror);
             }
             Message::General(message) => {
-                let (action, task) = self.general.update(message, &mut self.config);
+                let (action, task) = self.screens.general.update(message, &mut self.config);
                 let action_task = match action {
                     general::Action::None => Task::none(),
                 };
@@ -171,7 +151,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::General), action_task]);
             }
             Message::Border(message) => {
-                let (action, task) = self.border.update(message, &mut self.config);
+                let (action, task) = self.screens.border.update(message, &mut self.config);
                 let action_task = match action {
                     border::Action::None => Task::none(),
                 };
@@ -179,7 +159,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Border), action_task]);
             }
             Message::LiveDebug(message) => {
-                let (action, task) = self.live_debug.update(message);
+                let (action, task) = self.screens.live_debug.update(message);
                 let action_task = match action {
                     live_debug::Action::None => Task::none(),
                     live_debug::Action::Error(apperror) => {
@@ -192,7 +172,7 @@ impl Komorice {
             }
             Message::Monitors(message) => {
                 if let Some(monitors_config) = &mut self.config.monitors {
-                    let (action, task) = self.monitors.update(
+                    let (action, task) = self.screens.monitors.update(
                         message,
                         monitors_config,
                         &mut self.config.display_index_preferences,
@@ -210,7 +190,7 @@ impl Komorice {
                     self.config.stackbar = Some(stackbar::default_stackbar_config());
                 }
                 if let Some(stackbar_config) = self.config.stackbar.as_mut() {
-                    let (action, task) = self.stackbar.update(message, stackbar_config);
+                    let (action, task) = self.screens.stackbar.update(message, stackbar_config);
                     let action_task = match action {
                         stackbar::Action::None => Task::none(),
                     };
@@ -219,7 +199,7 @@ impl Komorice {
                 }
             }
             Message::Transparency(message) => {
-                let (action, task) = self.transparency.update(message, &mut self.config);
+                let (action, task) = self.screens.transparency.update(message, &mut self.config);
                 let action_task = match action {
                     transparency::Action::None => Task::none(),
                 };
@@ -227,7 +207,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Transparency), action_task]);
             }
             Message::Settings(message) => {
-                let (action, task) = self.settings.update(message);
+                let (action, task) = self.screens.settings.update(message);
                 let action_task = match action {
                     settings::Action::None => Task::none(),
                     settings::Action::Error(apperror) => {
@@ -243,7 +223,7 @@ impl Komorice {
                     self.config.animation = Some(animation::default_animations_config());
                 }
                 if let Some(animation_config) = self.config.animation.as_mut() {
-                    let (action, task) = self.animation.update(message, animation_config);
+                    let (action, task) = self.screens.animation.update(message, animation_config);
                     let action_task = match action {
                         animation::Action::None => Task::none(),
                     };
@@ -252,7 +232,7 @@ impl Komorice {
                 }
             }
             Message::Theme(message) => {
-                let (action, task) = self.theme_screen.update(message, &mut self.config);
+                let (action, task) = self.screens.theme.update(message, &mut self.config);
                 let action_task = match action {
                     theme::Action::None => Task::none(),
                 };
@@ -260,7 +240,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Theme), action_task]);
             }
             Message::Rules(message) => {
-                let (action, task) = self.rules.update(message, &mut self.config);
+                let (action, task) = self.screens.rules.update(message, &mut self.config);
                 let action_task = match action {
                     rules::Action::None => Task::none(),
                 };
@@ -268,7 +248,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
-                let (action, task) = self.sidebar.update(message);
+                let (action, task) = self.screens.sidebar.update(message);
                 let action_task = match action {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::UpdateMainScreen(screen) => {
@@ -277,24 +257,20 @@ impl Komorice {
                                 Screen::Home => {
                                     unreachable!("should never try to reset home screen!")
                                 }
-                                Screen::General => self.general = general::General::default(),
+                                Screen::General => self.screens.general = Default::default(),
                                 Screen::Monitors => {
-                                    self.monitors = monitors::Monitors::new(&self.config)
+                                    self.screens.monitors = monitors::Monitors::new(&self.config)
                                 }
-                                Screen::Border => self.border = border::Border::default(),
-                                Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
+                                Screen::Border => self.screens.border = Default::default(),
+                                Screen::Stackbar => self.screens.stackbar = Default::default(),
                                 Screen::Transparency => {
-                                    self.transparency = transparency::Transparency::default()
+                                    self.screens.transparency = Default::default()
                                 }
-                                Screen::Animations => {
-                                    self.animation = animation::Animation::default()
-                                }
-                                Screen::Theme => self.theme_screen = theme::Theme::default(),
-                                Screen::Rules => self.rules = rules::Rules::default(),
-                                Screen::LiveDebug => self.live_debug.reset_screen(),
-                                Screen::Settings => {
-                                    unreachable!("should never try to reset settings screen!")
-                                }
+                                Screen::Animations => self.screens.animation = Default::default(),
+                                Screen::Theme => self.screens.theme = Default::default(),
+                                Screen::Rules => self.screens.rules = Default::default(),
+                                Screen::LiveDebug => self.screens.live_debug.reset_screen(),
+                                Screen::Settings => self.screens.settings = Default::default(),
                             }
                         }
                         self.main_screen = screen;
@@ -322,7 +298,7 @@ impl Komorice {
                 self.config_watcher_tx = Some(sender);
             }
             Message::TrySave => {
-                if self.settings.show_save_warning {
+                if self.screens.settings.show_save_warning {
                     self.show_save_config_modal = true;
                 } else {
                     return config::save_task(self.config.clone());
@@ -396,10 +372,15 @@ impl Komorice {
                 ])
                 .into()
             }
-            Screen::General => self.general.view(&self.config).map(Message::General),
+            Screen::General => self
+                .screens
+                .general
+                .view(&self.config)
+                .map(Message::General),
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
-                    self.monitors
+                    self.screens
+                        .monitors
                         .view(
                             monitors_config,
                             &self.display_info,
@@ -410,29 +391,33 @@ impl Komorice {
                     iced::widget::horizontal_space().into()
                 }
             }
-            Screen::Border => self.border.view(&self.config).map(Message::Border),
+            Screen::Border => self.screens.border.view(&self.config).map(Message::Border),
             Screen::Stackbar => self
+                .screens
                 .stackbar
                 .view(self.config.stackbar.as_ref())
                 .map(Message::Stackbar),
             Screen::Transparency => self
+                .screens
                 .transparency
                 .view(&self.config)
                 .map(Message::Transparency),
             Screen::Animations => self
+                .screens
                 .animation
                 .view(self.config.animation.as_ref())
                 .map(Message::Animation),
-            Screen::Theme => self.theme_screen.view(&self.config).map(Message::Theme),
+            Screen::Theme => self.screens.theme.view(&self.config).map(Message::Theme),
             Screen::Rules => self
+                .screens
                 .rules
-                .view(&self.config, self.settings.show_advanced)
+                .view(&self.config, self.screens.settings.show_advanced)
                 .map(Message::Rules),
-            Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
-            Screen::Settings => self.settings.view().map(Message::Settings),
+            Screen::LiveDebug => self.screens.live_debug.view().map(Message::LiveDebug),
+            Screen::Settings => self.screens.settings.view().map(Message::Settings),
         };
 
-        let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
+        let sidebar: Element<Message> = self.screens.sidebar.view().map(Message::Sidebar);
         let save_buttons = row![
             horizontal_space(),
             button("Save").on_press_maybe(self.is_dirty.then_some(Message::TrySave)),
@@ -463,9 +448,13 @@ impl Komorice {
             | Screen::Theme
             | Screen::LiveDebug
             | Screen::Settings => Subscription::none(),
-            Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
-            Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
-            Screen::Rules => self.rules.subscription().map(Message::Rules),
+            Screen::Monitors => self.screens.monitors.subscription().map(Message::Monitors),
+            Screen::Transparency => self
+                .screens
+                .transparency
+                .subscription()
+                .map(Message::Transparency),
+            Screen::Rules => self.screens.rules.subscription().map(Message::Rules),
         };
 
         Subscription::batch([
@@ -477,7 +466,7 @@ impl Komorice {
     }
 
     pub fn theme(&self) -> Theme {
-        self.settings.theme.clone()
+        self.screens.settings.theme.clone()
     }
 
     /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
@@ -487,7 +476,7 @@ impl Komorice {
         self.display_info =
             monitors::get_display_information(&self.config.display_index_preferences);
         let made_changes = config::fill_monitors(&mut self.config, &self.display_info);
-        self.monitors = monitors::Monitors::new(&self.config);
+        self.screens.monitors = monitors::Monitors::new(&self.config);
         made_changes
     }
 
@@ -502,7 +491,7 @@ impl Komorice {
             Element::from(
                 checkbox(
                     "Don't show this message again",
-                    !self.settings.show_save_warning,
+                    !self.screens.settings.show_save_warning,
                 )
                 .on_toggle(|v| settings::Message::ChangedShowSaveWarning(!v)),
             )
