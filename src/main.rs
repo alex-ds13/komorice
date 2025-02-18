@@ -16,10 +16,12 @@ use crate::screen::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use iced::widget::{button, center, horizontal_space, stack};
 use iced::{
     padding,
-    widget::{column, container, horizontal_rule, row, text, vertical_rule},
+    widget::{
+        button, center, checkbox, column, container, horizontal_rule, horizontal_space, rich_text,
+        row, span, stack, text, vertical_rule,
+    },
     Center, Element, Fill, Font, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
@@ -76,6 +78,8 @@ enum Message {
     FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
     DiscardChanges,
+    TrySave,
+    ToggleConfigModal,
     Save,
     Saved,
 }
@@ -100,6 +104,7 @@ struct Komorice {
     config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     settings: settings::Settings,
+    show_save_config_modal: bool,
 }
 
 impl Default for Komorice {
@@ -124,6 +129,7 @@ impl Default for Komorice {
             config_watcher_tx: Default::default(),
             errors: Default::default(),
             settings: Default::default(),
+            show_save_config_modal: Default::default(),
         }
     }
 }
@@ -315,7 +321,18 @@ impl Komorice {
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }
+            Message::TrySave => {
+                if self.settings.show_save_warning {
+                    self.show_save_config_modal = true;
+                } else {
+                    return config::save_task(self.config.clone());
+                }
+            }
+            Message::ToggleConfigModal => {
+                self.show_save_config_modal = !self.show_save_config_modal;
+            }
             Message::Save => {
+                self.show_save_config_modal = false;
                 return config::save_task(self.config.clone());
             }
             Message::Saved => {
@@ -418,7 +435,7 @@ impl Komorice {
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
         let save_buttons = row![
             horizontal_space(),
-            button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save)),
+            button("Save").on_press_maybe(self.is_dirty.then_some(Message::TrySave)),
             button("Discard Changes")
                 .on_press_maybe(self.is_dirty.then_some(Message::DiscardChanges)),
         ]
@@ -431,9 +448,9 @@ impl Komorice {
             container(horizontal_rule(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];
-        row![sidebar, vertical_rule(2.0), right_col]
-            .padding(10)
-            .into()
+        let main_content = row![sidebar, vertical_rule(2.0), right_col].padding(10);
+        let modal_content = self.show_save_config_modal.then(|| self.save_warning());
+        widget::modal(main_content, modal_content, Message::ToggleConfigModal)
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -476,5 +493,39 @@ impl Komorice {
 
     fn check_changes(&mut self) {
         self.is_dirty = self.config != *self.loaded_config;
+    }
+
+    fn save_warning(&self) -> container::Container<Message> {
+        let save = button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save));
+        let cancel = button("Cancel").on_press(Message::ToggleConfigModal);
+        let stop_showing = container(
+            Element::from(
+                checkbox(
+                    "Don't show this message again",
+                    !self.settings.show_save_warning,
+                )
+                .on_toggle(|v| settings::Message::ChangedShowSaveWarning(!v)),
+            )
+            .map(Message::Settings),
+        )
+        .align_left(Fill);
+        let buttons = container(row![save, cancel].spacing(10)).align_right(Fill);
+        let title = text("Save Config").size(20).font(*BOLD_FONT);
+        let description = rich_text![
+            "When saving the config file, it will overwrite the existing config. ",
+            "This means you'll lose any comments you had and all default configs will be removed.",
+            "\n\n",
+            span("It is recommended that you backup your config before using komorice!")
+                .font(*BOLD_FONT),
+        ];
+        let content = column![title, description, row![stop_showing, buttons]].spacing(20);
+        container(
+            container(content)
+                .padding(20)
+                .max_width(850.0)
+                .center(iced::Shrink)
+                .style(widget::modal::default),
+        )
+        .padding(20)
     }
 }
