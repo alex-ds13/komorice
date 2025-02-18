@@ -2291,6 +2291,7 @@ dependencies = [
 [[package]]
 name = "iced_aw"
 version = "0.11.0"
+source = "git+https://github.com/alex-ds13/iced_aw.git?branch=draft-upgrade#7e9462571e762433a471c2320b93b0bdcf36609d"
 dependencies = [
  "cfg-if 1.0.0",
  "iced",
@@ -2321,6 +2322,7 @@ dependencies = [
 [[package]]
 name = "iced_fonts"
 version = "0.1.1"
+source = "git+https://github.com/alex-ds13/iced_fonts.git?rev=a1c5c9be6c12acd23233a462d396a2624835784a#a1c5c9be6c12acd23233a462d396a2624835784a"
 dependencies = [
  "iced_core",
 ]
