@@ -24,6 +24,7 @@ pub struct Settings {
     #[serde(with = "ThemeDef")]
     pub theme: Theme,
     pub show_advanced: bool,
+    pub show_save_warning: bool,
     #[serde(skip)]
     settings_watcher_tx: Option<async_std::channel::Sender<Input>>,
 }
@@ -33,6 +34,7 @@ impl Default for Settings {
         Self {
             theme: Theme::TokyoNightStorm,
             show_advanced: false,
+            show_save_warning: true,
             settings_watcher_tx: None,
         }
     }
@@ -44,8 +46,9 @@ pub enum Message {
     LoadedSettings(Settings),
     FailedToLoadSettings(AppError),
     SavedSettings,
-    ThemeChanged(Theme),
-    ShowAdvancedChanged(bool),
+    ChangedTheme(Theme),
+    ChangedShowAdvanced(bool),
+    ChangedShowSaveWarning(bool),
     SettingsFileWatcherTx(async_std::channel::Sender<Input>),
 }
 
@@ -63,11 +66,8 @@ impl Settings {
             }
             Message::LoadedSettings(settings) => {
                 let sender = self.settings_watcher_tx.take();
-                *self = Settings {
-                    theme: settings.theme,
-                    show_advanced: settings.show_advanced,
-                    settings_watcher_tx: sender,
-                };
+                *self = settings;
+                self.settings_watcher_tx = sender;
             }
             Message::FailedToLoadSettings(apperror) => {
                 return (Action::Error(apperror), Task::none());
@@ -77,15 +77,19 @@ impl Settings {
                     let _ = sender.try_send(Input::IgnoreNextEvent);
                 }
             }
-            Message::ThemeChanged(theme) => {
+            Message::SettingsFileWatcherTx(sender) => self.settings_watcher_tx = Some(sender),
+            Message::ChangedTheme(theme) => {
                 self.theme = theme;
                 return (Action::None, save_task(self.clone()));
             }
-            Message::ShowAdvancedChanged(show_advanced) => {
+            Message::ChangedShowAdvanced(show_advanced) => {
                 self.show_advanced = show_advanced;
                 return (Action::None, save_task(self.clone()));
             }
-            Message::SettingsFileWatcherTx(sender) => self.settings_watcher_tx = Some(sender),
+            Message::ChangedShowSaveWarning(show_save_warning) => {
+                self.show_save_warning = show_save_warning;
+                return (Action::None, save_task(self.clone()));
+            }
         }
         (Action::None, Task::none())
     }
@@ -97,17 +101,25 @@ impl Settings {
             Some("Theme for the Komorice app\n\nThis theme has nothing to do with komorebi!"),
             Theme::ALL,
             Some(&self.theme),
-            Message::ThemeChanged,
+            Message::ChangedTheme,
         );
         let show_advanced = opt_helpers::toggle(
             "Show advanced options",
-            Some("By default Komorice tries to be as simple as possible for new users by showing \
+            Some(
+                "By default Komorice tries to be as simple as possible for new users by showing \
                 only the simpler options that should be required to use and configure komorebi. If some option you \
-                    want to configure isn't showing, enable this setting."),
-                    self.show_advanced,
-                    Message::ShowAdvancedChanged,
+                want to configure isn't showing, enable this setting."
+            ),
+            self.show_advanced,
+            Message::ChangedShowAdvanced,
         );
-        let col = column![theme, show_advanced]
+        let show_save_warning = opt_helpers::toggle(
+            "Show Save Warning",
+            Some("Show overwrite warning message on config save."),
+            self.show_save_warning,
+            Message::ChangedShowSaveWarning,
+        );
+        let col = column![theme, show_advanced, show_save_warning]
             .spacing(10)
             .padding(padding::top(10).bottom(10).right(20));
         column![title, horizontal_rule(2.0), col]
