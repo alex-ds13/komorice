@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use super::icons::{self, ICONS};
+use super::{icons, ICONS};
 
 use crate::{widget, BOLD_FONT, EMOJI_FONT};
 
@@ -75,8 +75,7 @@ pub fn opt_box<'a, Message: 'a>(
 
 fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
     button(
-        text("\u{E826}")
-            .font(iced::Font::with_name("icons"))
+        icons::back()
             .size(13)
             .style(|t: &iced::Theme| text::Style {
                 color: Some(t.extended_palette().primary.strong.color),
@@ -263,12 +262,12 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
 
     let add_buttons = Column::new()
         .push(
-            button(row![text("+").size(10), icons::level_up_icon().size(10)].spacing(2.5))
+            button(row![text("+").size(10), icons::level_up().size(10)].spacing(2.5))
                 .on_press(on_add_up.clone())
                 .padding(padding::left(5).right(5)),
         )
         .push(
-            button(row![text("+").size(10), icons::level_down_icon().size(10)].spacing(2.5))
+            button(row![text("+").size(10), icons::level_down().size(10)].spacing(2.5))
                 .on_press(on_add_down.clone())
                 .padding(padding::left(5).right(5)),
         )
@@ -276,7 +275,7 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
 
     let delete_button = Column::new().push_maybe(
         show_delete.then_some(
-            button(icons::delete_icon().size(18))
+            button(icons::delete().size(18))
                 .on_press(on_delete.clone())
                 .padding(padding::left(5).right(5))
                 .style(button::danger),
@@ -286,7 +285,7 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
     let move_buttons = Column::new()
         .push_maybe(
             show_up.then_some(
-                button(icons::up_chevron_icon().size(10))
+                button(icons::up_chevron().size(10))
                     .on_press(on_move_up.clone())
                     .style(button::secondary)
                     .padding(padding::left(5).right(5)),
@@ -294,7 +293,7 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
         )
         .push_maybe(
             show_down.then_some(
-                button(icons::down_chevron_icon().size(10))
+                button(icons::down_chevron().size(10))
                     .on_press(on_move_down.clone())
                     .style(button::secondary)
                     .padding(padding::left(5).right(5)),

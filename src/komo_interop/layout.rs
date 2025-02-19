@@ -82,14 +82,14 @@ impl From<Layout> for DefaultLayout {
 impl Display for Layout {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Layout::BSP => write!(f, "\u{E82B} BSP"),
-            Layout::Columns => write!(f, "\u{E831} Columns"),
-            Layout::Rows => write!(f, "\u{E832} Rows"),
-            Layout::VerticalStack => write!(f, "\u{E82C} VerticalStack"),
-            Layout::HorizontalStack => write!(f, "\u{E82F} HorizontalStack"),
-            Layout::UltrawideVerticalStack => write!(f, "\u{E830} UltrawideVerticalStack"),
-            Layout::Grid => write!(f, "\u{E82E} Grid"),
-            Layout::RightMainVerticalStack => write!(f, "\u{E82D} RightMainVerticalStack"),
+            Layout::BSP => write!(f, "\u{E800} BSP"),
+            Layout::Columns => write!(f, "\u{E801} Columns"),
+            Layout::Rows => write!(f, "\u{E805} Rows"),
+            Layout::VerticalStack => write!(f, "\u{E807} VerticalStack"),
+            Layout::HorizontalStack => write!(f, "\u{E803} HorizontalStack"),
+            Layout::UltrawideVerticalStack => write!(f, "\u{E806} UltrawideVerticalStack"),
+            Layout::Grid => write!(f, "\u{E802} Grid"),
+            Layout::RightMainVerticalStack => write!(f, "\u{E804} RightMainVerticalStack"),
         }
     }
 }

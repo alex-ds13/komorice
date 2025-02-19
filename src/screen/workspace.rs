@@ -5,10 +5,9 @@ use crate::komo_interop::layout::{
     Layout, LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE,
 };
 use crate::utils::{DisplayOption, DisplayOptionCustom};
-use crate::widget::icons::ICONS;
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers::to_description_text as td;
-use crate::widget::{icons, opt_helpers};
+use crate::widget::{icons, opt_helpers, ICONS};
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -581,14 +580,14 @@ fn layout_rule<'a>(
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus_icon().style(|t| text::Style {
+        let add_button = button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewLayoutRule)
         .style(button::text);
         add_button
     } else {
-        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+        let remove_button = button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveLayoutRule(limit))
@@ -684,14 +683,14 @@ fn behaviour_rule<'a>(
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus_icon().style(|t| text::Style {
+        let add_button = button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewBehaviourRule)
         .style(button::text);
         add_button
     } else {
-        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+        let remove_button = button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveBehaviourRule(limit))
@@ -770,13 +769,13 @@ fn behaviour_rules_children<'a>(
 fn layout_options_descriptions<'a>() -> Vec<Element<'a, Message>> {
     vec![
         row![t("Selected: '[None] (Floating)' layout -> This workspace will behave as a floating workspace, like normal Windows does!")].spacing(5).into(),
-        row![t("Selected: "), td(icons::bsp_icon()), t("'BSP' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::vstack_icon()), t("Vertical Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::rmvstack_icon()), t("Right Main Vertical Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::uwvstack_icon()), t("Ultra Wide Vertical Stack' layout -> recommended if using and ultrawide monitor")].spacing(5).into(),
+        row![t("Selected: "), td(icons::bsp()), t("'BSP' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::vstack()), t("Vertical Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rmvstack()), t("Right Main Vertical Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::uwvstack()), t("Ultra Wide Vertical Stack' layout -> recommended if using and ultrawide monitor")].spacing(5).into(),
         row![t("Selected: "), td(icons::hstack()), t("Horizontal Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::rows_icon()), t("Rows' layout -> recommended if using a vertical monitor")].spacing(5).into(),
-        row![t("Selected: "), td(icons::columns_icon()), t("Columns' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::grid_icon()), t("Grid' layout -> If you like the grid layout in LeftWM this is almost exactly the same!\n\nThe 'Grid' layout does not suppot resizing windows.")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rows()), t("Rows' layout -> recommended if using a vertical monitor")].spacing(5).into(),
+        row![t("Selected: "), td(icons::columns()), t("Columns' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::grid()), t("Grid' layout -> If you like the grid layout in LeftWM this is almost exactly the same!\n\nThe 'Grid' layout does not suppot resizing windows.")].spacing(5).into(),
     ]
 }

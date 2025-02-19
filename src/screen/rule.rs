@@ -264,7 +264,7 @@ impl Rule {
 
     pub fn view<'a>(&'a self, rules: Option<&'a Vec<MatchingRule>>) -> Element<'a, Message> {
         let add_new_rule_button =
-            widget::button_with_icon(icons::plus_icon(), text("Add New Rule"))
+            widget::button_with_icon(icons::plus(), text("Add New Rule"))
                 .on_press(Message::ToggleShowNewRule)
                 .style(button::secondary);
 
@@ -289,13 +289,13 @@ impl Rule {
                             },
                         ))
                     });
-            let add_rule_button = button_with_icon(icons::plus_icon(), "Add")
+            let add_rule_button = button_with_icon(icons::plus(), "Add")
                 .on_press(Message::AddNewRule)
                 .width(77);
-            let copy_button = button(icons::copy_icon())
+            let copy_button = button(icons::copy())
                 .on_press_maybe((!self.new_rule[0].id.is_empty()).then_some(Message::CopyNewRule))
                 .style(button::secondary);
-            let paste_button = button(icons::paste_icon())
+            let paste_button = button(icons::paste())
                 .on_press_maybe(self.clipboard_has_rule.then_some(Message::PasteRule))
                 .style(button::secondary);
             opt_helpers::opt_box(
@@ -404,14 +404,14 @@ impl Rule {
                 column![row![]
                     .push_maybe(
                         self.rules_edit[idx].then_some(
-                            button(icons::check_icon())
+                            button(icons::check())
                                 .on_press(Message::ToggleRuleEdit(idx, false))
                                 .style(button::primary),
                         )
                     )
                     .push_maybe(
                         self.rules_edit[idx].then_some(
-                            button(icons::delete_icon())
+                            button(icons::delete())
                                 .on_press(Message::RemoveRule(idx))
                                 .style(button::danger),
                         )
@@ -427,14 +427,14 @@ impl Rule {
             column![row![]
                 .push_maybe(
                     (!self.rules_edit[idx]).then_some(
-                        button(icons::edit_icon())
+                        button(icons::edit())
                             .on_press(Message::ToggleRuleEdit(idx, true))
                             .style(button::secondary),
                     )
                 )
                 .push_maybe(
                     (!self.rules_edit[idx]).then_some(
-                        button(icons::copy_icon())
+                        button(icons::copy())
                             .on_press(Message::CopyRule(idx))
                             .style(button::secondary),
                     )
@@ -532,7 +532,7 @@ fn rule_view<'a>(
     let composing_add_button: Option<Element<_>> = show_and
         .then_some(if edit {
             button(
-                row![icons::level_down_icon(), "And"]
+                row![icons::level_down(), "And"]
                     .spacing(5)
                     .align_y(Center),
             )
@@ -541,7 +541,7 @@ fn rule_view<'a>(
             .into()
         } else {
             container(
-                row![icons::level_down_icon(), "And"]
+                row![icons::level_down(), "And"]
                     .spacing(5)
                     .align_y(Center),
             )
@@ -550,7 +550,7 @@ fn rule_view<'a>(
         })
         .or((!show_and && edit).then_some(
             container(
-                row![icons::level_down_icon(), "And"]
+                row![icons::level_down(), "And"]
                     .spacing(5)
                     .align_y(Center),
             )
@@ -562,7 +562,7 @@ fn rule_view<'a>(
         .then_some(
             composing_remove
                 .map(|m| {
-                    button(icons::delete_icon())
+                    button(icons::delete())
                         .on_press(m)
                         .style(button::danger)
                         .into()

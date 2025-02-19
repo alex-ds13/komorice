@@ -21,3 +21,6 @@ win32-display-data = { git = "https://github.com/LGUG2Z/win32-display-data", rev
 iced = { git = "https://github.com/iced-rs/iced.git", rev = "42a2cb6d4f78343f43d6a68a28e5502d9426ed2c" }
 iced_core = { git = "https://github.com/iced-rs/iced.git", rev = "42a2cb6d4f78343f43d6a68a28e5502d9426ed2c" }
 iced_aw = { git = "https://github.com/alex-ds13/iced_aw.git", branch = "draft-upgrade" }
+
+[build-dependencies]
+iced_fontello = { git = "https://github.com/alex-ds13/iced_fontello.git", branch = "feat/custom-icons" }

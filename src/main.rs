@@ -51,7 +51,7 @@ fn main() -> iced::Result {
         .theme(Komorice::theme)
         .default_font(*DEFAULT_FONT)
         .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
-        .font(include_bytes!("../assets/icons.ttf"))
+        .font(icons::FONT)
         .run_with(Komorice::initialize)
 }
 

@@ -500,14 +500,14 @@ fn index_preference<'a>(
         .max_width(200)
         .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus_icon().style(|t| text::Style {
+        let add_button = button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewIndexPreference)
         .style(button::text);
         add_button
     } else {
-        let remove_button = button(icons::delete_icon().style(|t| text::Style {
+        let remove_button = button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveIndexPreference(index))

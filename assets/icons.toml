@@ -1,0 +1,28 @@
+module = "widget::icons"
+
+[glyphs]
+up_chevron = "fontawesome-angle-up"
+down_chevron = "fontawesome-angle-down"
+delete = "fontawesome-trash"
+# trash = "fontawesome-trash-empty"
+error = "fontawesome-cancel-circled"
+warning = "fontawesome-attention-circled"
+info = "fontawesome-info-circled"
+plus = "fontawesome-plus-squared"
+check = "fontawesome-ok"
+level_up = "fontawesome-level-up"
+level_down = "fontawesome-level-down"
+edit = "fontawesome-edit"
+copy = "fontawesome-docs"
+paste = "fontawesome-paste"
+back = "entypo-back"
+
+# Custom Icons
+bsp = "bsp.svg"
+vstack = "vstack.svg"
+rmvstack = "rmvstack.svg"
+grid = "grid.svg"
+hstack = "hstack.svg"
+uwvstack = "uwvstack.svg"
+columns = "columns.svg"
+rows = "rows.svg"
