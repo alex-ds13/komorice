@@ -6,12 +6,13 @@ mod settings;
 mod utils;
 mod widget;
 
-use crate::apperror::AppError;
+use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
     animation, border, general, live_debug, monitors, rules, sidebar, stackbar, theme,
     transparency, Screen,
 };
+use crate::widget::{button_with_icon, icons};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -20,9 +21,9 @@ use iced::{
     padding,
     widget::{
         button, center, checkbox, column, container, horizontal_rule, horizontal_space, rich_text,
-        row, span, stack, text, vertical_rule,
+        row, scrollable, span, stack, text, vertical_rule,
     },
-    Center, Element, Fill, Font, Subscription, Task, Theme,
+    Center, Element, Fill, Font, Right, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
 
@@ -57,8 +58,11 @@ fn main() -> iced::Result {
 
 #[derive(Debug, Clone)]
 enum Message {
-    // General App Messages
+    // Error Messages
     AppError(AppError),
+    OpenErrorsModal,
+    CloseErrorsModal,
+    ClearErrors,
 
     // View/Screen related Messages
     Animation(animation::Message),
@@ -105,6 +109,7 @@ struct Komorice {
     errors: Vec<AppError>,
     settings: settings::Settings,
     show_save_config_modal: bool,
+    show_errors_modal: bool,
 }
 
 impl Default for Komorice {
@@ -130,6 +135,7 @@ impl Default for Komorice {
             errors: Default::default(),
             settings: Default::default(),
             show_save_config_modal: Default::default(),
+            show_errors_modal: Default::default(),
         }
     }
 }
@@ -158,9 +164,12 @@ impl Komorice {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::AppError(apperror) => {
-                println!("Received AppError: {apperror:#?}");
-                self.errors.push(apperror);
+            Message::AppError(apperror) => self.add_error(apperror),
+            Message::OpenErrorsModal => self.show_errors_modal = true,
+            Message::CloseErrorsModal => self.show_errors_modal = false,
+            Message::ClearErrors => {
+                self.errors.clear();
+                self.show_errors_modal = false;
             }
             Message::General(message) => {
                 let (action, task) = self.general.update(message, &mut self.config);
@@ -183,8 +192,7 @@ impl Komorice {
                 let action_task = match action {
                     live_debug::Action::None => Task::none(),
                     live_debug::Action::Error(apperror) => {
-                        println!("Received AppError: {apperror:#?}");
-                        self.errors.push(apperror);
+                        self.add_error(apperror);
                         Task::none()
                     }
                 };
@@ -231,8 +239,7 @@ impl Komorice {
                 let action_task = match action {
                     settings::Action::None => Task::none(),
                     settings::Action::Error(apperror) => {
-                        println!("Received AppError: {apperror:#?}");
-                        self.errors.push(apperror);
+                        self.add_error(apperror);
                         Task::none()
                     }
                 };
@@ -314,10 +321,7 @@ impl Komorice {
                     //TODO: show message on app to load external changes
                 }
             }
-            Message::FailedToLoadConfig(apperror) => {
-                println!("Received AppError: {apperror:#?}");
-                self.errors.push(apperror);
-            }
+            Message::FailedToLoadConfig(apperror) => self.add_error(apperror),
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }
@@ -433,14 +437,21 @@ impl Komorice {
         };
 
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
-        let save_buttons = row![
-            horizontal_space(),
-            button("Save").on_press_maybe(self.is_dirty.then_some(Message::TrySave)),
+        let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
+        save_buttons = save_buttons.push_maybe((!self.errors.is_empty()).then(|| {
+            button("Errors")
+                .on_press(Message::OpenErrorsModal)
+                .style(button::danger)
+        }));
+        save_buttons = save_buttons.extend([
+            horizontal_space().into(),
+            button("Save")
+                .on_press_maybe(self.is_dirty.then_some(Message::TrySave))
+                .into(),
             button("Discard Changes")
-                .on_press_maybe(self.is_dirty.then_some(Message::DiscardChanges)),
-        ]
-        .spacing(10)
-        .width(Fill);
+                .on_press_maybe(self.is_dirty.then_some(Message::DiscardChanges))
+                .into(),
+        ]);
         let right_col = column![
             container(main_screen)
                 .height(Fill)
@@ -450,7 +461,9 @@ impl Komorice {
         ];
         let main_content = row![sidebar, vertical_rule(2.0), right_col].padding(10);
         let modal_content = self.show_save_config_modal.then(|| self.save_warning());
-        widget::modal(main_content, modal_content, Message::ToggleConfigModal)
+        let main_modal = widget::modal(main_content, modal_content, Message::ToggleConfigModal);
+        let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());
+        widget::modal(main_modal, errors_modal_content, Message::CloseErrorsModal)
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -497,7 +510,9 @@ impl Komorice {
 
     fn save_warning(&self) -> container::Container<Message> {
         let save = button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save));
-        let cancel = button("Cancel").on_press(Message::ToggleConfigModal);
+        let cancel = button("Cancel")
+            .on_press(Message::ToggleConfigModal)
+            .style(button::secondary);
         let stop_showing = container(
             Element::from(
                 checkbox(
@@ -525,6 +540,53 @@ impl Komorice {
                 .max_width(850.0)
                 .center(iced::Shrink)
                 .style(widget::modal::default),
+        )
+        .padding(20)
+    }
+
+    fn add_error(&mut self, apperror: AppError) {
+        println!("Received AppError: {apperror:#?}");
+        if matches!(apperror.kind, AppErrorKind::Error) {
+            self.show_errors_modal = true;
+        }
+        self.errors.push(apperror);
+    }
+
+    fn errors_modal(&self) -> container::Container<Message> {
+        let mut errors_column = column![row![
+            text("Errors").size(30.0),
+            horizontal_space(),
+            button(text("❌").font(*EMOJI_FONT))
+                .on_press(Message::CloseErrorsModal)
+                .style(button::text),
+        ]
+        .spacing(10)
+        .padding([10, 0])
+        .align_y(Center),]
+        .spacing(10);
+
+        let initial_col = column![].spacing(10).padding(padding::all(5.0).right(20.0));
+        let errors = container(scrollable(
+            self.errors
+                .iter()
+                .fold(initial_col, |c, e| c.push(e.view())),
+        ))
+        .max_height(350.0);
+
+        errors_column = errors_column.push(errors);
+
+        errors_column = errors_column.push(
+            column![button_with_icon(icons::delete(), "Clear").on_press(Message::ClearErrors),]
+                .width(Fill)
+                .align_x(Right),
+        );
+
+        container(
+            container(errors_column)
+                .padding(20)
+                .max_width(850.0)
+                .center(iced::Shrink)
+                .style(widget::modal::red),
         )
         .padding(20)
     }
