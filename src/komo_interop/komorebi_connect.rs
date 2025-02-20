@@ -17,7 +17,7 @@ pub fn connect() -> Subscription<Message> {
     Subscription::run_with_id(
         id,
         iced::stream::channel(10, move |mut output| async move {
-            let subscriber_name = "komofig";
+            let subscriber_name = "komorice";
 
             let listener = komorebi_client::subscribe_with_options(
                 subscriber_name,
