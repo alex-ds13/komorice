@@ -15,7 +15,7 @@ dirs = "6"
 notify-debouncer-mini = "*"
 lazy_static = "1"
 clipboard-win= "5"
-win32-display-data = { git = "https://github.com/LGUG2Z/win32-display-data", rev = "75286e77c068a89d12adcd6404c9c4874a60acf5" }
+win32-display-data = { git = "https://github.com/LGUG2Z/win32-display-data", rev = "3ff53fb6f53ec3ec4f9941a0409fba5e36decc46" }
 
 [patch.crates-io]
 iced = { git = "https://github.com/iced-rs/iced.git", rev = "42a2cb6d4f78343f43d6a68a28e5502d9426ed2c" }
