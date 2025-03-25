@@ -74,13 +74,9 @@ pub fn opt_box<'a, Message: 'a>(
 }
 
 fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
-    button(
-        icons::back()
-            .size(13)
-            .style(|t: &iced::Theme| text::Style {
-                color: Some(t.extended_palette().primary.strong.color),
-            }),
-    )
+    button(icons::back().size(13).style(|t: &iced::Theme| text::Style {
+        color: Some(t.extended_palette().primary.strong.color),
+    }))
     .on_press(message)
     .padding(padding::all(2.5))
     .style(|t, s| {

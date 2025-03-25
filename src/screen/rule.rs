@@ -263,10 +263,9 @@ impl Rule {
     }
 
     pub fn view<'a>(&'a self, rules: Option<&'a Vec<MatchingRule>>) -> Element<'a, Message> {
-        let add_new_rule_button =
-            widget::button_with_icon(icons::plus(), text("Add New Rule"))
-                .on_press(Message::ToggleShowNewRule)
-                .style(button::secondary);
+        let add_new_rule_button = widget::button_with_icon(icons::plus(), text("Add New Rule"))
+            .on_press(Message::ToggleShowNewRule)
+            .style(button::secondary);
 
         let new_rule: Element<_> = if self.show_new_rule {
             let rls =
@@ -531,31 +530,19 @@ fn rule_view<'a>(
     };
     let composing_add_button: Option<Element<_>> = show_and
         .then_some(if edit {
-            button(
-                row![icons::level_down(), "And"]
-                    .spacing(5)
-                    .align_y(Center),
-            )
-            .style(button::secondary)
-            .on_press(composing_add)
-            .into()
+            button(row![icons::level_down(), "And"].spacing(5).align_y(Center))
+                .style(button::secondary)
+                .on_press(composing_add)
+                .into()
         } else {
-            container(
-                row![icons::level_down(), "And"]
-                    .spacing(5)
-                    .align_y(Center),
-            )
-            .padding(padding::all(5).right(10).left(10))
-            .into()
+            container(row![icons::level_down(), "And"].spacing(5).align_y(Center))
+                .padding(padding::all(5).right(10).left(10))
+                .into()
         })
         .or((!show_and && edit).then_some(
-            container(
-                row![icons::level_down(), "And"]
-                    .spacing(5)
-                    .align_y(Center),
-            )
-            .padding(padding::all(5).right(10).left(10))
-            .into(),
+            container(row![icons::level_down(), "And"].spacing(5).align_y(Center))
+                .padding(padding::all(5).right(10).left(10))
+                .into(),
         ));
 
     let delete_rule_line_button: Option<Element<_>> = edit

@@ -32,7 +32,11 @@ pub fn default(theme: &Theme) -> container::Style {
     let palette = theme.extended_palette();
 
     let background = Some(
-        Color { a: 0.95, ..palette.background.base.color }.into()
+        Color {
+            a: 0.95,
+            ..palette.background.base.color
+        }
+        .into(),
     );
 
     container::Style {
@@ -41,7 +45,7 @@ pub fn default(theme: &Theme) -> container::Style {
         border: Border {
             color: palette.background.strong.color,
             width: 1.5,
-            radius: 10.0.into()
+            radius: 10.0.into(),
         },
         shadow: iced::Shadow::default(),
     }
@@ -50,12 +54,22 @@ pub fn default(theme: &Theme) -> container::Style {
 pub fn red(theme: &Theme) -> container::Style {
     let palette = theme.extended_palette();
 
-    let background = Some(Color { a: 0.95, ..palette.danger.base.color }.into());
+    let background = Some(
+        Color {
+            a: 0.95,
+            ..palette.danger.base.color
+        }
+        .into(),
+    );
 
     container::Style {
         text_color: Some(palette.danger.base.text),
         background,
-        border: Border { color: palette.danger.base.color, width: 2.0, radius: 10.0.into() },
+        border: Border {
+            color: palette.danger.base.color,
+            width: 2.0,
+            radius: 10.0.into(),
+        },
         shadow: iced::Shadow::default(),
     }
 }
