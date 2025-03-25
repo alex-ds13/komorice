@@ -544,7 +544,7 @@ pub fn get_display_information(
         // using multithreaded COM library on the same thread or disable drag and drop support.
         // ```
         // To prevent this we spawn a new thread and join it immediately to get the result.
-        win32_display_data::connected_displays_physical()
+        komorebi_client::win32_display_data::connected_displays_all()
             .flatten()
             .map(|display| {
                 let path = display.device_path.clone();

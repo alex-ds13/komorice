@@ -41,6 +41,8 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
+    ContainerPadding(Option<i32>),
+    WorkspacePadding(Option<i32>),
     WindowBasedWorkAreaOffset(Option<Rect>),
     WindowBasedWorkAreaOffsetTop(i32),
     WindowBasedWorkAreaOffsetBottom(i32),
@@ -102,6 +104,12 @@ impl Monitor {
     pub fn update(&mut self, message: Message, config: &mut MonitorConfig) -> Task<Message> {
         match message {
             Message::ConfigChange(change) => match change {
+                ConfigChange::ContainerPadding(value) => {
+                    config.container_padding = value;
+                }
+                ConfigChange::WorkspacePadding(value) => {
+                    config.workspace_padding = value;
+                }
                 ConfigChange::WindowBasedWorkAreaOffset(rect) => {
                     config.window_based_work_area_offset = rect;
                 }
@@ -396,6 +404,30 @@ impl Monitor {
     pub fn monitor_view(&self, config: &MonitorConfig) -> MonitorView<Message> {
         let title = self.get_sub_section_title(None);
         let contents = vec![
+            opt_helpers::number_with_disable_default_option(
+                "Container Padding",
+                Some("Container padding (default: global)"),
+                config.container_padding,
+                DEFAULT_MONITOR_CONFIG.container_padding,
+                |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
+                Some(opt_helpers::DisableArgs {
+                    disable: config.container_padding.is_none(),
+                    label: Some("Global"),
+                    on_toggle: |v| Message::ConfigChange(ConfigChange::ContainerPadding((!v).then_some(10))),
+                }),
+            ),
+            opt_helpers::number_with_disable_default_option(
+                "Workspace Padding",
+                Some("Workspace padding (default: global)"),
+                config.workspace_padding,
+                DEFAULT_MONITOR_CONFIG.workspace_padding,
+                |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
+                Some(opt_helpers::DisableArgs {
+                    disable: config.workspace_padding.is_none(),
+                    label: Some("Global"),
+                    on_toggle: |v| Message::ConfigChange(ConfigChange::WorkspacePadding((!v).then_some(10))),
+                }),
+            ),
             opt_helpers::expandable_with_disable_default(
                 "Window Based Work Area Offset",
                 Some("Window based work area offset (default: global)"),

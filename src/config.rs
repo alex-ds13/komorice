@@ -14,11 +14,11 @@ use iced::{
     Subscription, Task,
 };
 use komorebi_client::{
-    AnimationStyle, AnimationsConfig, AspectRatio, BorderColours, BorderImplementation,
-    BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout, HidingBehaviour, KomorebiTheme,
-    MonitorConfig, MoveBehaviour, OperationBehaviour, PerAnimationPrefixConfig,
-    PredefinedAspectRatio, Rgb, StackbarConfig, StackbarLabel, StackbarMode, StaticConfig,
-    TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
+    AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
+    BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
+    HidingBehaviour, KomorebiTheme, MonitorConfig, MoveBehaviour, OperationBehaviour,
+    PerAnimationPrefixConfig, PredefinedAspectRatio, Rgb, StackbarConfig, StackbarLabel,
+    StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
 };
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -41,8 +41,8 @@ lazy_static! {
         unmanaged_window_operation_behaviour: Some(OperationBehaviour::Op),
         focus_follows_mouse: None,
         mouse_follows_focus: Some(true),
-        app_specific_configuration_path: Some(unresolve_home_path(
-            home_path().0.join("applications.json")
+        app_specific_configuration_path: Some(AppSpecificConfigurationPath::Single(
+            unresolve_home_path(home_path().0.join("applications.json"))
         )),
         border_width: Some(8),
         border_offset: Some(-1),
@@ -53,6 +53,7 @@ lazy_static! {
             monocle: Some(Colour::Rgb(Rgb::new(255, 51, 153))),
             floating: Some(Colour::Rgb(Rgb::new(245, 245, 165))),
             unfocused: Some(Colour::Rgb(Rgb::new(128, 128, 128))),
+            //unfocused_locked: Some(Colour::Rgb(Rgb::new(158, 8, 8))),
         }),
         border_style: Some(BorderStyle::default()),
         border_z_order: None,
@@ -104,6 +105,8 @@ lazy_static! {
         )),
     };
     pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
+        container_padding: None,
+        workspace_padding: None,
         workspaces: Vec::new(),
         work_area_offset: None,
         window_based_work_area_offset: None,
@@ -132,6 +135,7 @@ lazy_static! {
         monocle_border: Some(CatppuccinValue::Pink),
         floating_border: Some(CatppuccinValue::Yellow),
         unfocused_border: Some(CatppuccinValue::Base),
+        unfocused_locked_border: Some(CatppuccinValue::Red),
         stackbar_focused_text: Some(CatppuccinValue::Green),
         stackbar_unfocused_text: Some(CatppuccinValue::Text),
         stackbar_background: Some(CatppuccinValue::Base),
@@ -144,6 +148,7 @@ lazy_static! {
         monocle_border: Some(Base16Value::Base0F),
         floating_border: Some(Base16Value::Base09),
         unfocused_border: Some(Base16Value::Base01),
+        unfocused_locked_border: Some(Base16Value::Base08),
         stackbar_focused_text: Some(Base16Value::Base0B),
         stackbar_unfocused_text: Some(Base16Value::Base05),
         stackbar_background: Some(Base16Value::Base01),
@@ -173,6 +178,8 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
             monitors
                 .iter()
                 .map(|_| komorebi_client::MonitorConfig {
+                    container_padding: None,
+                    workspace_padding: None,
                     workspaces: vec![komorebi_client::WorkspaceConfig {
                         name: String::new(),
                         layout: Some(komorebi_client::DefaultLayout::BSP),
@@ -252,7 +259,16 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
             .app_specific_configuration_path
             .as_ref()
             .cloned()
-            .map(unresolve_home_path)
+            .map(|asc| match asc {
+                AppSpecificConfigurationPath::Single(path) => {
+                    AppSpecificConfigurationPath::Single(unresolve_home_path(path))
+                }
+                AppSpecificConfigurationPath::Multiple(paths) => {
+                    AppSpecificConfigurationPath::Multiple(
+                        paths.into_iter().map(|p| unresolve_home_path(p)).collect(),
+                    )
+                }
+            })
             .or(DEFAULT_CONFIG.app_specific_configuration_path.clone()),
         border_width: config.border_width.or(DEFAULT_CONFIG.border_width),
         border_offset: config.border_offset.or(DEFAULT_CONFIG.border_offset),
@@ -278,6 +294,10 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                 .border_colours
                 .as_ref()
                 .and_then(|bc| bc.unfocused)),
+            // unfocused_locked: bc.unfocused_locked.or(DEFAULT_CONFIG
+            //     .border_colours
+            //     .as_ref()
+            //     .and_then(|bc| bc.unfocused_locked)),
         }),
         border_style: config.border_style.or(DEFAULT_CONFIG.border_style),
         border_z_order: config.border_z_order.or(DEFAULT_CONFIG.border_z_order),
@@ -300,6 +320,12 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         monitors: config.monitors.map(|ms| {
             ms.into_iter()
                 .map(|m| MonitorConfig {
+                    container_padding: m
+                        .container_padding
+                        .or(DEFAULT_MONITOR_CONFIG.container_padding),
+                    workspace_padding: m
+                        .workspace_padding
+                        .or(DEFAULT_MONITOR_CONFIG.workspace_padding),
                     workspaces: m
                         .workspaces
                         .into_iter()
@@ -449,6 +475,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                     monocle_border,
                     floating_border,
                     unfocused_border,
+                    unfocused_locked_border,
                     stackbar_focused_text,
                     stackbar_unfocused_text,
                     stackbar_background,
@@ -461,6 +488,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                         monocle_border: d_monocle_border,
                         floating_border: d_floating_border,
                         unfocused_border: d_unfocused_border,
+                        unfocused_locked_border: d_unfocused_locked_border,
                         stackbar_focused_text: d_stackbar_focused_text,
                         stackbar_unfocused_text: d_stackbar_unfocused_text,
                         stackbar_background: d_stackbar_background,
@@ -474,6 +502,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border: monocle_border.or(d_monocle_border),
                             floating_border: floating_border.or(d_floating_border),
                             unfocused_border: unfocused_border.or(d_unfocused_border),
+                            unfocused_locked_border: unfocused_border.or(d_unfocused_locked_border),
                             stackbar_focused_text: stackbar_focused_text
                                 .or(d_stackbar_focused_text),
                             stackbar_unfocused_text: stackbar_unfocused_text
@@ -489,6 +518,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border,
                             floating_border,
                             unfocused_border,
+                            unfocused_locked_border,
                             stackbar_focused_text,
                             stackbar_unfocused_text,
                             stackbar_background,
@@ -503,6 +533,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                     monocle_border,
                     floating_border,
                     unfocused_border,
+                    unfocused_locked_border,
                     stackbar_focused_text,
                     stackbar_unfocused_text,
                     stackbar_background,
@@ -515,6 +546,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                         monocle_border: d_monocle_border,
                         floating_border: d_floating_border,
                         unfocused_border: d_unfocused_border,
+                        unfocused_locked_border: d_unfocused_locked_border,
                         stackbar_focused_text: d_stackbar_focused_text,
                         stackbar_unfocused_text: d_stackbar_unfocused_text,
                         stackbar_background: d_stackbar_background,
@@ -528,6 +560,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border: monocle_border.or(d_monocle_border),
                             floating_border: floating_border.or(d_floating_border),
                             unfocused_border: unfocused_border.or(d_unfocused_border),
+                            unfocused_locked_border: unfocused_border.or(d_unfocused_locked_border),
                             stackbar_focused_text: stackbar_focused_text
                                 .or(d_stackbar_focused_text),
                             stackbar_unfocused_text: stackbar_unfocused_text
@@ -543,6 +576,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border,
                             floating_border,
                             unfocused_border,
+                            unfocused_locked_border,
                             stackbar_focused_text,
                             stackbar_unfocused_text,
                             stackbar_background,
@@ -611,7 +645,16 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
             .and_then(|v| (DEFAULT_CONFIG.mouse_follows_focus != Some(v)).then_some(v)),
         app_specific_configuration_path: config
             .app_specific_configuration_path
-            .map(unresolve_home_path)
+            .map(|asc| match asc {
+                AppSpecificConfigurationPath::Single(path) => {
+                    AppSpecificConfigurationPath::Single(unresolve_home_path(path))
+                }
+                AppSpecificConfigurationPath::Multiple(paths) => {
+                    AppSpecificConfigurationPath::Multiple(
+                        paths.into_iter().map(|p| unresolve_home_path(p)).collect(),
+                    )
+                }
+            })
             .or(DEFAULT_CONFIG.app_specific_configuration_path.clone()),
         border_width: config
             .border_width
@@ -663,6 +706,14 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                     != Some(v))
                 .then_some(v)
             }),
+            // unfocused_locked: bc.unfocused_locked.and_then(|v| {
+            //     (DEFAULT_CONFIG
+            //         .border_colours
+            //         .as_ref()
+            //         .and_then(|bc| bc.unfocused_locked)
+            //         != Some(v))
+            //     .then_some(v)
+            // }),
         }),
         border_style: config
             .border_style
@@ -691,6 +742,12 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         monitors: config.monitors.map(|ms| {
             ms.into_iter()
                 .map(|m| MonitorConfig {
+                    container_padding: m.container_padding.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.container_padding != Some(v)).then_some(v)
+                    }),
+                    workspace_padding: m.workspace_padding.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.workspace_padding != Some(v)).then_some(v)
+                    }),
                     workspaces: m
                         .workspaces
                         .into_iter()
@@ -910,6 +967,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                     monocle_border,
                     floating_border,
                     unfocused_border,
+                    unfocused_locked_border,
                     stackbar_focused_text,
                     stackbar_unfocused_text,
                     stackbar_background,
@@ -922,6 +980,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                         monocle_border: d_monocle_border,
                         floating_border: d_floating_border,
                         unfocused_border: d_unfocused_border,
+                        unfocused_locked_border: d_unfocused_locked_border,
                         stackbar_focused_text: d_stackbar_focused_text,
                         stackbar_unfocused_text: d_stackbar_unfocused_text,
                         stackbar_background: d_stackbar_background,
@@ -940,6 +999,8 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                                 .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
                             unfocused_border: unfocused_border
                                 .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                            unfocused_locked_border: unfocused_locked_border
+                                .and_then(|v| (Some(v) != d_unfocused_locked_border).then_some(v)),
                             stackbar_focused_text: stackbar_focused_text
                                 .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
                             stackbar_unfocused_text: stackbar_unfocused_text
@@ -957,6 +1018,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border,
                             floating_border,
                             unfocused_border,
+                            unfocused_locked_border,
                             stackbar_focused_text,
                             stackbar_unfocused_text,
                             stackbar_background,
@@ -971,6 +1033,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                     monocle_border,
                     floating_border,
                     unfocused_border,
+                    unfocused_locked_border,
                     stackbar_focused_text,
                     stackbar_unfocused_text,
                     stackbar_background,
@@ -983,6 +1046,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                         monocle_border: d_monocle_border,
                         floating_border: d_floating_border,
                         unfocused_border: d_unfocused_border,
+                        unfocused_locked_border: d_unfocused_locked_border,
                         stackbar_focused_text: d_stackbar_focused_text,
                         stackbar_unfocused_text: d_stackbar_unfocused_text,
                         stackbar_background: d_stackbar_background,
@@ -1001,6 +1065,8 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                                 .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
                             unfocused_border: unfocused_border
                                 .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
+                            unfocused_locked_border: unfocused_locked_border
+                                .and_then(|v| (Some(v) != d_unfocused_locked_border).then_some(v)),
                             stackbar_focused_text: stackbar_focused_text
                                 .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
                             stackbar_unfocused_text: stackbar_unfocused_text
@@ -1018,6 +1084,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             monocle_border,
                             floating_border,
                             unfocused_border,
+                            unfocused_locked_border,
                             stackbar_focused_text,
                             stackbar_unfocused_text,
                             stackbar_background,
@@ -1086,6 +1153,8 @@ impl ChangeConfig for StaticConfig {
                 monitors.reserve(idx + 1 - monitors.len());
                 for _ in monitors.len()..(idx + 1) {
                     monitors.push(MonitorConfig {
+                        container_padding: None,
+                        workspace_padding: None,
                         workspaces: Vec::new(),
                         work_area_offset: None,
                         window_based_work_area_offset: None,
@@ -1097,6 +1166,8 @@ impl ChangeConfig for StaticConfig {
         } else {
             let mut monitors = vec![
                 MonitorConfig {
+                    container_padding: None,
+                    workspace_padding: None,
                     workspaces: Vec::new(),
                     work_area_offset: None,
                     window_based_work_area_offset: None,

@@ -1,4 +1,5 @@
 use crate::widget::opt_helpers::description_text as t;
+use crate::widget::{self, icons};
 use crate::{
     config::DEFAULT_CONFIG,
     utils::DisplayOption,
@@ -7,11 +8,15 @@ use crate::{
 
 use std::path::PathBuf;
 
-use iced::{widget::pick_list, Element, Task};
+use iced::{
+    padding,
+    widget::{button, column, horizontal_rule, pick_list, row, text},
+    Element, Task,
+};
 use komorebi_client::{
-    AspectRatio, CrossBoundaryBehaviour, FocusFollowsMouseImplementation, HidingBehaviour,
-    MoveBehaviour, OperationBehaviour, PredefinedAspectRatio, Rect, StaticConfig,
-    WindowContainerBehaviour,
+    AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour,
+    FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour, OperationBehaviour,
+    PredefinedAspectRatio, Rect, StaticConfig, WindowContainerBehaviour,
 };
 use lazy_static::lazy_static;
 
@@ -26,13 +31,18 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
+    ToggleAscPathExpand,
+    ToggleAscPathHover(bool),
     ToggleGlobalWorkAreaOffsetExpand,
     ToggleGlobalWorkAreaOffsetHover(bool),
 }
 
 #[derive(Clone, Debug)]
 pub enum ConfigChange {
-    AppSpecificConfigurationPath(Option<PathBuf>),
+    AppSpecificConfigurationPath(Option<AppSpecificConfigurationPath>),
+    AscPathChange(usize, String),
+    NewAscPathChange(String),
+    AddNewAscPathChange,
     CrossBoundaryBehaviour(Option<CrossBoundaryBehaviour>),
     CrossMonitorMoveBehaviour(Option<MoveBehaviour>),
     DefaultContainerPadding(Option<i32>),
@@ -62,6 +72,9 @@ pub enum Action {
 
 #[derive(Debug, Default)]
 pub struct General {
+    pub new_asc_path: String,
+    pub asc_path_expanded: bool,
+    pub asc_path_hovered: bool,
     pub global_work_area_offset_expanded: bool,
     pub global_work_area_offset_hovered: bool,
 }
@@ -76,6 +89,57 @@ impl General {
             Message::ConfigChange(change) => match change {
                 ConfigChange::AppSpecificConfigurationPath(path) => {
                     config.app_specific_configuration_path = path;
+                }
+                ConfigChange::AscPathChange(idx, value) => {
+                    if let Some(asc) = &mut config.app_specific_configuration_path {
+                        match asc {
+                            AppSpecificConfigurationPath::Single(path_buf) => {
+                                if idx == 0 {
+                                    if value.is_empty() {
+                                        config.app_specific_configuration_path = None;
+                                    } else {
+                                        *path_buf = PathBuf::from(value);
+                                    }
+                                }
+                            }
+                            AppSpecificConfigurationPath::Multiple(paths) => {
+                                if idx < paths.len() {
+                                    if value.is_empty() {
+                                        paths.remove(idx);
+                                        if paths.len() == 1 {
+                                            *asc = AppSpecificConfigurationPath::Single(
+                                                paths.remove(0),
+                                            );
+                                        }
+                                    } else {
+                                        paths[idx] = PathBuf::from(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                ConfigChange::NewAscPathChange(value) => {
+                    self.new_asc_path = value;
+                }
+                ConfigChange::AddNewAscPathChange => {
+                    if let Some(asc) = &mut config.app_specific_configuration_path {
+                        match asc {
+                            AppSpecificConfigurationPath::Single(path_buf) => {
+                                let value = PathBuf::from(std::mem::take(&mut self.new_asc_path));
+                                let paths = vec![path_buf.clone(), value];
+                                *asc = AppSpecificConfigurationPath::Multiple(paths);
+                            }
+                            AppSpecificConfigurationPath::Multiple(paths) => {
+                                let value = PathBuf::from(std::mem::take(&mut self.new_asc_path));
+                                paths.push(value);
+                            }
+                        }
+                    } else {
+                        let value = std::mem::take(&mut self.new_asc_path);
+                        config.app_specific_configuration_path =
+                            Some(AppSpecificConfigurationPath::Single(PathBuf::from(value)));
+                    }
                 }
                 ConfigChange::CrossBoundaryBehaviour(value) => {
                     config.cross_boundary_behaviour = value;
@@ -195,6 +259,12 @@ impl General {
                     config.floating_window_aspect_ratio = Some(ratio);
                 }
             },
+            Message::ToggleAscPathExpand => {
+                self.asc_path_expanded = !self.asc_path_expanded;
+            }
+            Message::ToggleAscPathHover(hover) => {
+                self.asc_path_hovered = hover;
+            }
             Message::ToggleGlobalWorkAreaOffsetExpand => {
                 self.global_work_area_offset_expanded = !self.global_work_area_offset_expanded;
             }
@@ -209,15 +279,27 @@ impl General {
         opt_helpers::section_view(
             "General:",
             [
-                opt_helpers::input_with_disable_default(
+                opt_helpers::expandable_with_disable_default(
                     "App Specific Configuration Path",
                     Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
-                    "",
-                    config.app_specific_configuration_path.as_ref().map_or("", |p| p.to_str().unwrap_or_default()),
-                    DEFAULT_CONFIG.app_specific_configuration_path.as_ref().map_or("".into(), |p| p.display().to_string()),
-                    |value| Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(Some(PathBuf::from(value)))),
-                    None,
-                    None,
+                    self.asc_children(&config.app_specific_configuration_path),
+                    self.asc_path_expanded,
+                    self.asc_path_hovered,
+                    Message::ToggleAscPathExpand,
+                    Message::ToggleAscPathHover,
+                    config.app_specific_configuration_path != DEFAULT_CONFIG.app_specific_configuration_path,
+                    Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(DEFAULT_CONFIG.app_specific_configuration_path.clone())),
+                    Some(DisableArgs {
+                        disable: config.app_specific_configuration_path.is_none(),
+                        label: Some("None"),
+                        on_toggle: |v| Message::ConfigChange(
+                            ConfigChange::AppSpecificConfigurationPath(
+                                (!v)
+                                .then_some(DEFAULT_CONFIG.app_specific_configuration_path.clone())
+                                .flatten()
+                            )
+                        ),
+                    }),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Cross Boundary Behaviour",
@@ -475,6 +557,64 @@ impl General {
                 ),
             ],
         )
+    }
+
+    fn asc_children<'a>(
+        &'a self,
+        asc_path: &'a Option<AppSpecificConfigurationPath>,
+    ) -> Vec<Element<'a, Message>> {
+        let mut elements = Vec::new();
+        if let Some(asc) = asc_path {
+            match asc {
+                AppSpecificConfigurationPath::Single(path_buf) => {
+                    let path_input = widget::input(
+                        "",
+                        path_buf.to_str().unwrap_or_default(),
+                        |v| Message::ConfigChange(ConfigChange::AscPathChange(0, v)),
+                        None,
+                    );
+                    elements.push(path_input.into());
+                }
+                AppSpecificConfigurationPath::Multiple(paths) => {
+                    for (idx, path_buf) in paths.iter().enumerate() {
+                        let path_input = widget::input(
+                            "",
+                            path_buf.to_str().unwrap_or_default(),
+                            move |v| Message::ConfigChange(ConfigChange::AscPathChange(idx, v)),
+                            None,
+                        );
+                        elements.push(path_input.into());
+                    }
+                }
+            }
+        }
+        let add_new_msg = (!self.new_asc_path.is_empty())
+            .then_some(Message::ConfigChange(ConfigChange::AddNewAscPathChange));
+        let is_enabled = add_new_msg.is_some();
+
+        let new_path = widget::input(
+            "",
+            &self.new_asc_path,
+            |v| Message::ConfigChange(ConfigChange::NewAscPathChange(v)),
+            add_new_msg.clone(),
+        );
+        let add_button = button(icons::plus().style(move |t| {
+            let color = if is_enabled {
+                t.palette().primary.into()
+            } else {
+                t.extended_palette().secondary.base.color.into()
+            };
+            text::Style { color }
+        }))
+        .on_press_maybe(add_new_msg)
+        .style(button::text);
+        let new_path_row = row![new_path, add_button].spacing(10);
+
+        let new_path_col = column![horizontal_rule(2), text("New path:"), new_path_row]
+            .spacing(10)
+            .padding(padding::top(10));
+        elements.push(new_path_col.into());
+        elements
     }
 }
 
