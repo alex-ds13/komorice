@@ -3,10 +3,11 @@
   # 🍉 Komorice 🍚
 
   A komorebi GUI ricing configurator!
-
-  ![image](https://github.com/user-attachments/assets/12f79b93-ee4f-4c5c-a4d9-4abc2cda8f48)
-
   
+  [![Made with iced](https://iced.rs/badge.svg)](https://github.com/iced-rs/iced)
+
+  <image src="https://github.com/user-attachments/assets/12f79b93-ee4f-4c5c-a4d9-4abc2cda8f48" width="600"/>
+
 </div>
 
 ## Overview
