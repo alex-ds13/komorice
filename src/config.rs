@@ -46,7 +46,7 @@ lazy_static! {
         )),
         border_width: Some(8),
         border_offset: Some(-1),
-        border: Some(false),
+        border: Some(true),
         border_colours: Some(BorderColours {
             single: Some(Colour::Rgb(Rgb::new(66, 165, 245))),
             stack: Some(Colour::Rgb(Rgb::new(0, 165, 66))),

@@ -207,7 +207,7 @@ impl Border {
             [
                 opt_helpers::toggle_with_disable_default_no_option(
                     "Enable Border",
-                    Some("Display an active window border (default: false)"),
+                    Some("Display an active window border (default: true)"),
                     *config.border.unwrap_or(&false),
                     DEFAULT_CONFIG.border.unwrap_or_default(),
                     |v| Message::ConfigChange(ConfigChange::Border(v)),
