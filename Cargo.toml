@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 async-std = "1.12.0"
-iced = { version = "0.14.0-dev", features = ["advanced", "async-std", "debug"] }
+iced = { version = "0.14.0-dev", features = ["advanced", "async-std", "debug", "image"] }
 iced_aw = { version = "0.11", default-features = false, features = ["number_input", "color_picker"] }
 komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
 komorebi-themes = { git = "https://github.com/LGUG2Z/komorebi.git" }
@@ -23,3 +23,4 @@ iced_aw = { git = "https://github.com/alex-ds13/iced_aw.git", branch = "draft-up
 
 [build-dependencies]
 iced_fontello = { git = "https://github.com/alex-ds13/iced_fontello.git", branch = "feat/custom-icons" }
+winres = "*"

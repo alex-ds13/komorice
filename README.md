@@ -3,8 +3,10 @@
   # 🍉 Komorice 🍚
 
   A komorebi GUI ricing configurator!
-  
+
   [![Made with iced](https://iced.rs/badge.svg)](https://github.com/iced-rs/iced)
+
+  ![image](assets/komorice.png)
 
   <image src="https://github.com/user-attachments/assets/12f79b93-ee4f-4c5c-a4d9-4abc2cda8f48" width="600"/>
 
@@ -12,7 +14,9 @@
 
 ## Overview
 
-**Komorice** is a user-friendly graphical interface designed to simplify the configuration of the Windows Tiling Window Manager, [**Komorebi**](https://github.com/LGUG2Z/komorebi). With Komorice, users can easily customize their tiling window management experience, making it simple to create a productive workspace that fits their personal preferences.
+**Komorice** is a user-friendly graphical interface designed to simplify the configuration of the Windows Tiling Window
+Manager, [**Komorebi**](https://github.com/LGUG2Z/komorebi). With Komorice, users can easily customize their tiling window
+management experience, making it simple to create a productive workspace that fits their personal preferences.
 
 ## Usage
 
@@ -30,8 +34,8 @@ Be sure to save changes to see them reflected in your Komorebi setup.
   Is the starting screen. Here you can know if the config was properly loaded or not.
   
   If you which to start a config from scratch, you can remove your existing `komorebi.json` file (DON'T FORGET TO BACKUP BEFORE!).
-  When komorice starts and can't find an existing file it will let you edit the config from scratch with all the defaults. When you save it, it will create
-  the file for you.
+  When komorice starts and can't find an existing file it will let you edit the config from scratch with all the defaults.
+  When you save it, it will create the file for you.
 
 > [!Note]
 > In the future it is intended to let you load a specific file to edit
@@ -47,7 +51,7 @@ Be sure to save changes to see them reflected in your Komorebi setup.
     - You can use the titles on top to navigate back.
 
   <details>
-  <summary>Screenshots</summary>
+  <summary>Screenshots:</summary>
   
   ![image](https://github.com/user-attachments/assets/a1e5d3f2-d881-4765-bebb-4611491860b3)
 

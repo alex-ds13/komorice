@@ -24,7 +24,7 @@ use std::sync::Arc;
 use iced::{
     padding,
     widget::{
-        button, center, checkbox, column, container, horizontal_rule, horizontal_space, rich_text,
+        button, checkbox, column, container, horizontal_rule, horizontal_space, image, rich_text,
         row, scrollable, span, stack, text, vertical_rule,
     },
     Center, Element, Fill, Font, Right, Subscription, Task, Theme,
@@ -57,6 +57,20 @@ fn main() -> iced::Result {
         .default_font(*DEFAULT_FONT)
         .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
         .font(icons::FONT)
+        .window(iced::window::Settings {
+            icon: match iced::window::icon::from_rgba(
+                include_bytes!("../assets/komorice.rgba").to_vec(),
+                256,
+                256,
+            ) {
+                Ok(icon) => Some(icon),
+                Err(error) => {
+                    println!("Error creating icon: {}", error);
+                    None
+                }
+            },
+            ..iced::window::Settings::default()
+        })
         .run_with(Komorice::initialize)
 }
 
@@ -367,6 +381,8 @@ impl Komorice {
     pub fn view(&self) -> Element<Message> {
         let main_screen: Element<Message> = match self.main_screen {
             Screen::Home => {
+                let image =
+                    container(image("assets/komorice.png").width(256).height(256)).center_x(Fill);
                 let title = container(
                     row![
                         text("🍉").font(*EMOJI_FONT).size(70),
@@ -375,15 +391,18 @@ impl Komorice {
                     ]
                     .align_y(Center),
                 )
-                .width(Fill)
-                .align_x(Center);
+                .center_x(Fill);
                 let subtitle = text("A komorebi GUI ricing configurator!")
                     .size(20)
                     .width(Fill)
                     .align_x(Center);
-                let col = column![title, subtitle].spacing(20);
+                let col = column![title, subtitle, image].spacing(20);
                 stack([
-                    center(col).padding(20).into(),
+                    container(col)
+                        .padding(20)
+                        .center_x(Fill)
+                        .height(Fill)
+                        .into(),
                     container(
                         text!(
                             "Config was {} loaded from \"{}\"!",
