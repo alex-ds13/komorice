@@ -1,7 +1,7 @@
 use crate::config::{DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME};
 use crate::widget::opt_helpers;
 
-use iced::{Element, Task};
+use iced::{widget::combo_box, Element, Task};
 use komorebi_client::{KomorebiTheme, StaticConfig};
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -381,8 +381,18 @@ pub enum Action {
     None,
 }
 
-#[derive(Debug, Default)]
-pub struct Theme {}
+#[derive(Debug)]
+pub struct Theme {
+    base16_state: combo_box::State<Base16>,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            base16_state: combo_box::State::new(BASE16_OPTIONS.to_vec()),
+        }
+    }
+}
 
 impl Theme {
     pub fn update(
@@ -1302,11 +1312,12 @@ impl Theme {
                         get_color(stackbar_background, d_stackbar_background);
                     let bar_accent_color = get_color(bar_accent, d_bar_accent);
                     vec![
-                        opt_helpers::choose_with_disable_default(
+                        opt_helpers::combo_with_disable_default(
                             "Theme Name",
+                            "",
                             Some("The Theme variant to use"),
                             Vec::new(),
-                            &BASE16_OPTIONS[..],
+                            &self.base16_state,
                             Some(name),
                             Message::ChangeBase16ThemeName,
                             Some(d_name),

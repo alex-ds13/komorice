@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::fmt::Display;
+
 use super::{icons, ICONS};
 
 use crate::{widget, BOLD_FONT, EMOJI_FONT};
@@ -6,8 +8,8 @@ use crate::{widget, BOLD_FONT, EMOJI_FONT};
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, mouse_area, pick_list, row,
-        scrollable, text, text_input, toggler, Button, Column, Container, Row, Text,
+        button, checkbox, column, combo_box, container, horizontal_rule, mouse_area, pick_list,
+        row, scrollable, text, text_input, toggler, Button, Column, Container, Row, Text,
     },
     Center, Color, Element, Fill,
 };
@@ -1007,6 +1009,73 @@ where
                 ..pick_list::default(t, s)
             })
             .text_shaping(text::Shaping::Advanced),
+    )
+    .spacing(10)
+    .align_y(Center);
+    opt_box(element).into()
+}
+
+///Creates a `combo_box`, if `name` is not empty it wraps the
+///`pick_list` on a row with a label with `name`. And adds a disable
+///checkbox which allows toggling the choose on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
+pub fn combo_with_disable_default<'a, T, Message: 'a + Clone>(
+    name: &'a str,
+    placeholder: &'a str,
+    description: Option<&'a str>,
+    options_descriptions: Vec<Element<'a, Message>>,
+    options: &'a combo_box::State<T>,
+    selected: Option<T>,
+    on_selected: impl Fn(Option<T>) -> Message + 'static,
+    default_value: Option<T>,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message>
+where
+    T: Display + PartialEq + Clone + 'static,
+{
+    let is_dirty = if let (Some(v), Some(df)) = (&selected, &default_value) {
+        v != df
+    } else {
+        !matches!((&selected, &default_value), (None, None))
+    };
+    let label = if is_dirty {
+        let on_default = (on_selected)(default_value.clone());
+        row![name, reset_button(on_default)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let selected_description: Element<'a, Message> = (|| {
+        if !options_descriptions.is_empty() {
+            if let Some(ref selected) = selected {
+                if let Some(i) = options.options().iter().position(|v| v == selected) {
+                    if let Some((_, d)) = options_descriptions
+                        .into_iter()
+                        .enumerate()
+                        .find(|(idx, _)| i == *idx)
+                    {
+                        return d;
+                    }
+                }
+            }
+        }
+        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+    })();
+    let element = row![column![
+        label_element_with_description(label, description),
+        selected_description
+    ]
+    .spacing(10)]
+    .push_maybe(disable_checkbox(disable_args))
+    .push(
+        combo_box(options, placeholder, selected.as_ref(), move |v| {
+            on_selected(Some(v))
+        })
+        .width(250),
     )
     .spacing(10)
     .align_y(Center);
