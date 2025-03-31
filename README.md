@@ -8,7 +8,7 @@
 
   ![image](assets/komorice.png)
 
-  <image src="https://github.com/user-attachments/assets/12f79b93-ee4f-4c5c-a4d9-4abc2cda8f48" width="600"/>
+  <image src="https://github.com/user-attachments/assets/78f1e400-6578-499b-8979-8438e6ed23c0" width="600"/>
 
 </div>
 
