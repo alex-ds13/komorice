@@ -14,7 +14,8 @@ use std::collections::{BTreeMap, HashMap};
 use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
 use iced::{Center, Element, Fill, Shrink, Subscription, Task};
 use komorebi_client::{
-    Axis, DefaultLayout, MatchingRule, WindowContainerBehaviour, WorkspaceConfig,
+    Axis, DefaultLayout, FloatingLayerBehaviour, MatchingRule, WindowContainerBehaviour,
+    WorkspaceConfig,
 };
 
 #[derive(Clone, Debug)]
@@ -61,6 +62,7 @@ pub enum ConfigChange {
     BehaviourRuleLimit((usize, i32)),
     BehaviourRuleBehaviour((usize, WindowContainerBehaviour)),
     WorkspacePadding(Option<i32>),
+    FloatingLayerBehaviour(Option<FloatingLayerBehaviour>),
 }
 
 #[derive(Clone, Debug)]
@@ -130,7 +132,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ConfigChange::Layout(value) => self.layout = value.map(Into::into),
                 ConfigChange::LayoutFlip(value) => self.layout_flip = value,
                 ConfigChange::LayoutRules(value) => {
-                    self.layout_rules = value.map(Into::into);
+                    self.layout_rules = value;
                 }
                 ConfigChange::LayoutRuleLimit((previous_limit, new_limit)) => {
                     if let Ok(new_limit) = new_limit.try_into() {
@@ -176,6 +178,9 @@ impl WorkspaceScreen for WorkspaceConfig {
                     }
                 }
                 ConfigChange::WorkspacePadding(value) => self.workspace_padding = value,
+                ConfigChange::FloatingLayerBehaviour(value) => {
+                    self.floating_layer_behaviour = value;
+                }
             },
             Message::ToggleOverrideGlobal(to_override) => match to_override {
                 OverrideConfig::ContainerPadding(disable) => {
@@ -402,6 +407,23 @@ impl Workspace {
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
             })
         );
+        let floating_layer_behaviour = opt_helpers::choose_with_disable_default(
+            "Floating Layer Behaviour",
+            Some("Determine what happens to a new window when the Floating workspace layer is active (default: Tile)"),
+            vec![
+                t("Selected: 'Tile' -> Tile new windows opened when floating layer is active (unless they match a float rule)").into(),
+                t("Selected: 'Float' -> Float new windows opened when floating layer is active.")
+                    .into(),
+            ],
+            [
+                FloatingLayerBehaviour::Tile,
+                FloatingLayerBehaviour::Float,
+            ],
+            ws_config.floating_layer_behaviour,
+            |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
+            DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour,
+            None,
+        );
         let layout_rules = opt_helpers::expandable_with_disable_default(
             "Layout Rules",
             Some(
@@ -515,6 +537,7 @@ impl Workspace {
             apply_window_based_offset,
             container_padding,
             float_override,
+            floating_layer_behaviour,
             layout_rules,
             window_container_behaviour,
             window_container_behaviour_rules,

@@ -16,9 +16,10 @@ use iced::{
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
     BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
-    HidingBehaviour, KomorebiTheme, MonitorConfig, MoveBehaviour, OperationBehaviour,
-    PerAnimationPrefixConfig, PredefinedAspectRatio, Rgb, StackbarConfig, StackbarLabel,
-    StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour, WorkspaceConfig,
+    FloatingLayerBehaviour, HidingBehaviour, KomorebiTheme, MonitorConfig, MoveBehaviour,
+    OperationBehaviour, PerAnimationPrefixConfig, PredefinedAspectRatio, Rgb, StackbarConfig,
+    StackbarLabel, StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour,
+    WorkspaceConfig,
 };
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -127,6 +128,7 @@ lazy_static! {
         window_container_behaviour_rules: None,
         float_override: None,
         layout_flip: None,
+        floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
     };
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
         name: Catppuccin::Macchiato,
@@ -195,6 +197,7 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
                         window_container_behaviour_rules: None,
                         float_override: None,
                         layout_flip: None,
+                        floating_layer_behaviour: None,
                     }],
                     work_area_offset: None,
                     window_based_work_area_offset: None,
@@ -265,7 +268,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                 }
                 AppSpecificConfigurationPath::Multiple(paths) => {
                     AppSpecificConfigurationPath::Multiple(
-                        paths.into_iter().map(|p| unresolve_home_path(p)).collect(),
+                        paths.into_iter().map(unresolve_home_path).collect(),
                     )
                 }
             })
@@ -368,6 +371,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                                 .float_override
                                 .or(DEFAULT_WORKSPACE_CONFIG.float_override),
                             layout_flip: w.layout_flip.or(DEFAULT_WORKSPACE_CONFIG.layout_flip),
+                            floating_layer_behaviour: w
+                                .floating_layer_behaviour
+                                .or(DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour),
                         })
                         .collect(),
                     work_area_offset: m
@@ -651,7 +657,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                 }
                 AppSpecificConfigurationPath::Multiple(paths) => {
                     AppSpecificConfigurationPath::Multiple(
-                        paths.into_iter().map(|p| unresolve_home_path(p)).collect(),
+                        paths.into_iter().map(unresolve_home_path).collect(),
                     )
                 }
             })
@@ -808,6 +814,10 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             }),
                             layout_flip: ws.layout_flip.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.layout_flip != Some(v)).then_some(v)
+                            }),
+                            floating_layer_behaviour: ws.floating_layer_behaviour.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour != Some(v))
+                                    .then_some(v)
                             }),
                         })
                         .collect(),
@@ -1112,6 +1122,7 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
     }
 }
 
+#[allow(dead_code)]
 pub trait ChangeConfig {
     fn set_optional<T: Clone + PartialEq>(
         &mut self,
@@ -1209,6 +1220,7 @@ impl ChangeConfig for StaticConfig {
                         window_container_behaviour_rules: None,
                         float_override: None,
                         layout_flip: None,
+                        floating_layer_behaviour: None,
                     });
                 }
                 f(&mut monitor.workspaces[workspace_idx]);

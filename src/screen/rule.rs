@@ -103,7 +103,7 @@ impl Rule {
             }
             Message::ChangeNewRuleMatchingStrategy(idx, matching_strategy) => {
                 if let Some(rule) = self.new_rule.get_mut(idx) {
-                    rule.matching_strategy = matching_strategy.map(Into::into);
+                    rule.matching_strategy = matching_strategy;
                 }
                 //TODO: inform user if idx didn't exist?!
             }
@@ -179,11 +179,11 @@ impl Rule {
                 if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
                     match rule {
                         MatchingRule::Simple(rule) => {
-                            rule.matching_strategy = matching_strategy.map(Into::into);
+                            rule.matching_strategy = matching_strategy;
                         }
                         MatchingRule::Composite(rules) => {
                             if let Some(rule) = rules.get_mut(sub_idx) {
-                                rule.matching_strategy = matching_strategy.map(Into::into);
+                                rule.matching_strategy = matching_strategy;
                             }
                         }
                     }
