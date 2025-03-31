@@ -930,6 +930,89 @@ where
     opt_box(element).into()
 }
 
+///Creates a `pick_list`, if `name` is not empty it wraps the
+///`pick_list` on a row with a label with `name`. And adds a disable
+///checkbox which allows toggling the choose on/off.
+///
+///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
+pub fn choose_with_disable_default_bg<'a, T, V, L, Message: 'a + Clone>(
+    name: &'a str,
+    description: Option<&'a str>,
+    options_descriptions: Vec<Element<'a, Message>>,
+    options: L,
+    selected: Option<V>,
+    on_selected: impl Fn(Option<T>) -> Message + 'a,
+    default_value: Option<V>,
+    disable_args: Option<DisableArgs<'a, Message>>,
+    bg_color: Color,
+) -> Element<'a, Message>
+where
+    T: ToString + PartialEq + Clone + 'a,
+    V: std::borrow::Borrow<T> + 'a,
+    L: std::borrow::Borrow<[T]> + 'a,
+{
+    let is_dirty = if let (Some(v), Some(df)) = (&selected, &default_value) {
+        v.borrow() != df.borrow()
+    } else {
+        !matches!((&selected, &default_value), (None, None))
+    };
+    let label = if is_dirty {
+        let on_default = (on_selected)(default_value.as_ref().map(|df| df.borrow()).cloned());
+        row![name, reset_button(on_default)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let selected_description: Element<'a, Message> = (|| {
+        if !options_descriptions.is_empty() {
+            if let Some(ref selected) = selected {
+                if let Some(i) = (options.borrow() as &[T])
+                    .iter()
+                    .position(|v| v == selected.borrow())
+                {
+                    if let Some((_, d)) = options_descriptions
+                        .into_iter()
+                        .enumerate()
+                        .find(|(idx, _)| i == *idx)
+                    {
+                        return d;
+                    }
+                }
+            }
+        }
+        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+    })();
+
+    // Calculate text_color according to bg_color. Based on this stackoverflow answer:
+    // https://stackoverflow.com/a/3943023
+    let linear_bg = bg_color.into_linear();
+    let luminance = 0.2126 * linear_bg[0] + 0.7152 * linear_bg[1] + 0.0722 * linear_bg[2];
+    let text_color = if luminance > 0.179 { Color::BLACK } else { Color::WHITE };
+
+    let element = row![column![
+        label_element_with_description(label, description),
+        selected_description
+    ]
+    .spacing(10)]
+    .push_maybe(disable_checkbox(disable_args))
+    .push(
+        pick_list(options, selected, move |v| on_selected(Some(v)))
+            .font(ICONS)
+            .style(move |t, s| pick_list::Style {
+                background: bg_color.into(),
+                text_color,
+                ..pick_list::default(t, s)
+            })
+            .text_shaping(text::Shaping::Advanced),
+    )
+    .spacing(10)
+    .align_y(Center);
+    opt_box(element).into()
+}
+
 ///Creates an expandable option with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
