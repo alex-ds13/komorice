@@ -295,7 +295,7 @@ impl Border {
                     None,
                 ),
                 opt_helpers::color(
-                    "Focused Window Border Color",
+                    "Single Border Colour",
                     Some("Border colour when the container contains a single window and is focused"),
                     self.show_single_picker,
                     config
@@ -308,46 +308,7 @@ impl Border {
                     None,
                 ),
                 opt_helpers::color(
-                    "Unfocused Window Border Color",
-                    Some("Border colour when the container is unfocused"),
-                    self.show_unfocused_picker,
-                    config
-                        .border_colours
-                        .as_ref()
-                        .and_then(|bc| bc.unfocused.map(into_color)),
-                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused.map(into_color)),
-                    Message::ToggleUnfocusedPicker,
-                    |v| Message::ConfigChange(ConfigChange::UnfocusedColor(v)),
-                    None,
-                ),
-                opt_helpers::color(
-                    "Unfocused Locked Window Border Color",
-                    Some("Border colour when the container is unfocused and locked in place"),
-                    self.show_unfocused_locked_picker,
-                    config
-                        .border_colours
-                        .as_ref()
-                        .and_then(|bc| bc.unfocused_locked.map(into_color)),
-                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused_locked.map(into_color)),
-                    Message::ToggleUnfocusedLockedPicker,
-                    |v| Message::ConfigChange(ConfigChange::UnfocusedLockedColor(v)),
-                    None,
-                ),
-                opt_helpers::color(
-                    "Monocle Window Border Color",
-                    Some("Border colour when the container is in monocle mode"),
-                    self.show_monocle_picker,
-                    config
-                        .border_colours
-                        .as_ref()
-                        .and_then(|bc| bc.monocle.map(into_color)),
-                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.monocle.map(into_color)),
-                    Message::ToggleMonoclePicker,
-                    |v| Message::ConfigChange(ConfigChange::MonocleColor(v)),
-                    None,
-                ),
-                opt_helpers::color(
-                    "Stack Window Border Color",
+                    "Stack Border Colour",
                     Some("Border colour when the container contains multiple windows and is focused"),
                     self.show_stack_picker,
                     config
@@ -360,7 +321,20 @@ impl Border {
                     None,
                 ),
                 opt_helpers::color(
-                    "Floating Window Border Color",
+                    "Monocle Border Colour",
+                    Some("Border colour when the container is in monocle mode"),
+                    self.show_monocle_picker,
+                    config
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.monocle.map(into_color)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.monocle.map(into_color)),
+                    Message::ToggleMonoclePicker,
+                    |v| Message::ConfigChange(ConfigChange::MonocleColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Floating Border Colour",
                     Some("Border colour when the container is in floating mode and focused"),
                     self.show_floating_picker,
                     config
@@ -370,6 +344,32 @@ impl Border {
                     DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.floating.map(into_color)),
                     Message::ToggleFloatingPicker,
                     |v| Message::ConfigChange(ConfigChange::FloatingColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Unfocused Border Colour",
+                    Some("Border colour when the container is unfocused"),
+                    self.show_unfocused_picker,
+                    config
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.unfocused.map(into_color)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused.map(into_color)),
+                    Message::ToggleUnfocusedPicker,
+                    |v| Message::ConfigChange(ConfigChange::UnfocusedColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Unfocused Locked Border Colour",
+                    Some("Border colour when the container is unfocused and locked in place"),
+                    self.show_unfocused_locked_picker,
+                    config
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.unfocused_locked.map(into_color)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused_locked.map(into_color)),
+                    Message::ToggleUnfocusedLockedPicker,
+                    |v| Message::ConfigChange(ConfigChange::UnfocusedLockedColor(v)),
                     None,
                 ),
             ],
