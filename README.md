@@ -42,7 +42,9 @@ Be sure to save changes to see them reflected in your Komorebi setup.
  
 - #### **General**:
   Includes all the general and global config options.
-- #### **Monitors**: It shows a real-time preview of your connected monitors and you can click any monitor to edit it.
+- #### **Monitors**:
+  It shows a real-time preview of your connected monitors and you can click any monitor to edit it.
+
   You can also toggle off the `Show Monitors` checkbox to be able to configure or add other monitor configs whitout being tied to the currently loaded monitors.
     - When editing a `Monitor` you are able to configure some configs on a per-monitor basis, like the padding or the work area offset.
     - You are also able to edit the monitor's `Workspaces`. When you press that button you get access to a list of the current workspaces and you can move, add or delete them as you see fit.
@@ -105,7 +107,7 @@ Be sure to save changes to see them reflected in your Komorebi setup.
     **Animations:** (Edit per type)
     ![image](https://github.com/user-attachments/assets/dda59fe8-a31c-4f2e-9346-4cba21bb5387)
 
-    **Animations:** (Or glabally)
+    **Animations:** (Or globally)
     ![image](https://github.com/user-attachments/assets/315ccf4b-a4d6-4e5f-8844-366069c29263)
 
   </details>
