@@ -219,8 +219,8 @@ impl Stackbar {
                     None,
                 ),
                 opt_helpers::color(
-                    "Stackbar Background Color",
-                    Some("Tab background color. (default: '0x333333')"),
+                    "Stackbar Background Colour",
+                    Some("Tab background colour. (default: '0x333333')"),
                     self.show_background_picker,
                     config
                         .tabs
@@ -232,8 +232,8 @@ impl Stackbar {
                     None,
                 ),
                 opt_helpers::color(
-                    "Stackbar Focused Text Color",
-                    Some("Focused Tab text color. (default: '0xFFFFFF')"),
+                    "Stackbar Focused Text Colour",
+                    Some("Focused Tab text colour. (default: '0xFFFFFF')"),
                     self.show_focused_text_picker,
                     config
                         .tabs
@@ -245,8 +245,8 @@ impl Stackbar {
                     None,
                 ),
                 opt_helpers::color(
-                    "Stackbar Unfocused Text Color",
-                    Some("Unfocused Tab text color. (default: '0xB3B3B3')"),
+                    "Stackbar Unfocused Text Colour",
+                    Some("Unfocused Tab text colour. (default: '0xB3B3B3')"),
                     self.show_unfocused_text_picker,
                     config
                         .tabs
