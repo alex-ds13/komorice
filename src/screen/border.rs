@@ -12,6 +12,7 @@ pub enum Message {
     ToggleSinglePicker(bool),
     ToggleMonoclePicker(bool),
     ToggleUnfocusedPicker(bool),
+    ToggleUnfocusedLockedPicker(bool),
     ToggleFloatingPicker(bool),
     ToggleStackPicker(bool),
 }
@@ -26,6 +27,7 @@ pub enum ConfigChange {
     SingleColor(Option<iced::Color>),
     MonocleColor(Option<iced::Color>),
     UnfocusedColor(Option<iced::Color>),
+    UnfocusedLockedColor(Option<iced::Color>),
     FloatingColor(Option<iced::Color>),
     StackColor(Option<iced::Color>),
 }
@@ -40,6 +42,7 @@ pub struct Border {
     pub show_single_picker: bool,
     pub show_monocle_picker: bool,
     pub show_unfocused_picker: bool,
+    pub show_unfocused_locked_picker: bool,
     pub show_floating_picker: bool,
     pub show_stack_picker: bool,
 }
@@ -74,6 +77,7 @@ pub struct BorderConfigMut<'a> {
 //                 monocle: Some(Colour::Rgb(Rgb::new(255, 51, 153))),
 //                 floating: Some(Colour::Rgb(Rgb::new(245, 245, 165))),
 //                 unfocused: Some(Colour::Rgb(Rgb::new(128, 128, 128))),
+//                 unfocused_locked: Some(Colour::Rgb(Rgb::new(158, 8, 8))),
 //             }),
 //             border_implementation: Some(BorderImplementation::default()),
 //             border_style: Some(BorderStyle::default()),
@@ -119,6 +123,7 @@ impl Border {
                                 monocle: None,
                                 floating: None,
                                 unfocused: None,
+                                unfocused_locked: None,
                             });
                         }
                         self.show_single_picker = false;
@@ -133,6 +138,7 @@ impl Border {
                                 monocle: color.map(from_color),
                                 floating: None,
                                 unfocused: None,
+                                unfocused_locked: None,
                             });
                         }
                         self.show_monocle_picker = false;
@@ -147,9 +153,25 @@ impl Border {
                                 monocle: None,
                                 floating: None,
                                 unfocused: color.map(from_color),
+                                unfocused_locked: None,
                             });
                         }
                         self.show_unfocused_picker = false;
+                    }
+                    ConfigChange::UnfocusedLockedColor(color) => {
+                        if let Some(colours) = config.border_colours {
+                            colours.unfocused_locked = color.map(from_color);
+                        } else {
+                            *config.border_colours = Some(BorderColours {
+                                single: None,
+                                stack: None,
+                                monocle: None,
+                                floating: None,
+                                unfocused: None,
+                                unfocused_locked: color.map(from_color),
+                            });
+                        }
+                        self.show_unfocused_locked_picker = false;
                     }
                     ConfigChange::FloatingColor(color) => {
                         if let Some(colours) = config.border_colours {
@@ -161,6 +183,7 @@ impl Border {
                                 monocle: None,
                                 floating: color.map(from_color),
                                 unfocused: None,
+                                unfocused_locked: None,
                             });
                         }
                         self.show_floating_picker = false;
@@ -175,6 +198,7 @@ impl Border {
                                 monocle: None,
                                 floating: None,
                                 unfocused: None,
+                                unfocused_locked: None,
                             });
                         }
                         self.show_stack_picker = false;
@@ -189,6 +213,9 @@ impl Border {
             }
             Message::ToggleUnfocusedPicker(show) => {
                 self.show_unfocused_picker = show;
+            }
+            Message::ToggleUnfocusedLockedPicker(show) => {
+                self.show_unfocused_locked_picker = show;
             }
             Message::ToggleFloatingPicker(show) => {
                 self.show_floating_picker = show;
@@ -291,6 +318,19 @@ impl Border {
                     DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused.map(into_color)),
                     Message::ToggleUnfocusedPicker,
                     |v| Message::ConfigChange(ConfigChange::UnfocusedColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Unfocused Locked Window Border Color",
+                    Some("Border colour when the container is unfocused and locked in place"),
+                    self.show_unfocused_locked_picker,
+                    config
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.unfocused_locked.map(into_color)),
+                    DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused_locked.map(into_color)),
+                    Message::ToggleUnfocusedLockedPicker,
+                    |v| Message::ConfigChange(ConfigChange::UnfocusedLockedColor(v)),
                     None,
                 ),
                 opt_helpers::color(

@@ -54,7 +54,7 @@ lazy_static! {
             monocle: Some(Colour::Rgb(Rgb::new(255, 51, 153))),
             floating: Some(Colour::Rgb(Rgb::new(245, 245, 165))),
             unfocused: Some(Colour::Rgb(Rgb::new(128, 128, 128))),
-            //unfocused_locked: Some(Colour::Rgb(Rgb::new(158, 8, 8))),
+            unfocused_locked: Some(Colour::Rgb(Rgb::new(158, 8, 8))),
         }),
         border_style: Some(BorderStyle::default()),
         border_z_order: None,
@@ -297,10 +297,10 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                 .border_colours
                 .as_ref()
                 .and_then(|bc| bc.unfocused)),
-            // unfocused_locked: bc.unfocused_locked.or(DEFAULT_CONFIG
-            //     .border_colours
-            //     .as_ref()
-            //     .and_then(|bc| bc.unfocused_locked)),
+            unfocused_locked: bc.unfocused_locked.or(DEFAULT_CONFIG
+                .border_colours
+                .as_ref()
+                .and_then(|bc| bc.unfocused_locked)),
         }),
         border_style: config.border_style.or(DEFAULT_CONFIG.border_style),
         border_z_order: config.border_z_order.or(DEFAULT_CONFIG.border_z_order),
@@ -712,14 +712,14 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                     != Some(v))
                 .then_some(v)
             }),
-            // unfocused_locked: bc.unfocused_locked.and_then(|v| {
-            //     (DEFAULT_CONFIG
-            //         .border_colours
-            //         .as_ref()
-            //         .and_then(|bc| bc.unfocused_locked)
-            //         != Some(v))
-            //     .then_some(v)
-            // }),
+            unfocused_locked: bc.unfocused_locked.and_then(|v| {
+                (DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.unfocused_locked)
+                    != Some(v))
+                .then_some(v)
+            }),
         }),
         border_style: config
             .border_style
