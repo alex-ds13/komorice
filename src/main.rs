@@ -9,6 +9,7 @@ mod screen;
 mod settings;
 mod utils;
 mod widget;
+mod whkd_interop;
 
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
