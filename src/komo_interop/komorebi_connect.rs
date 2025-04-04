@@ -32,7 +32,7 @@ pub fn connect() -> Subscription<Message> {
                 subscriber_name
             );
 
-            async_std::task::spawn_blocking(move || {
+            smol::unblock(move || {
                 for client in listener.incoming() {
                     match client {
                         Ok(subscription) => {
@@ -49,9 +49,9 @@ pub fn connect() -> Subscription<Message> {
                                 )
                                     .is_err()
                                     {
-                                        async_std::task::block_on(async {
-                                            async_std::task::yield_now().await;
-                                            async_std::task::sleep(Duration::from_secs(1)).await;
+                                        smol::block_on(async {
+                                            smol::future::yield_now().await;
+                                            smol::Timer::after(Duration::from_secs(1)).await;
                                         });
                                     }
 
@@ -66,7 +66,7 @@ pub fn connect() -> Subscription<Message> {
                                         Ok(notification) => {
                                             println!("received notification from komorebi");
 
-                                            async_std::task::block_on(async {
+                                            smol::block_on(async {
                                                 if let Err(error) = output.send(Message::KomorebiNotification(Arc::new(notification))).await {
                                                     println!("could not send komorebi notification update to gui thread: {error}")
                                                 }

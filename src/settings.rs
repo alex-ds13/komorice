@@ -6,8 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_std::channel::{self, Receiver};
-use iced::futures::{SinkExt, StreamExt};
+use iced::futures::SinkExt;
 use iced::theme::{Custom, Theme};
 use iced::widget::{column, horizontal_rule, text};
 use iced::{padding, Element, Fill, Subscription, Task};
@@ -17,6 +16,7 @@ use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 use serde::{Deserialize, Serialize};
+use smol::channel::{self, Receiver};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
@@ -26,7 +26,7 @@ pub struct Settings {
     pub show_advanced: bool,
     pub show_save_warning: bool,
     #[serde(skip)]
-    settings_watcher_tx: Option<async_std::channel::Sender<Input>>,
+    settings_watcher_tx: Option<smol::channel::Sender<Input>>,
 }
 
 impl Default for Settings {
@@ -49,7 +49,7 @@ pub enum Message {
     ChangedTheme(Theme),
     ChangedShowAdvanced(bool),
     ChangedShowSaveWarning(bool),
-    SettingsFileWatcherTx(async_std::channel::Sender<Input>),
+    SettingsFileWatcherTx(smol::channel::Sender<Input>),
 }
 
 #[derive(Debug, Clone)]
@@ -168,7 +168,7 @@ pub fn worker() -> Subscription<Message> {
                         }
 
                         let mut debouncer = new_debouncer(Duration::from_millis(250), move |res| {
-                            async_std::task::block_on(async {
+                            smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
                                 match sender.send(input).await {
                                     Ok(_) => {}
@@ -208,14 +208,14 @@ pub fn worker() -> Subscription<Message> {
                     }
                     State::Ready(data) => {
                         let Data {
-                            mut receiver,
+                            receiver,
                             debouncer,
                             mut ignore_event,
                         } = data;
-                        let input = receiver.select_next_some().await;
+                        let input = receiver.recv().await;
 
                         match input {
-                            Input::IgnoreNextEvent => {
+                            Ok(Input::IgnoreNextEvent) => {
                                 println!("IgnoreNextEvent");
                                 state = State::Ready(Data {
                                     debouncer,
@@ -223,7 +223,7 @@ pub fn worker() -> Subscription<Message> {
                                     ignore_event: ignore_event + 1,
                                 });
                             }
-                            Input::DebouncerRes(res) => {
+                            Ok(Input::DebouncerRes(res)) => {
                                 match res {
                                     Ok(events) => {
                                         events.iter().for_each(|event| {
@@ -234,6 +234,15 @@ pub fn worker() -> Subscription<Message> {
                                         println!("Error from file watcher: {error:?}")
                                     }
                                 }
+
+                                state = State::Ready(Data {
+                                    debouncer,
+                                    receiver,
+                                    ignore_event,
+                                });
+                            }
+                            Err(error) => {
+                                println!("Error from file watcher: {error:?}");
 
                                 state = State::Ready(Data {
                                     debouncer,
@@ -258,7 +267,7 @@ fn handle_event(
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading options");
-            async_std::task::block_on(async {
+            smol::block_on(async {
                 match load().await {
                     Ok(loaded_options) => {
                         let _ = output.send(Message::LoadedSettings(loaded_options)).await;
@@ -283,11 +292,11 @@ pub fn load_task() -> Task<Message> {
 }
 
 pub async fn load() -> Result<Settings, AppError> {
-    use async_std::prelude::*;
+    use smol::prelude::*;
 
     let mut contents = String::new();
 
-    let file_open_res = async_std::fs::File::open(config_path()).await;
+    let file_open_res = smol::fs::File::open(config_path()).await;
 
     let mut file = match file_open_res {
         Ok(file) => file,
@@ -324,7 +333,7 @@ pub fn save_task(settings: Settings) -> Task<Message> {
 }
 
 pub async fn save(settings: Settings) -> Result<(), AppError> {
-    use async_std::prelude::*;
+    use smol::prelude::*;
 
     let json = serde_json::to_string_pretty(&settings).map_err(|e| AppError {
         title: "Error writing to 'komorice.json' file".into(),
@@ -335,22 +344,18 @@ pub async fn save(settings: Settings) -> Result<(), AppError> {
     let path = config_path();
 
     if let Some(dir) = path.parent() {
-        async_std::fs::create_dir_all(dir)
-            .await
-            .map_err(|e| AppError {
-                title: "Error creating folder for 'komorice.json' file".into(),
-                description: Some(e.to_string()),
-                kind: AppErrorKind::Error,
-            })?;
-    }
-
-    let mut file = async_std::fs::File::create(path)
-        .await
-        .map_err(|e| AppError {
-            title: "Error creating 'komorice.json' file.".into(),
+        smol::fs::create_dir_all(dir).await.map_err(|e| AppError {
+            title: "Error creating folder for 'komorice.json' file".into(),
             description: Some(e.to_string()),
             kind: AppErrorKind::Error,
         })?;
+    }
+
+    let mut file = smol::fs::File::create(path).await.map_err(|e| AppError {
+        title: "Error creating 'komorice.json' file.".into(),
+        description: Some(e.to_string()),
+        kind: AppErrorKind::Error,
+    })?;
 
     file.write_all(json.as_bytes())
         .await
@@ -361,7 +366,7 @@ pub async fn save(settings: Settings) -> Result<(), AppError> {
         })?;
 
     // This is a simple way to save at most once every couple seconds
-    // async_std::task::sleep(std::time::Duration::from_secs(2)).await;
+    // smol::Timer::after(std::time::Duration::from_secs(2)).await;
 
     Ok(())
 }

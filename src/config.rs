@@ -8,11 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, path::PathBuf};
 
-use async_std::channel::{self, Receiver};
-use iced::{
-    futures::{SinkExt, StreamExt},
-    Subscription, Task,
-};
+use iced::{futures::SinkExt, Subscription, Task};
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
     BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
@@ -28,6 +24,7 @@ use notify_debouncer_mini::{
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
+use smol::channel::{self, Receiver};
 
 lazy_static! {
     pub static ref DEFAULT_CONFIG: StaticConfig = StaticConfig {
@@ -1267,7 +1264,7 @@ pub fn worker() -> Subscription<Message> {
                         }
 
                         let mut debouncer = new_debouncer(Duration::from_millis(250), move |res| {
-                            async_std::task::block_on(async {
+                            smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
                                 match sender.send(input).await {
                                     Ok(_) => {}
@@ -1296,14 +1293,15 @@ pub fn worker() -> Subscription<Message> {
                     }
                     State::Ready(data) => {
                         let Data {
-                            mut receiver,
+                            receiver,
                             debouncer,
                             mut ignore_event,
                         } = data;
-                        let input = receiver.select_next_some().await;
+
+                        let input = receiver.recv().await;
 
                         match input {
-                            Input::IgnoreNextEvent => {
+                            Ok(Input::IgnoreNextEvent) => {
                                 println!("IgnoreNextEvent");
                                 state = State::Ready(Data {
                                     debouncer,
@@ -1311,7 +1309,7 @@ pub fn worker() -> Subscription<Message> {
                                     ignore_event: ignore_event + 1,
                                 });
                             }
-                            Input::DebouncerRes(res) => {
+                            Ok(Input::DebouncerRes(res)) => {
                                 match res {
                                     Ok(events) => {
                                         events.iter().for_each(|event| {
@@ -1322,6 +1320,15 @@ pub fn worker() -> Subscription<Message> {
                                         println!("Error from file watcher: {error:?}")
                                     }
                                 }
+
+                                state = State::Ready(Data {
+                                    debouncer,
+                                    receiver,
+                                    ignore_event,
+                                });
+                            }
+                            Err(error) => {
+                                println!("Error from file watcher: {error:?}");
 
                                 state = State::Ready(Data {
                                     debouncer,
@@ -1346,7 +1353,7 @@ fn handle_event(
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading options");
-            async_std::task::block_on(async {
+            smol::block_on(async {
                 match load().await {
                     Ok(loaded_options) => {
                         let _ = output
@@ -1373,11 +1380,11 @@ pub fn load_task() -> Task<Message> {
 }
 
 async fn load() -> Result<StaticConfig, AppError> {
-    use async_std::prelude::*;
+    use smol::prelude::*;
 
     let mut contents = String::new();
 
-    let file_open_res = async_std::fs::File::open(config_path()).await;
+    let file_open_res = smol::fs::File::open(config_path()).await;
 
     let mut file = match file_open_res {
         Ok(file) => file,
@@ -1414,7 +1421,7 @@ pub fn save_task(config: StaticConfig) -> Task<Message> {
 }
 
 async fn save(config: StaticConfig) -> Result<(), AppError> {
-    use async_std::prelude::*;
+    use smol::prelude::*;
 
     let unmerged_config = unmerge_default(config);
     let json = serde_json::to_string_pretty(&unmerged_config).map_err(|e| AppError {
@@ -1431,7 +1438,7 @@ async fn save(config: StaticConfig) -> Result<(), AppError> {
     let path = config_path();
 
     // if let Some(dir) = path.parent() {
-    //     async_std::fs::create_dir_all(dir)
+    //     smol::fs::create_dir_all(dir)
     //         .await
     //         .map_err(|e| AppError {
     //             title: "Error creating folder for 'komorebi.json' file".into(),
@@ -1440,13 +1447,11 @@ async fn save(config: StaticConfig) -> Result<(), AppError> {
     //         })?;
     // }
 
-    let mut file = async_std::fs::File::create(path)
-        .await
-        .map_err(|e| AppError {
-            title: "Error creating 'komorebi.json' file.".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
+    let mut file = smol::fs::File::create(path).await.map_err(|e| AppError {
+        title: "Error creating 'komorebi.json' file.".into(),
+        description: Some(e.to_string()),
+        kind: AppErrorKind::Error,
+    })?;
 
     file.write_all(&json).await.map_err(|e| AppError {
         title: "Error saving 'komorebi.json' file".into(),
@@ -1455,7 +1460,7 @@ async fn save(config: StaticConfig) -> Result<(), AppError> {
     })?;
 
     // This is a simple way to save at most once every couple seconds
-    // async_std::task::sleep(std::time::Duration::from_secs(2)).await;
+    // smol::Timer::after(std::time::Duration::from_secs(2)).await;
 
     Ok(())
 }

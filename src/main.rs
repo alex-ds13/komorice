@@ -98,7 +98,7 @@ enum Message {
     // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     FailedToLoadConfig(AppError),
-    ConfigFileWatcherTx(async_std::channel::Sender<config::Input>),
+    ConfigFileWatcherTx(smol::channel::Sender<config::Input>),
     DiscardChanges,
     TrySave,
     ToggleConfigModal,
@@ -123,7 +123,7 @@ struct Komorice {
     has_loaded_config: bool,
     loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
-    config_watcher_tx: Option<async_std::channel::Sender<config::Input>>,
+    config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     settings: settings::Settings,
     show_save_config_modal: bool,
