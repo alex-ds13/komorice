@@ -8,8 +8,8 @@ mod komo_interop;
 mod screen;
 mod settings;
 mod utils;
+mod whkd;
 mod widget;
-mod whkd_interop;
 
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
@@ -93,7 +93,7 @@ enum Message {
     LiveDebug(live_debug::Message),
     Monitors(monitors::Message),
     Rules(rules::Message),
-    Sidebar(sidebar::Message),
+    Sidebar(screen::SidebarMessage),
     Stackbar(stackbar::Message),
     Theme(theme::Message),
     Transparency(transparency::Message),
@@ -112,9 +112,9 @@ enum Message {
 }
 
 struct Komorice {
-    sidebar: sidebar::Sidebar,
     main_screen: Screen,
     display_info: HashMap<usize, monitors::DisplayInfo>,
+    sidebar: screen::Sidebar,
     monitors: monitors::Monitors,
     border: border::Border,
     general: general::General,
@@ -127,7 +127,6 @@ struct Komorice {
     settings: settings::Settings,
     whkd: screen::whkd::Whkd,
     config: komorebi_client::StaticConfig,
-    has_loaded_config: bool,
     loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
     config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
@@ -140,8 +139,8 @@ struct Komorice {
 impl Default for Komorice {
     fn default() -> Self {
         Self {
-            sidebar: Default::default(),
             main_screen: Default::default(),
+            sidebar: Default::default(),
             display_info: Default::default(),
             monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
@@ -155,7 +154,6 @@ impl Default for Komorice {
             settings: Default::default(),
             whkd: Default::default(),
             config: DEFAULT_CONFIG.clone(),
-            has_loaded_config: Default::default(),
             loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
@@ -326,7 +324,7 @@ impl Komorice {
                     let config = config::merge_default(config);
                     self.config = config.clone();
                     self.is_dirty = self.populate_monitors();
-                    self.has_loaded_config = true;
+                    self.home.has_loaded_config = true;
                     self.loaded_config = Arc::new(config);
                     //TODO: show message on app to load external changes
                 }
@@ -453,7 +451,7 @@ impl Komorice {
             Screen::WhkdBinding => self.whkd.view(&self.whkdrc).map(Message::Whkd),
         };
 
-        let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
+        let sidebar = self.sidebar.view().map(Message::Sidebar);
         let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
         save_buttons = save_buttons.push_maybe((!self.errors.is_empty()).then(|| {
             button("Errors")

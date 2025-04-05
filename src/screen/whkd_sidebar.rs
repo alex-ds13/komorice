@@ -11,19 +11,19 @@ use iced::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Sidebar {
+pub struct WhkdSidebar {
     pub selected_screen: Screen,
 }
 
-impl Default for Sidebar {
+impl Default for WhkdSidebar {
     fn default() -> Self {
         Self {
-            selected_screen: Screen::General,
+            selected_screen: Screen::Whkd,
         }
     }
 }
 
-impl Sidebar {
+impl WhkdSidebar {
     pub fn update(&mut self, message: SidebarMessage) -> (SidebarAction, Task<SidebarMessage>) {
         match message {
             SidebarMessage::SelectScreen(screen) => {
@@ -38,36 +38,13 @@ impl Sidebar {
 
     pub fn view(&self) -> Element<SidebarMessage> {
         let home = screen_button(Screen::Home, &self.selected_screen);
-        let general = screen_button(Screen::General, &self.selected_screen);
-        let monitors = screen_button(Screen::Monitors, &self.selected_screen);
-        let border = screen_button(Screen::Border, &self.selected_screen);
-        let stackbar = screen_button(Screen::Stackbar, &self.selected_screen);
-        let transparency = screen_button(Screen::Transparency, &self.selected_screen);
-        let animation = screen_button(Screen::Animations, &self.selected_screen);
-        let theme = screen_button(Screen::Theme, &self.selected_screen);
-        let rules = screen_button(Screen::Rules, &self.selected_screen);
-        let debug = screen_button(Screen::LiveDebug, &self.selected_screen);
-        let settings = screen_button(Screen::Settings, &self.selected_screen);
         let whkd = screen_button(Screen::Whkd, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
         let main_content = scrollable(
-            column![
-                fixed_width,
-                general,
-                monitors,
-                border,
-                stackbar,
-                transparency,
-                animation,
-                theme,
-                rules,
-                debug,
-                settings,
-                whkd,
-            ]
-            .spacing(10)
-            .padding(padding::right(15).left(5).bottom(0))
-            .width(Shrink),
+            column![fixed_width, whkd]
+                .spacing(10)
+                .padding(padding::right(15).left(5).bottom(0))
+                .width(Shrink),
         )
         .height(Fill);
         let fixed_width_wider = Space::new(135, Shrink);

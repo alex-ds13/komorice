@@ -11,11 +11,15 @@ pub mod stackbar;
 pub mod theme;
 pub mod transparency;
 pub mod whkd;
+pub mod whkd_sidebar;
 pub mod workspace;
 
 use std::fmt::{Display, Formatter};
 
-use iced::{widget::value, Element};
+use iced::{
+    widget::{value, vertical_space},
+    Element, Task,
+};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Screen {
@@ -64,5 +68,42 @@ impl<Message> From<Screen> for Element<'_, Message> {
 impl<Message> From<&Screen> for Element<'_, Message> {
     fn from(screen: &Screen) -> Self {
         value(screen).into()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum SidebarMessage {
+    SelectScreen(Screen),
+}
+
+#[derive(Clone, Debug)]
+pub enum SidebarAction {
+    None,
+    UpdateMainScreen(Screen),
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum Sidebar {
+    #[default]
+    None,
+    Config(sidebar::Sidebar),
+    Whkd(whkd_sidebar::WhkdSidebar),
+}
+
+impl Sidebar {
+    pub fn update(&mut self, message: SidebarMessage) -> (SidebarAction, Task<SidebarMessage>) {
+        match self {
+            Sidebar::None => (SidebarAction::None, Task::none()),
+            Sidebar::Config(sidebar) => sidebar.update(message),
+            Sidebar::Whkd(whkd_sidebar) => whkd_sidebar.update(message),
+        }
+    }
+
+    pub fn view(&self) -> Element<SidebarMessage> {
+        match self {
+            Sidebar::None => vertical_space().into(),
+            Sidebar::Config(sidebar) => sidebar.view(),
+            Sidebar::Whkd(whkd_sidebar) => whkd_sidebar.view(),
+        }
     }
 }
