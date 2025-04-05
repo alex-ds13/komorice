@@ -1,8 +1,8 @@
 pub mod unparser;
 
-use whkd_core::{Shell, Whkdrc};
+pub use whkd_core::{HotkeyBinding, Shell, Whkdrc};
 
-static DEFAULT_WHKDRC: Whkdrc = Whkdrc {
+pub static DEFAULT_WHKDRC: Whkdrc = Whkdrc {
     shell: Shell::Pwsh,
     app_bindings: Vec::new(),
     bindings: Vec::new(),
