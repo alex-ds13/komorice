@@ -48,7 +48,6 @@ impl Sidebar {
         let rules = screen_button(Screen::Rules, &self.selected_screen);
         let debug = screen_button(Screen::LiveDebug, &self.selected_screen);
         let settings = screen_button(Screen::Settings, &self.selected_screen);
-        let whkd = screen_button(Screen::Whkd, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
         let main_content = scrollable(
             column![
@@ -63,7 +62,6 @@ impl Sidebar {
                 rules,
                 debug,
                 settings,
-                whkd,
             ]
             .spacing(10)
             .padding(padding::right(15).left(5).bottom(0))
