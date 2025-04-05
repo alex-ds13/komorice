@@ -14,8 +14,8 @@ mod widget;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    animation, border, general, live_debug, monitors, rules, sidebar, stackbar, theme,
-    transparency, Screen,
+    animation, border, general, home, live_debug, monitors, rules, stackbar, theme, transparency,
+    Screen,
 };
 use crate::whkd::Whkdrc;
 use crate::widget::{button_with_icon, icons};
@@ -26,8 +26,8 @@ use std::sync::Arc;
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, horizontal_space, image, rich_text,
-        row, scrollable, span, stack, text, vertical_rule,
+        button, checkbox, column, container, horizontal_rule, horizontal_space, rich_text, row,
+        scrollable, span, text, vertical_rule,
     },
     Center, Element, Fill, Font, Right, Subscription, Task, Theme,
 };
@@ -87,6 +87,7 @@ enum Message {
     ClearErrors,
 
     // View/Screen related Messages
+    Home(home::Message),
     Animation(animation::Message),
     Border(border::Message),
     General(general::Message),
@@ -115,6 +116,7 @@ struct Komorice {
     main_screen: Screen,
     display_info: HashMap<usize, monitors::DisplayInfo>,
     sidebar: screen::Sidebar,
+    home: home::Home,
     monitors: monitors::Monitors,
     border: border::Border,
     general: general::General,
@@ -142,6 +144,7 @@ impl Default for Komorice {
             main_screen: Default::default(),
             sidebar: Default::default(),
             display_info: Default::default(),
+            home: Default::default(),
             monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
             general: Default::default(),
@@ -195,6 +198,18 @@ impl Komorice {
             Message::ClearErrors => {
                 self.errors.clear();
                 self.show_errors_modal = false;
+            }
+            Message::Home(message) => {
+                let (action, task) = self.home.update(message);
+                let action_task = match action {
+                    home::Action::None => Task::none(),
+                    home::Action::ChangeMainScreen(screen, sidebar) => {
+                        self.main_screen = screen;
+                        self.sidebar = sidebar;
+                        Task::none()
+                    }
+                };
+                return Task::batch([task.map(Message::Home), action_task]);
             }
             Message::General(message) => {
                 let (action, task) = self.general.update(message, &mut self.config);
@@ -370,49 +385,7 @@ impl Komorice {
 
     pub fn view(&self) -> Element<Message> {
         let main_screen: Element<Message> = match self.main_screen {
-            Screen::Home => {
-                let image =
-                    container(image("assets/komorice.png").width(256).height(256)).center_x(Fill);
-                let title = container(
-                    row![
-                        text("🍉").font(*EMOJI_FONT).size(70),
-                        text("Komorice").size(75),
-                        text("🍚").font(*EMOJI_FONT).size(70)
-                    ]
-                    .align_y(Center),
-                )
-                .center_x(Fill);
-                let subtitle = text("A komorebi GUI ricing configurator!")
-                    .size(20)
-                    .width(Fill)
-                    .align_x(Center);
-                let col = column![title, subtitle, image].spacing(20);
-                stack([
-                    container(col)
-                        .padding(20)
-                        .center_x(Fill)
-                        .height(Fill)
-                        .into(),
-                    container(
-                        text!(
-                            "Config was {} loaded from \"{}\"!",
-                            if self.has_loaded_config {
-                                "successfully"
-                            } else {
-                                "not"
-                            },
-                            config::config_path().display()
-                        )
-                        .font(*ITALIC_FONT)
-                        .size(18),
-                    )
-                    .center_x(Fill)
-                    .align_bottom(Fill)
-                    .padding(padding::bottom(10))
-                    .into(),
-                ])
-                .into()
-            }
+            Screen::Home => self.home.view().map(Message::Home),
             Screen::General => self.general.view(&self.config).map(Message::General),
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
@@ -450,6 +423,10 @@ impl Komorice {
             Screen::Whkd => self.whkd.view(&self.whkdrc).map(Message::Whkd),
             Screen::WhkdBinding => self.whkd.view(&self.whkdrc).map(Message::Whkd),
         };
+
+        if matches!(self.main_screen, Screen::Home) {
+            return main_screen;
+        }
 
         let sidebar = self.sidebar.view().map(Message::Sidebar);
         let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
