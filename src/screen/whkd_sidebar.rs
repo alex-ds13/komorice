@@ -39,9 +39,10 @@ impl WhkdSidebar {
     pub fn view(&self) -> Element<SidebarMessage> {
         let home = screen_button(Screen::Home, &self.selected_screen);
         let whkd = screen_button(Screen::Whkd, &self.selected_screen);
+        let settings = screen_button(Screen::Settings, &self.selected_screen);
         let fixed_width = Space::new(120, Shrink);
         let main_content = scrollable(
-            column![fixed_width, whkd]
+            column![fixed_width, whkd, settings]
                 .spacing(10)
                 .padding(padding::right(15).left(5).bottom(0))
                 .width(Shrink),
