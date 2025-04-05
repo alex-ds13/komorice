@@ -1,10 +1,9 @@
 use super::{Screen, Sidebar};
 
-use crate::{config, EMOJI_FONT, ITALIC_FONT};
+use crate::EMOJI_FONT;
 
 use iced::{
-    padding,
-    widget::{button, column, container, image, row, stack, text, Space},
+    widget::{button, center, column, container, image, row, text, Space},
     Center, Element, Fill, Shrink, Task,
 };
 
@@ -73,7 +72,7 @@ impl Home {
     }
 
     pub fn view(&self) -> Element<Message> {
-        let image = container(image("assets/komorice.png").width(256).height(256)).center_x(Fill);
+        let image = center(image("assets/komorice.png").width(256).height(256));
         let title = container(
             row![
                 text("🍉").font(*EMOJI_FONT).size(70),
@@ -99,35 +98,18 @@ impl Home {
             Message::LoadWhkdrc,
             Message::NewWhkdrc,
         );
-        let buttons_row = row![config_buttons, whkd_buttons].spacing(50);
+        let buttons_row = row![config_buttons, whkd_buttons]
+            .spacing(50)
+            .height(Shrink);
         let col = column![title, subtitle, image, buttons_row]
             .spacing(20)
             .align_x(Center);
-        stack([
-            container(col)
-                .padding(20)
-                .center_x(Fill)
-                .height(Fill)
-                .into(),
-            container(
-                text!(
-                    "Config was {} loaded from \"{}\"!",
-                    if self.has_loaded_config {
-                        "successfully"
-                    } else {
-                        "not"
-                    },
-                    config::config_path().display()
-                )
-                .font(*ITALIC_FONT)
-                .size(18),
-            )
+
+        container(col)
+            .padding(20)
             .center_x(Fill)
-            .align_bottom(Fill)
-            .padding(padding::bottom(10))
-            .into(),
-        ])
-        .into()
+            .height(Fill)
+            .into()
     }
 
     fn button_col(
