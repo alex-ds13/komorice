@@ -1,6 +1,7 @@
 pub mod animation;
 pub mod border;
 pub mod general;
+pub mod home;
 pub mod live_debug;
 pub mod monitor;
 pub mod monitors;
