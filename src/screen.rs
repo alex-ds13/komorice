@@ -10,6 +10,7 @@ pub mod sidebar;
 pub mod stackbar;
 pub mod theme;
 pub mod transparency;
+pub mod whkd;
 pub mod workspace;
 
 use std::fmt::{Display, Formatter};
@@ -30,6 +31,8 @@ pub enum Screen {
     Rules,
     LiveDebug,
     Settings,
+    Whkd,
+    WhkdBinding,
 }
 
 impl Display for Screen {
@@ -46,6 +49,8 @@ impl Display for Screen {
             Screen::Rules => write!(f, "Rules"),
             Screen::LiveDebug => write!(f, "Live Debug"),
             Screen::Settings => write!(f, "Settings"),
+            Screen::Whkd => write!(f, "Whkd"),
+            Screen::WhkdBinding => write!(f, "Whkd Binding"),
         }
     }
 }

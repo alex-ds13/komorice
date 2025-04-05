@@ -17,6 +17,7 @@ use crate::screen::{
     animation, border, general, live_debug, monitors, rules, sidebar, stackbar, theme,
     transparency, Screen,
 };
+use crate::whkd::Whkdrc;
 use crate::widget::{button_with_icon, icons};
 
 use std::collections::HashMap;
@@ -31,6 +32,7 @@ use iced::{
     Center, Element, Fill, Font, Right, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
+use whkd::DEFAULT_WHKDRC;
 
 lazy_static! {
     static ref KOMOREBI_VERSION: &'static str = "master";
@@ -96,6 +98,7 @@ enum Message {
     Theme(theme::Message),
     Transparency(transparency::Message),
     Settings(settings::Message),
+    Whkd(screen::whkd::Message),
 
     // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
@@ -121,13 +124,15 @@ struct Komorice {
     theme_screen: theme::Theme,
     rules: rules::Rules,
     live_debug: live_debug::LiveDebug,
+    settings: settings::Settings,
+    whkd: screen::whkd::Whkd,
     config: komorebi_client::StaticConfig,
     has_loaded_config: bool,
     loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
     config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
+    whkdrc: Whkdrc,
     errors: Vec<AppError>,
-    settings: settings::Settings,
     show_save_config_modal: bool,
     show_errors_modal: bool,
 }
@@ -147,13 +152,15 @@ impl Default for Komorice {
             theme_screen: Default::default(),
             rules: Default::default(),
             live_debug: Default::default(),
+            settings: Default::default(),
+            whkd: Default::default(),
             config: DEFAULT_CONFIG.clone(),
             has_loaded_config: Default::default(),
             loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
+            whkdrc: DEFAULT_WHKDRC.clone(),
             errors: Default::default(),
-            settings: Default::default(),
             show_save_config_modal: Default::default(),
             show_errors_modal: Default::default(),
         }
@@ -265,6 +272,13 @@ impl Komorice {
                 };
                 return Task::batch([task.map(Message::Settings), action_task]);
             }
+            Message::Whkd(message) => {
+                let (action, task) = self.whkd.update(message, &mut self.whkdrc);
+                let action_task = match action {
+                    screen::whkd::Action::None => Task::none(),
+                };
+                return Task::batch([task.map(Message::Whkd), action_task]);
+            }
             Message::Animation(message) => {
                 if self.config.animation.is_none() {
                     self.config.animation = Some(animation::default_animations_config());
@@ -297,34 +311,10 @@ impl Komorice {
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
                 let action_task = match action {
-                    sidebar::Action::None => Task::none(),
-                    sidebar::Action::UpdateMainScreen(screen) => {
-                        if SCREENS_TO_RESET.contains(&screen) {
-                            match screen {
-                                Screen::Home => {
-                                    unreachable!("should never try to reset home screen!")
-                                }
-                                Screen::General => self.general = general::General::default(),
-                                Screen::Monitors => {
-                                    self.monitors = monitors::Monitors::new(&self.config)
-                                }
-                                Screen::Border => self.border = border::Border::default(),
-                                Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
-                                Screen::Transparency => {
-                                    self.transparency = transparency::Transparency::default()
-                                }
-                                Screen::Animations => {
-                                    self.animation = animation::Animation::default()
-                                }
-                                Screen::Theme => self.theme_screen = theme::Theme::default(),
-                                Screen::Rules => self.rules = rules::Rules::default(),
-                                Screen::LiveDebug => self.live_debug.reset_screen(),
-                                Screen::Settings => {
-                                    unreachable!("should never try to reset settings screen!")
-                                }
-                            }
-                        }
+                    screen::SidebarAction::None => Task::none(),
+                    screen::SidebarAction::UpdateMainScreen(screen) => {
                         self.main_screen = screen;
+                        self.reset_screen();
                         Task::none()
                     }
                 };
@@ -459,6 +449,8 @@ impl Komorice {
                 .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => self.settings.view().map(Message::Settings),
+            Screen::Whkd => self.whkd.view(&self.whkdrc).map(Message::Whkd),
+            Screen::WhkdBinding => self.whkd.view(&self.whkdrc).map(Message::Whkd),
         };
 
         let sidebar: Element<Message> = self.sidebar.view().map(Message::Sidebar);
@@ -500,7 +492,9 @@ impl Komorice {
             | Screen::Animations
             | Screen::Theme
             | Screen::LiveDebug
-            | Screen::Settings => Subscription::none(),
+            | Screen::Settings
+            | Screen::Whkd
+            | Screen::WhkdBinding => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
             Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
             Screen::Rules => self.rules.subscription().map(Message::Rules),
@@ -531,6 +525,32 @@ impl Komorice {
 
     fn check_changes(&mut self) {
         self.is_dirty = self.config != *self.loaded_config;
+    }
+
+    /// Checks if the current screen allows resetting and if it does, it applies the resetting
+    /// function for that screen.
+    fn reset_screen(&mut self) {
+        if SCREENS_TO_RESET.contains(&self.main_screen) {
+            match self.main_screen {
+                Screen::Home => {
+                    unreachable!("should never try to reset home screen!")
+                }
+                Screen::General => self.general = general::General::default(),
+                Screen::Monitors => self.monitors = monitors::Monitors::new(&self.config),
+                Screen::Border => self.border = border::Border::default(),
+                Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
+                Screen::Transparency => self.transparency = transparency::Transparency::default(),
+                Screen::Animations => self.animation = animation::Animation::default(),
+                Screen::Theme => self.theme_screen = theme::Theme::default(),
+                Screen::Rules => self.rules = rules::Rules::default(),
+                Screen::LiveDebug => self.live_debug.reset_screen(),
+                Screen::Settings => {
+                    unreachable!("should never try to reset settings screen!")
+                }
+                Screen::Whkd => self.whkd = Default::default(),
+                Screen::WhkdBinding => {}
+            }
+        }
     }
 
     fn save_warning(&self) -> container::Container<Message> {
