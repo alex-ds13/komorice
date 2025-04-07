@@ -12,15 +12,11 @@ pub mod stackbar;
 pub mod theme;
 pub mod transparency;
 pub mod whkd;
-pub mod whkd_sidebar;
 pub mod workspace;
 
 use std::fmt::{Display, Formatter};
 
-use iced::{
-    widget::{value, vertical_space},
-    Element, Task,
-};
+use iced::{widget::value, Element};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Screen {
@@ -72,39 +68,26 @@ impl<Message> From<&Screen> for Element<'_, Message> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum SidebarMessage {
-    SelectScreen(Screen),
+#[derive(Debug, Clone)]
+pub enum ConfigType {
+    Komorebi,
+    Whkd,
 }
 
-#[derive(Clone, Debug)]
-pub enum SidebarAction {
-    None,
-    UpdateMainScreen(Screen),
-}
-
-#[derive(Debug, Default, Clone)]
-pub enum Sidebar {
-    #[default]
-    None,
-    Config(sidebar::Sidebar),
-    Whkd(whkd_sidebar::WhkdSidebar),
-}
-
-impl Sidebar {
-    pub fn update(&mut self, message: SidebarMessage) -> (SidebarAction, Task<SidebarMessage>) {
+impl ConfigType {
+    pub fn file_str(&self) -> &'static str {
         match self {
-            Sidebar::None => (SidebarAction::None, Task::none()),
-            Sidebar::Config(sidebar) => sidebar.update(message),
-            Sidebar::Whkd(whkd_sidebar) => whkd_sidebar.update(message),
+            ConfigType::Komorebi => "config",
+            ConfigType::Whkd => "whkdrc",
         }
     }
+}
 
-    pub fn view(&self) -> Element<SidebarMessage> {
+impl std::fmt::Display for ConfigType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Sidebar::None => vertical_space().into(),
-            Sidebar::Config(sidebar) => sidebar.view(),
-            Sidebar::Whkd(whkd_sidebar) => whkd_sidebar.view(),
+            ConfigType::Komorebi => write!(f, "Komorebi"),
+            ConfigType::Whkd => write!(f, "Whkd"),
         }
     }
 }

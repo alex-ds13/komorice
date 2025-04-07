@@ -1,4 +1,4 @@
-use super::{Screen, Sidebar};
+use super::{ConfigType, Screen};
 
 use crate::EMOJI_FONT;
 
@@ -20,31 +20,7 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub enum Action {
     None,
-    ChangeMainScreen(Screen, Sidebar),
-}
-
-#[derive(Debug, Clone)]
-pub enum ConfigType {
-    Komorebi,
-    Whkd,
-}
-
-impl ConfigType {
-    pub fn file_str(&self) -> &'static str {
-        match self {
-            ConfigType::Komorebi => "config",
-            ConfigType::Whkd => "whkdrc",
-        }
-    }
-}
-
-impl std::fmt::Display for ConfigType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigType::Komorebi => write!(f, "Komorebi"),
-            ConfigType::Whkd => write!(f, "Whkd"),
-        }
-    }
+    ChangeConfigType(ConfigType),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -56,16 +32,12 @@ pub struct Home {
 impl Home {
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
-            Message::EditActiveConfig => (
-                Action::ChangeMainScreen(Screen::General, Sidebar::Config(Default::default())),
-                Task::none(),
-            ),
+            Message::EditActiveConfig => {
+                (Action::ChangeConfigType(ConfigType::Komorebi), Task::none())
+            }
             Message::LoadConfig => todo!(),
             Message::NewConfig => todo!(),
-            Message::EditActiveWhkdrc => (
-                Action::ChangeMainScreen(Screen::Whkd, Sidebar::Whkd(Default::default())),
-                Task::none(),
-            ),
+            Message::EditActiveWhkdrc => (Action::ChangeConfigType(ConfigType::Whkd), Task::none()),
             Message::LoadWhkdrc => todo!(),
             Message::NewWhkdrc => todo!(),
         }

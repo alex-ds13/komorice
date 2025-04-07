@@ -14,8 +14,8 @@ mod widget;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    animation, border, general, home, live_debug, monitors, rules, stackbar, theme, transparency,
-    Screen,
+    animation, border, general, home, live_debug, monitors, rules, sidebar, stackbar, theme,
+    transparency, Screen,
 };
 use crate::whkd::Whkdrc;
 use crate::widget::{button_with_icon, icons};
@@ -94,7 +94,7 @@ enum Message {
     LiveDebug(live_debug::Message),
     Monitors(monitors::Message),
     Rules(rules::Message),
-    Sidebar(screen::SidebarMessage),
+    Sidebar(sidebar::Message),
     Stackbar(stackbar::Message),
     Theme(theme::Message),
     Transparency(transparency::Message),
@@ -115,7 +115,7 @@ enum Message {
 struct Komorice {
     main_screen: Screen,
     display_info: HashMap<usize, monitors::DisplayInfo>,
-    sidebar: screen::Sidebar,
+    sidebar: sidebar::Sidebar,
     home: home::Home,
     monitors: monitors::Monitors,
     border: border::Border,
@@ -203,9 +203,9 @@ impl Komorice {
                 let (action, task) = self.home.update(message);
                 let action_task = match action {
                     home::Action::None => Task::none(),
-                    home::Action::ChangeMainScreen(screen, sidebar) => {
-                        self.main_screen = screen;
-                        self.sidebar = sidebar;
+                    home::Action::ChangeConfigType(config_type) => {
+                        self.sidebar.config_type = config_type;
+                        self.main_screen = self.sidebar.selected_screen();
                         Task::none()
                     }
                 };
@@ -324,8 +324,12 @@ impl Komorice {
             Message::Sidebar(message) => {
                 let (action, task) = self.sidebar.update(message);
                 let action_task = match action {
-                    screen::SidebarAction::None => Task::none(),
-                    screen::SidebarAction::UpdateMainScreen(screen) => {
+                    sidebar::Action::None => Task::none(),
+                    sidebar::Action::SetHomeScreen => {
+                        self.main_screen = Screen::Home;
+                        Task::none()
+                    }
+                    sidebar::Action::UpdateMainScreen(screen) => {
                         self.main_screen = screen;
                         self.reset_screen();
                         Task::none()
