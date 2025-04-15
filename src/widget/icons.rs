@@ -1,6 +1,6 @@
 // Generated automatically by iced_fontello at build time.
 // Do not edit manually. Source: ../../assets/icons.toml
-// 60f5552fa41ac2b40d8987059c6ce2af5ec9ee55582b493068e41c686ebcbe0f
+// 3e6d8a31b7c7e16ce6072135f43307a17cf6a6ea0289f5ee5431d92d65518a90
 use iced::widget::{text, Text};
 use iced::Font;
 
