@@ -8,8 +8,9 @@ use crate::{widget, BOLD_FONT, EMOJI_FONT};
 use iced::{
     padding,
     widget::{
-        button, checkbox, column, combo_box, container, horizontal_rule, mouse_area, pick_list,
-        row, scrollable, text, text_input, toggler, Button, Column, Container, Row, Text,
+        button, checkbox, column, combo_box, container, horizontal_rule, horizontal_space,
+        mouse_area, pick_list, row, scrollable, text, text_input, toggler, Button, Column,
+        Container, Row, Text,
     },
     Center, Color, Element, Fill,
 };
@@ -176,6 +177,46 @@ pub fn label_with_description<'a, Message: 'a>(
     label_element_with_description(widget::label(name), description)
 }
 
+///Wraps an element `el` with `name` as label and a description on an opt_box
+pub fn opt_custom_el<'a, Message: 'a + Clone>(
+    name: impl Into<Text<'a>>,
+    description: Option<&'a str>,
+    element: impl Into<Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let main = row![label_with_description(name, description), element.into()]
+        .spacing(10)
+        .align_y(Center);
+
+    opt_box(main).into()
+}
+
+///Wraps an element `el` with `name` as label and a description on an opt_box
+///It also adds the disable_checkbox according to the disable args
+pub fn opt_custom_el_disable_default<'a, Message: 'a + Clone>(
+    name: impl Into<Text<'a>>,
+    description: Option<&'a str>,
+    element: impl Into<Element<'a, Message>>,
+    is_dirty: bool,
+    reset_message: Message,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let label = if is_dirty {
+        row![name.into(), reset_button(reset_message)]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name.into()].height(30).align_y(Center)
+    };
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(element.into())
+        .spacing(10)
+        .align_y(Center);
+
+    opt_box(element).into()
+}
+
 ///Creates a `button` with `name` as label and with a custom element as the button itself.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
@@ -186,9 +227,7 @@ pub fn opt_custom_button<'a, Message: 'a + Clone>(
     on_hover: impl Fn(bool) -> Message,
     element: impl Into<Element<'a, Message>>,
 ) -> Element<'a, Message> {
-    let main = row![label_with_description(name, description), element.into()]
-        .align_y(Center)
-        .padding(padding::right(10));
+    let main = opt_custom_el(name, description, element);
 
     let area = |el| {
         mouse_area(el)
@@ -198,7 +237,7 @@ pub fn opt_custom_button<'a, Message: 'a + Clone>(
             .interaction(iced::mouse::Interaction::Pointer)
     };
 
-    area(opt_box(main)).into()
+    area(main).into()
 }
 
 ///Creates a `button` with `name` as label.
@@ -334,13 +373,18 @@ pub fn input<'a, Message: 'a + Clone>(
     on_change: impl Fn(String) -> Message + 'a,
     on_submit: Option<Message>,
 ) -> Element<'a, Message> {
-    let element = row![
-        label_with_description(name, description),
+    opt_custom_el(
+        name,
+        description,
         widget::input(placeholder, value, on_change, on_submit),
-    ]
-    .spacing(10)
-    .align_y(Center);
-    opt_box(element).into()
+    )
+    // let element = row![
+    //     label_with_description(name, description),
+    //     widget::input(placeholder, value, on_change, on_submit),
+    // ]
+    // .spacing(10)
+    // .align_y(Center);
+    // opt_box(element).into()
 }
 
 ///Creates a row with a label with `name`, a `text_input` and a disable checkbox which allows
@@ -385,24 +429,34 @@ pub fn input_with_disable_default<'a, Message: 'a + Clone>(
 ) -> Element<'a, Message> {
     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
     let is_dirty = value != default_value && !should_disable;
-    let label = if is_dirty {
-        row![name, reset_button(on_change(default_value))]
-            .spacing(5)
-            .height(30)
-            .align_y(Center)
-    } else {
-        row![name].height(30).align_y(Center)
-    };
+    // let label = if is_dirty {
+    //     row![name, reset_button(on_change(default_value))]
+    //         .spacing(5)
+    //         .height(30)
+    //         .align_y(Center)
+    // } else {
+    //     row![name].height(30).align_y(Center)
+    // };
     let on_input_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
-    let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(
-            widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
-        )
-        .spacing(10)
-        .align_y(Center);
-    opt_box(element).into()
+    let element = widget::input(placeholder, value, on_change.clone(), on_submit)
+        .on_input_maybe(on_input_maybe);
+    // let element = row![label_element_with_description(label, description)]
+    //     .push_maybe(disable_checkbox(disable_args))
+    //     .push(
+    //         widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
+    //     )
+    //     .spacing(10)
+    //     .align_y(Center);
+    opt_custom_el_disable_default(
+        name,
+        description,
+        element,
+        is_dirty,
+        on_change(default_value),
+        disable_args,
+    )
+    // opt_box(element).into()
 }
 
 ///Creates a row with a label with `name` and a `number_input`
@@ -992,7 +1046,11 @@ where
     // https://stackoverflow.com/a/3943023
     let linear_bg = bg_color.into_linear();
     let luminance = 0.2126 * linear_bg[0] + 0.7152 * linear_bg[1] + 0.0722 * linear_bg[2];
-    let text_color = if luminance > 0.179 { Color::BLACK } else { Color::WHITE };
+    let text_color = if luminance > 0.179 {
+        Color::BLACK
+    } else {
+        Color::WHITE
+    };
 
     let element = row![column![
         label_element_with_description(label, description),
