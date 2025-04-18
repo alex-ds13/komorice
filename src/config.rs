@@ -8,7 +8,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, path::PathBuf};
 
-use iced::{futures::SinkExt, Subscription, Task};
+use iced::{
+    futures::{channel::mpsc, SinkExt},
+    Subscription, Task,
+};
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
     BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
@@ -1244,7 +1247,7 @@ pub enum Input {
 
 pub fn worker() -> Subscription<Message> {
     Subscription::run(|| {
-        iced::stream::channel(10, move |mut output| async move {
+        iced::stream::channel(10, |mut output: mpsc::Sender<Message>| async move {
             let mut state = State::Starting;
 
             loop {

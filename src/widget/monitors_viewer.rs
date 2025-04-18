@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use iced::{
     advanced::{
-        graphics::core::{event, touch},
+        graphics::core::touch,
         layout::{self, Layout, Limits, Node},
         mouse,
         renderer::Quad,
@@ -22,6 +22,7 @@ pub struct Monitors<'a, Message> {
     monitors: &'a HashMap<usize, DisplayInfo>,
     selected: Option<usize>,
     on_selected: Option<Box<dyn Fn(usize) -> Message + 'a>>,
+    statuses: Vec<Status>,
 }
 
 impl<'a, Message> Monitors<'a, Message> {
@@ -35,10 +36,12 @@ impl<'a, Message> Monitors<'a, Message> {
     const DEFAULT_PADDING: f32 = 5.0;
 
     pub fn new(monitors: &'a HashMap<usize, DisplayInfo>) -> Self {
+        let statuses = vec![Status::Idle; monitors.len()];
         Monitors {
             monitors,
             selected: None,
             on_selected: None,
+            statuses,
         }
     }
 
@@ -90,11 +93,12 @@ where
     // Renderer: iced::advanced::Renderer,
 {
     // fn tag(&self) -> tree::Tag {
-    //     tree::Tag::of::<State>()
+    //     tree::Tag::of::<Vec<Status>>()
     // }
-    //
+
     // fn state(&self) -> tree::State {
-    //     tree::State::new(State::default())
+    //     let statuses = vec![Status::Idle; self.monitors.len()];
+    //     tree::State::new(statuses)
     // }
 
     fn size(&self) -> Size<Length> {
@@ -231,24 +235,25 @@ where
         let border_color: iced::Color = iced::color!(0x000000);
         let hover_border_color: iced::Color = iced::color!(0x333333);
         let selected_border_color: iced::Color = iced::color!(0x45ccff);
-        for ((idx, DisplayInfo { device_id, .. }), child_layout) in
-            self.monitors.iter().zip(layout.children())
+
+        for (((idx, DisplayInfo { device_id, .. }), child_layout), status) in self
+            .monitors
+            .iter()
+            .zip(layout.children())
+            .zip(&self.statuses)
         {
             let bounds = child_layout.children().next().unwrap().bounds();
-            let is_hover = _cursor.position_over(bounds).is_some();
-            let background = if matches!(self.selected, Some(i) if i == *idx) {
-                selected_background
-            } else if is_hover {
-                hover_background
-            } else {
-                background
+            let background = match status {
+                Status::Idle => background,
+                Status::Selected => selected_background,
+                Status::SelectedHovered => hover_background,
+                Status::Hovered => hover_background,
             };
-            let border_color = if matches!(self.selected, Some(i) if i == *idx) {
-                selected_border_color
-            } else if is_hover {
-                hover_border_color
-            } else {
-                border_color
+            let border_color = match status {
+                Status::Idle => border_color,
+                Status::Selected => selected_border_color,
+                Status::SelectedHovered => selected_border_color,
+                Status::Hovered => hover_border_color,
             };
             // println!("DRAW -> child_layout: {:#?}", _child_layout);
             renderer.fill_quad(
@@ -276,8 +281,8 @@ where
                 iced::advanced::text::Text {
                     content: device_id.clone(),
                     bounds: bounds.size(),
-                    horizontal_alignment: alignment::Horizontal::Center,
-                    vertical_alignment: alignment::Vertical::Top,
+                    align_x: alignment::Horizontal::Center.into(),
+                    align_y: alignment::Vertical::Top,
                     shaping: iced::advanced::text::Shaping::default(),
                     font: Renderer::default_font(renderer),
                     size: device_id_size,
@@ -292,8 +297,8 @@ where
                 iced::advanced::text::Text {
                     content: idx.to_string(),
                     bounds: bounds.size(),
-                    horizontal_alignment: alignment::Horizontal::Center,
-                    vertical_alignment: alignment::Vertical::Center,
+                    align_x: alignment::Horizontal::Center.into(),
+                    align_y: alignment::Vertical::Center,
                     shaping: iced::advanced::text::Shaping::default(),
                     font: Renderer::default_font(renderer),
                     size: iced::Pixels(40.0),
@@ -307,17 +312,17 @@ where
         }
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         _tree: &mut Tree,
-        event: Event,
+        event: &Event,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
-    ) -> event::Status {
+    ) {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
@@ -328,7 +333,7 @@ where
                     if mouse_over {
                         if let Some(on_pressed) = &self.on_selected {
                             shell.publish((on_pressed)(*idx));
-                            return event::Status::Captured;
+                            shell.capture_event();
                         }
                     }
                 }
@@ -336,7 +341,35 @@ where
             _ => {}
         }
 
-        event::Status::Ignored
+        let mut redraw = false;
+        for (((idx, _), child_layout), status) in self
+            .monitors
+            .iter()
+            .zip(layout.children())
+            .zip(&mut self.statuses)
+        {
+            let bounds = child_layout.children().next().unwrap().bounds();
+            let is_mouse_over = cursor.is_over(bounds);
+            let new_status = if matches!(self.selected, Some(i) if i == *idx) {
+                if is_mouse_over {
+                    Status::SelectedHovered
+                } else {
+                    Status::Selected
+                }
+            } else if is_mouse_over {
+                Status::Hovered
+            } else {
+                Status::Idle
+            };
+            if new_status != *status {
+                *status = new_status;
+                redraw = true;
+            }
+        }
+
+        if redraw {
+            shell.request_redraw();
+        }
     }
 
     fn mouse_interaction(
@@ -347,12 +380,24 @@ where
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        if cursor.is_over(layout.bounds()) && self.on_selected.is_some() {
-            mouse::Interaction::Pointer
-        } else {
-            mouse::Interaction::default()
+        let mut interaction = mouse::Interaction::default();
+        for child_layout in layout.children() {
+            let bounds = child_layout.children().next().unwrap().bounds();
+            let is_mouse_over = cursor.position_over(bounds).is_some();
+            if is_mouse_over {
+                interaction = mouse::Interaction::Pointer;
+            }
         }
+        interaction
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Status {
+    Idle,
+    Selected,
+    SelectedHovered,
+    Hovered,
 }
 
 impl<'a, Message: 'a> From<Monitors<'a, Message>> for Element<'a, Message> {

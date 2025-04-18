@@ -383,18 +383,18 @@ impl Workspace {
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
             None,
         );
-        let container_padding = opt_helpers::number_with_disable_default_option(
-            "Container Padding",
-            Some("Container padding (default: global)"),
-            ws_config.container_padding,
-            DEFAULT_WORKSPACE_CONFIG.container_padding,
-            |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.container_padding.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
-            }),
-        );
+        // let container_padding = opt_helpers::number_with_disable_default_option(
+        //     "Container Padding",
+        //     Some("Container padding (default: global)"),
+        //     ws_config.container_padding,
+        //     DEFAULT_WORKSPACE_CONFIG.container_padding,
+        //     |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
+        //     Some(opt_helpers::DisableArgs {
+        //         disable: ws_config.container_padding.is_none(),
+        //         label: Some("Global"),
+        //         on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
+        //     }),
+        // );
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
             Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
@@ -499,18 +499,18 @@ impl Workspace {
                 },
             }),
         );
-        let workspace_padding = opt_helpers::number_with_disable_default_option(
-            "Workspace Padding",
-            Some("Workspace padding (default: global)"),
-            ws_config.workspace_padding,
-            DEFAULT_WORKSPACE_CONFIG.workspace_padding,
-            |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.workspace_padding.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
-            }),
-        );
+        // let workspace_padding = opt_helpers::number_with_disable_default_option(
+        //     "Workspace Padding",
+        //     Some("Workspace padding (default: global)"),
+        //     ws_config.workspace_padding,
+        //     DEFAULT_WORKSPACE_CONFIG.workspace_padding,
+        //     |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
+        //     Some(opt_helpers::DisableArgs {
+        //         disable: ws_config.workspace_padding.is_none(),
+        //         label: Some("Global"),
+        //         on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
+        //     }),
+        // );
         let initial_workspace_rules_button = opt_helpers::opt_button(
             "Initial Workspace Rules",
             Some(
@@ -535,13 +535,13 @@ impl Workspace {
             layout,
             layout_flip,
             apply_window_based_offset,
-            container_padding,
+            // container_padding,
             float_override,
             floating_layer_behaviour,
             layout_rules,
             window_container_behaviour,
             window_container_behaviour_rules,
-            workspace_padding,
+            // workspace_padding,
             initial_workspace_rules_button,
             workspace_rules_button,
         ]
@@ -590,7 +590,8 @@ fn layout_rule<'a>(
     layout_message: impl Fn(Layout) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    // let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    let number = Space::with_width(Shrink);
     let choose = container(
         pick_list(
             &LAYOUT_OPTIONS_WITHOUT_NONE[..],
@@ -690,7 +691,8 @@ fn behaviour_rule<'a>(
     behaviour_message: impl Fn(WindowContainerBehaviour) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    // let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
+    let number = Space::with_width(Shrink);
     let choose = container(
         pick_list(
             [

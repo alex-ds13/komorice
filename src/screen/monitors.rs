@@ -495,7 +495,8 @@ fn index_preference<'a>(
     id_changed_message: impl Fn(String) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    let number = opt_helpers::number_simple(index as i32, index_message).content_width(50);
+    // let number = opt_helpers::number_simple(index as i32, index_message).content_width(50);
+    let number = Space::with_width(Shrink);
     let input = container(crate::widget::input("", id, id_changed_message, None))
         .max_width(200)
         .width(Fill);

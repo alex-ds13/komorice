@@ -6,10 +6,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use iced::futures::SinkExt;
-use iced::theme::{Custom, Theme};
-use iced::widget::{column, horizontal_rule, text};
-use iced::{padding, Element, Fill, Subscription, Task};
+use iced::futures::{channel::mpsc, SinkExt};
+use iced::{
+    padding,
+    theme::{Custom, Theme},
+    widget::{column, horizontal_rule, text},
+    Element, Fill, Subscription, Task,
+};
 use notify_debouncer_mini::{
     new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
@@ -148,7 +151,7 @@ pub enum Input {
 
 pub fn worker() -> Subscription<Message> {
     Subscription::run(|| {
-        iced::stream::channel(10, move |mut output| async move {
+        iced::stream::channel(10, move |mut output: mpsc::Sender<Message>| async move {
             let mut state = State::Starting;
 
             loop {

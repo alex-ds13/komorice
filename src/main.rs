@@ -51,11 +51,12 @@ lazy_static! {
 }
 
 fn main() -> iced::Result {
-    iced::application("Komorice", Komorice::update, Komorice::view)
+    iced::application(Komorice::initialize, Komorice::update, Komorice::view)
+        .title("Komorice")
         .subscription(Komorice::subscription)
         .theme(Komorice::theme)
         .default_font(*DEFAULT_FONT)
-        .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
+        // .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
         .font(icons::FONT)
         .window(iced::window::Settings {
             icon: match iced::window::icon::from_rgba(
@@ -71,7 +72,7 @@ fn main() -> iced::Result {
             },
             ..iced::window::Settings::default()
         })
-        .run_with(Komorice::initialize)
+        .run()
 }
 
 #[derive(Debug, Clone)]
@@ -555,7 +556,8 @@ impl Komorice {
             "\n\n",
             span("It is recommended that you backup your config before using komorice!")
                 .font(*BOLD_FONT),
-        ];
+        ]
+        .on_link_click(iced::never);
         let content = column![title, description, row![stop_showing, buttons]].spacing(20);
         container(
             container(content)

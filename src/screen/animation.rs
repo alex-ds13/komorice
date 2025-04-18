@@ -351,9 +351,10 @@ impl Animation {
                                 ]
                                 .push_maybe(config.duration.as_ref().map(|d| -> Element<Message> {
                                     if let PerAnimationPrefixConfig::Global(duration) = d {
-                                        iced_aw::number_input(*duration, u64::MIN..=u64::MAX, |v| Message::ConfigChange(ConfigChange::DurationGlobal(v)))
-                                            .style(opt_helpers::num_button_style)
-                                            .into()
+                                        // iced_aw::number_input(*duration, u64::MIN..=u64::MAX, |v| Message::ConfigChange(ConfigChange::DurationGlobal(v)))
+                                        //     .style(opt_helpers::num_button_style)
+                                        //     .into()
+                                        horizontal_space().into()
                                     } else {
                                         horizontal_space().into()
                                     }
@@ -364,12 +365,13 @@ impl Animation {
                         .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
                             if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
                                 if let Some(duration) = hm.get(&AnimationPrefix::Movement) {
-                                    opt_helpers::number(
-                                        "Set Duration for Movement Animations",
-                                        None,
-                                        (*duration).try_into().unwrap_or(250),
-                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Movement, v.try_into().unwrap_or_default())),
-                                    )
+                                    // opt_helpers::number(
+                                    //     "Set Duration for Movement Animations",
+                                    //     None,
+                                    //     (*duration).try_into().unwrap_or(250),
+                                    //     |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Movement, v.try_into().unwrap_or_default())),
+                                    // )
+                                    horizontal_space().into()
                                 } else {
                                     horizontal_space().into()
                                 }
@@ -380,12 +382,13 @@ impl Animation {
                         .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
                             if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
                                 if let Some(duration) = hm.get(&AnimationPrefix::Transparency) {
-                                    opt_helpers::number(
-                                        "Set Duration for Transparency Animations",
-                                        None,
-                                        (*duration).try_into().unwrap_or(250),
-                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Transparency, v.try_into().unwrap_or_default())),
-                                    )
+                                    // opt_helpers::number(
+                                    //     "Set Duration for Transparency Animations",
+                                    //     None,
+                                    //     (*duration).try_into().unwrap_or(250),
+                                    //     |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Transparency, v.try_into().unwrap_or_default())),
+                                    // )
+                                    horizontal_space().into()
                                 } else {
                                     horizontal_space().into()
                                 }
@@ -485,14 +488,14 @@ impl Animation {
                     Message::ConfigChange(ConfigChange::StyleGlobal(AnimationStyle::Linear)),
                     None,
                 ),
-                opt_helpers::number_with_disable_default_option(
-                    "FPS",
-                    Some("Set the animation FPS for all animations"),
-                    config.fps.map(|f| f as i32),
-                    DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps.map(|v| v as i32)),
-                    |v| Message::ConfigChange(ConfigChange::Fps(v)),
-                    None,
-                ),
+                // opt_helpers::number_with_disable_default_option(
+                //     "FPS",
+                //     Some("Set the animation FPS for all animations"),
+                //     config.fps.map(|f| f as i32),
+                //     DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps.map(|v| v as i32)),
+                //     |v| Message::ConfigChange(ConfigChange::Fps(v)),
+                //     None,
+                // ),
             ],
         )
     }

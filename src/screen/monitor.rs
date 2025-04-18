@@ -404,58 +404,58 @@ impl Monitor {
     pub fn monitor_view(&self, config: &MonitorConfig) -> MonitorView<Message> {
         let title = self.get_sub_section_title(None);
         let contents = vec![
-            opt_helpers::number_with_disable_default_option(
-                "Container Padding",
-                Some("Container padding (default: global)"),
-                config.container_padding,
-                DEFAULT_MONITOR_CONFIG.container_padding,
-                |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.container_padding.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| Message::ConfigChange(ConfigChange::ContainerPadding((!v).then_some(10))),
-                }),
-            ),
-            opt_helpers::number_with_disable_default_option(
-                "Workspace Padding",
-                Some("Workspace padding (default: global)"),
-                config.workspace_padding,
-                DEFAULT_MONITOR_CONFIG.workspace_padding,
-                |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.workspace_padding.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| Message::ConfigChange(ConfigChange::WorkspacePadding((!v).then_some(10))),
-                }),
-            ),
+            // opt_helpers::number_with_disable_default_option(
+            //     "Container Padding",
+            //     Some("Container padding (default: global)"),
+            //     config.container_padding,
+            //     DEFAULT_MONITOR_CONFIG.container_padding,
+            //     |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
+            //     Some(opt_helpers::DisableArgs {
+            //         disable: config.container_padding.is_none(),
+            //         label: Some("Global"),
+            //         on_toggle: |v| Message::ConfigChange(ConfigChange::ContainerPadding((!v).then_some(10))),
+            //     }),
+            // ),
+            // opt_helpers::number_with_disable_default_option(
+            //     "Workspace Padding",
+            //     Some("Workspace padding (default: global)"),
+            //     config.workspace_padding,
+            //     DEFAULT_MONITOR_CONFIG.workspace_padding,
+            //     |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
+            //     Some(opt_helpers::DisableArgs {
+            //         disable: config.workspace_padding.is_none(),
+            //         label: Some("Global"),
+            //         on_toggle: |v| Message::ConfigChange(ConfigChange::WorkspacePadding((!v).then_some(10))),
+            //     }),
+            // ),
             opt_helpers::expandable_with_disable_default(
                 "Window Based Work Area Offset",
                 Some("Window based work area offset (default: global)"),
                 [
-                    opt_helpers::number(
-                        "left",
-                        None,
-                        config.window_based_work_area_offset.map_or(0, |r| r.left),
-                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
-                    ),
-                    opt_helpers::number(
-                        "top",
-                        None,
-                        config.window_based_work_area_offset.map_or(0, |r| r.top),
-                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
-                    ),
-                    opt_helpers::number(
-                        "bottom",
-                        None,
-                        config.window_based_work_area_offset.map_or(0, |r| r.bottom),
-                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
-                    ),
-                    opt_helpers::number(
-                        "right",
-                        None,
-                        config.window_based_work_area_offset.map_or(0, |r| r.right),
-                        move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
-                    ),
+                    // opt_helpers::number(
+                    //     "left",
+                    //     None,
+                    //     config.window_based_work_area_offset.map_or(0, |r| r.left),
+                    //     move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLeft(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "top",
+                    //     None,
+                    //     config.window_based_work_area_offset.map_or(0, |r| r.top),
+                    //     move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetTop(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "bottom",
+                    //     None,
+                    //     config.window_based_work_area_offset.map_or(0, |r| r.bottom),
+                    //     move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetBottom(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "right",
+                    //     None,
+                    //     config.window_based_work_area_offset.map_or(0, |r| r.right),
+                    //     move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
+                    // ),
                 ],
                 self.window_based_work_area_offset_expanded,
                 self.window_based_work_area_offset_hovered,
@@ -466,49 +466,53 @@ impl Monitor {
                 Some(opt_helpers::DisableArgs {
                     disable: config.window_based_work_area_offset.is_none(),
                     label: Some("Global"),
-                    on_toggle: |v| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset((!v).then_some(Rect::default()))),
+                    on_toggle: |v| {
+                        Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(
+                            (!v).then_some(Rect::default()),
+                        ))
+                    },
                 }),
             ),
-            opt_helpers::number_with_disable_default(
-                "Window Based Work Area Offset Limit",
-                Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
-                config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
-                move |value| {
-                    Message::ConfigChange(
-                        ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
-                    )
-                },
-                None,
-            ),
+            // opt_helpers::number_with_disable_default(
+            //     "Window Based Work Area Offset Limit",
+            //     Some("Open window limit after which the window based work area offset will no longer be applied (default: 1)"),
+            //     config.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+            //     DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit.unwrap_or(1).try_into().unwrap_or_default(),
+            //     move |value| {
+            //         Message::ConfigChange(
+            //             ConfigChange::WindowBasedWorkAreaOffsetLimit(value),
+            //         )
+            //     },
+            //     None,
+            // ),
             opt_helpers::expandable_with_disable_default(
                 "Work Area Offset",
                 Some("Monitor-specific work area offset (default: global)"),
                 [
-                    opt_helpers::number(
-                        "left",
-                        None,
-                        config.work_area_offset.map_or(0, |r| r.left),
-                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetLeft(value)),
-                    ),
-                    opt_helpers::number(
-                        "top",
-                        None,
-                        config.work_area_offset.map_or(0, |r| r.top),
-                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetTop(value)),
-                    ),
-                    opt_helpers::number(
-                        "bottom",
-                        None,
-                        config.work_area_offset.map_or(0, |r| r.bottom),
-                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetBottom(value)),
-                    ),
-                    opt_helpers::number(
-                        "right",
-                        None,
-                        config.work_area_offset.map_or(0, |r| r.right),
-                        move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
-                    ),
+                    // opt_helpers::number(
+                    //     "left",
+                    //     None,
+                    //     config.work_area_offset.map_or(0, |r| r.left),
+                    //     move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetLeft(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "top",
+                    //     None,
+                    //     config.work_area_offset.map_or(0, |r| r.top),
+                    //     move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetTop(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "bottom",
+                    //     None,
+                    //     config.work_area_offset.map_or(0, |r| r.bottom),
+                    //     move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetBottom(value)),
+                    // ),
+                    // opt_helpers::number(
+                    //     "right",
+                    //     None,
+                    //     config.work_area_offset.map_or(0, |r| r.right),
+                    //     move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
+                    // ),
                 ],
                 self.work_area_offset_expanded,
                 self.work_area_offset_hovered,
@@ -519,7 +523,11 @@ impl Monitor {
                 Some(opt_helpers::DisableArgs {
                     disable: config.work_area_offset.is_none(),
                     label: Some("Global"),
-                    on_toggle: |v| Message::ConfigChange(ConfigChange::WorkAreaOffset((!v).then_some(Rect::default()))),
+                    on_toggle: |v| {
+                        Message::ConfigChange(ConfigChange::WorkAreaOffset(
+                            (!v).then_some(Rect::default()),
+                        ))
+                    },
                 }),
             ),
             opt_helpers::opt_button(

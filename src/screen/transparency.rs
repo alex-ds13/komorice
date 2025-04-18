@@ -130,19 +130,20 @@ impl Transparency {
                     |value| Message::ConfigChange(ConfigChange::Transparency(value)),
                     None,
                 ),
-                opt_helpers::number_with_disable_default_option(
-                    "Transparency Alpha",
-                    Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
-                        Value must be greater or equal to 0.0"),
-                    config.transparency_alpha.or(DEFAULT_CONFIG.transparency_alpha).map(Into::into),
-                    DEFAULT_CONFIG.transparency_alpha.map(Into::into),
-                    |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
-                    None,
-                ),
+                // opt_helpers::number_with_disable_default_option(
+                //     "Transparency Alpha",
+                //     Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
+                //         Value must be greater or equal to 0.0"),
+                //     config.transparency_alpha.or(DEFAULT_CONFIG.transparency_alpha).map(Into::into),
+                //     DEFAULT_CONFIG.transparency_alpha.map(Into::into),
+                //     |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
+                //     None,
+                // ),
                 opt_helpers::opt_button(
                     "Transparency Ignore Rules",
-                    Some("Individual window transparency ignore rules. Windows \
-                        matched by these rules won't get transparency applied to them."
+                    Some(
+                        "Individual window transparency ignore rules. Windows \
+                        matched by these rules won't get transparency applied to them.",
                     ),
                     self.transparency_rules_button_hovered,
                     Message::SetScreen(Screen::TransparencyIgnoreRules),

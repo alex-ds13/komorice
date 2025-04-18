@@ -13,7 +13,7 @@ use iced::{
     },
     Center, Color, Element, Fill,
 };
-use iced_aw::core::color::HexString;
+// use iced_aw::core::color::HexString;
 
 pub struct DisableArgs<'a, Message> {
     pub disable: bool,
@@ -109,15 +109,15 @@ fn disable_checkbox<'a, Message: 'a + Clone>(
     })
 }
 
-pub fn num_button_style(
-    t: &iced::Theme,
-    _s: iced_aw::style::Status,
-) -> iced_aw::number_input::number_input::Style {
-    iced_aw::number_input::number_input::Style {
-        button_background: Some(t.extended_palette().background.weak.color.into()),
-        icon_color: t.extended_palette().background.weak.text,
-    }
-}
+// pub fn num_button_style(
+//     t: &iced::Theme,
+//     _s: iced_aw::style::Status,
+// ) -> iced_aw::number_input::number_input::Style {
+//     iced_aw::number_input::number_input::Style {
+//         button_background: Some(t.extended_palette().background.weak.color.into()),
+//         icon_color: t.extended_palette().background.weak.text,
+//     }
+// }
 
 fn num_input_style(
     disable: bool,
@@ -405,248 +405,248 @@ pub fn input_with_disable_default<'a, Message: 'a + Clone>(
     opt_box(element).into()
 }
 
-///Creates a row with a label with `name` and a `number_input`
-///using the remainder parameters for it.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn number_simple<'a, Message: 'a + Clone>(
-    value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
-) -> iced_aw::NumberInput<'a, i32, Message> {
-    iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style)
-}
-
-///Creates a row with a label with `name` and a `number_input`
-///using the remainder parameters for it.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn number<'a, Message: 'a + Clone>(
-    name: &'a str,
-    description: Option<&'a str>,
-    value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
-) -> Element<'a, Message> {
-    let element = row![
-        label_with_description(name, description),
-        number_simple(value, on_change),
-    ]
-    .spacing(10)
-    .align_y(Center);
-    opt_box(element).into()
-}
-
-///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
-///toggling the number input on/off.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable<'a, Message: 'a + Clone>(
-    name: &'a str,
-    description: Option<&'a str>,
-    value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
-    disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
-    let on_change = move |v| {
-        if should_disable {
-            on_change(value)
-        } else {
-            on_change(v)
-        }
-    };
-    let bounds = if should_disable {
-        value..=value
-    } else {
-        i32::MIN..=i32::MAX
-    };
-    let element = row![label_with_description(name, description),]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(
-            iced_aw::number_input(value, bounds, on_change)
-                .style(num_button_style)
-                .input_style(num_input_style(should_disable)),
-        )
-        .spacing(10)
-        .align_y(Center);
-    opt_box(element).into()
-}
-
-///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
-///toggling the number input on/off. It also adds a button in front of the label in case the value
-///is diferent from `default_value` to send a message with the default value.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable_default<'a, Message: 'a + Clone>(
-    name: &'a str,
-    description: Option<&'a str>,
-    value: i32,
-    default_value: i32,
-    on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
-    disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
-    let is_dirty = value != default_value && !should_disable;
-    let label = if is_dirty {
-        row![name, reset_button(on_change(default_value))]
-            .spacing(5)
-            .height(30)
-            .align_y(Center)
-    } else {
-        row![name].height(30).align_y(Center)
-    };
-    let on_change = move |v| {
-        if should_disable {
-            on_change(value)
-        } else {
-            on_change(v)
-        }
-    };
-    let bounds = if should_disable {
-        value..=value
-    } else {
-        i32::MIN..=i32::MAX
-    };
-    let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(
-            iced_aw::number_input(value, bounds, on_change)
-                .style(num_button_style)
-                .input_style(num_input_style(should_disable)),
-        )
-        .spacing(10)
-        .align_y(Center);
-    opt_box(element).into()
-}
-
-///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
-///toggling the number input on/off. It also adds a button in front of the label in case the value
-///is diferent from `default_value` to send a message with the default value.
-///
-///This version of `number` uses values as `Option`s to allow the default value to be `None`.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
-    name: &'a str,
-    description: Option<&'a str>,
-    value: Option<i32>,
-    default_value: Option<i32>,
-    on_change: impl Fn(Option<i32>) -> Message + 'a + Clone + 'static,
-    disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message> {
-    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
-    let default_value_internal = default_value.unwrap_or_default();
-    let value_internal = value.unwrap_or(default_value_internal);
-    let is_dirty = ((value_internal != default_value_internal)
-        || (default_value.is_none() && value.is_some()))
-        && !should_disable;
-    let label = if is_dirty {
-        row![name, reset_button(on_change(default_value))]
-            .spacing(5)
-            .height(30)
-            .align_y(Center)
-    } else {
-        row![name].height(30).align_y(Center)
-    };
-    let on_change = move |v| {
-        if should_disable {
-            on_change(None)
-        } else {
-            on_change(Some(v))
-        }
-    };
-    let bounds = if should_disable {
-        value_internal..=value_internal
-    } else {
-        i32::MIN..=i32::MAX
-    };
-    let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(
-            iced_aw::number_input(value_internal, bounds, on_change)
-                .style(num_button_style)
-                .input_style(num_input_style(should_disable)),
-        )
-        .spacing(10)
-        .align_y(Center);
-    opt_box(element).into()
-}
-
-///Creates a row with a label with `name` and a `colo_picker`
-///using the remainder parameters for it.
-///
-///If `Some(description)` is given, it adds the description below the label.
-pub fn color_picker_simple<'a, Message: 'a + Clone, F>(
-    show_picker: bool,
-    color: Color,
-    underlay: Element<'a, Message>,
-    on_cancel: Message,
-    on_submit: F,
-) -> iced_aw::ColorPicker<'a, Message>
-where
-    F: 'static + Fn(Color) -> Message,
-{
-    iced_aw::color_picker(show_picker, color, underlay, on_cancel, on_submit)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn color<'a, Message: 'a + Clone + 'static, F>(
-    name: &'a str,
-    description: Option<&'a str>,
-    show_picker: bool,
-    color: Option<Color>,
-    default_color: Option<Color>,
-    on_toggle: impl Fn(bool) -> Message,
-    on_submit: F,
-    disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message>
-where
-    F: 'static + Fn(Option<Color>) -> Message,
-{
-    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
-    let default_color_internal = default_color.unwrap_or_default();
-    let color_internal = color.unwrap_or(default_color_internal);
-    let is_dirty = ((color_internal != default_color_internal)
-        || (default_color.is_none() && color.is_some()))
-        && !should_disable;
-    let label = if is_dirty {
-        row![name, reset_button(on_submit(default_color))]
-            .spacing(5)
-            .height(30)
-            .align_y(Center)
-    } else {
-        row![name].height(30).align_y(Center)
-    };
-    let on_press = if should_disable {
-        None
-    } else {
-        Some(on_toggle(true))
-    };
-    let on_submit_internal = move |v| on_submit(Some(v));
-    let underlay = button(text(color_internal.as_hex_string()))
-        .on_press_maybe(on_press)
-        .style(move |t, s| button::Style {
-            background: Some(color_internal.into()),
-            text_color: if color_internal.r.max(color_internal.g.max(color_internal.b)) < 0.5 {
-                Color::WHITE
-            } else {
-                Color::BLACK
-            },
-            ..button::secondary(t, s)
-        })
-        .into();
-    let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(color_picker_simple(
-            show_picker,
-            color_internal,
-            underlay,
-            on_toggle(false),
-            on_submit_internal,
-        ))
-        .spacing(10)
-        .align_y(Center);
-    opt_box(element).into()
-}
+// ///Creates a row with a label with `name` and a `number_input`
+// ///using the remainder parameters for it.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn number_simple<'a, Message: 'a + Clone>(
+//     value: i32,
+//     on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
+// ) -> iced_aw::NumberInput<'a, i32, Message> {
+//     iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style)
+// }
+//
+// ///Creates a row with a label with `name` and a `number_input`
+// ///using the remainder parameters for it.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn number<'a, Message: 'a + Clone>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     value: i32,
+//     on_change: impl Fn(i32) -> Message + 'a + Clone + 'static,
+// ) -> Element<'a, Message> {
+//     let element = row![
+//         label_with_description(name, description),
+//         number_simple(value, on_change),
+//     ]
+//     .spacing(10)
+//     .align_y(Center);
+//     opt_box(element).into()
+// }
+//
+// ///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+// ///toggling the number input on/off.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn number_with_disable<'a, Message: 'a + Clone>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     value: i32,
+//     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+//     disable_args: Option<DisableArgs<'a, Message>>,
+// ) -> Element<'a, Message> {
+//     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
+//     let on_change = move |v| {
+//         if should_disable {
+//             on_change(value)
+//         } else {
+//             on_change(v)
+//         }
+//     };
+//     let bounds = if should_disable {
+//         value..=value
+//     } else {
+//         i32::MIN..=i32::MAX
+//     };
+//     let element = row![label_with_description(name, description),]
+//         .push_maybe(disable_checkbox(disable_args))
+//         .push(
+//             iced_aw::number_input(value, bounds, on_change)
+//                 .style(num_button_style)
+//                 .input_style(num_input_style(should_disable)),
+//         )
+//         .spacing(10)
+//         .align_y(Center);
+//     opt_box(element).into()
+// }
+//
+// ///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+// ///toggling the number input on/off. It also adds a button in front of the label in case the value
+// ///is diferent from `default_value` to send a message with the default value.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn number_with_disable_default<'a, Message: 'a + Clone>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     value: i32,
+//     default_value: i32,
+//     on_change: impl Fn(i32) -> Message + 'a + Copy + 'static,
+//     disable_args: Option<DisableArgs<'a, Message>>,
+// ) -> Element<'a, Message> {
+//     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
+//     let is_dirty = value != default_value && !should_disable;
+//     let label = if is_dirty {
+//         row![name, reset_button(on_change(default_value))]
+//             .spacing(5)
+//             .height(30)
+//             .align_y(Center)
+//     } else {
+//         row![name].height(30).align_y(Center)
+//     };
+//     let on_change = move |v| {
+//         if should_disable {
+//             on_change(value)
+//         } else {
+//             on_change(v)
+//         }
+//     };
+//     let bounds = if should_disable {
+//         value..=value
+//     } else {
+//         i32::MIN..=i32::MAX
+//     };
+//     let element = row![label_element_with_description(label, description)]
+//         .push_maybe(disable_checkbox(disable_args))
+//         .push(
+//             iced_aw::number_input(value, bounds, on_change)
+//                 .style(num_button_style)
+//                 .input_style(num_input_style(should_disable)),
+//         )
+//         .spacing(10)
+//         .align_y(Center);
+//     opt_box(element).into()
+// }
+//
+// ///Creates a row with a label with `name`, a `number_input` and a disable checkbox which allows
+// ///toggling the number input on/off. It also adds a button in front of the label in case the value
+// ///is diferent from `default_value` to send a message with the default value.
+// ///
+// ///This version of `number` uses values as `Option`s to allow the default value to be `None`.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn number_with_disable_default_option<'a, Message: 'a + Clone>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     value: Option<i32>,
+//     default_value: Option<i32>,
+//     on_change: impl Fn(Option<i32>) -> Message + 'a + Clone + 'static,
+//     disable_args: Option<DisableArgs<'a, Message>>,
+// ) -> Element<'a, Message> {
+//     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
+//     let default_value_internal = default_value.unwrap_or_default();
+//     let value_internal = value.unwrap_or(default_value_internal);
+//     let is_dirty = ((value_internal != default_value_internal)
+//         || (default_value.is_none() && value.is_some()))
+//         && !should_disable;
+//     let label = if is_dirty {
+//         row![name, reset_button(on_change(default_value))]
+//             .spacing(5)
+//             .height(30)
+//             .align_y(Center)
+//     } else {
+//         row![name].height(30).align_y(Center)
+//     };
+//     let on_change = move |v| {
+//         if should_disable {
+//             on_change(None)
+//         } else {
+//             on_change(Some(v))
+//         }
+//     };
+//     let bounds = if should_disable {
+//         value_internal..=value_internal
+//     } else {
+//         i32::MIN..=i32::MAX
+//     };
+//     let element = row![label_element_with_description(label, description)]
+//         .push_maybe(disable_checkbox(disable_args))
+//         .push(
+//             iced_aw::number_input(value_internal, bounds, on_change)
+//                 .style(num_button_style)
+//                 .input_style(num_input_style(should_disable)),
+//         )
+//         .spacing(10)
+//         .align_y(Center);
+//     opt_box(element).into()
+// }
+//
+// ///Creates a row with a label with `name` and a `colo_picker`
+// ///using the remainder parameters for it.
+// ///
+// ///If `Some(description)` is given, it adds the description below the label.
+// pub fn color_picker_simple<'a, Message: 'a + Clone, F>(
+//     show_picker: bool,
+//     color: Color,
+//     underlay: Element<'a, Message>,
+//     on_cancel: Message,
+//     on_submit: F,
+// ) -> iced_aw::ColorPicker<'a, Message>
+// where
+//     F: 'static + Fn(Color) -> Message,
+// {
+//     iced_aw::color_picker(show_picker, color, underlay, on_cancel, on_submit)
+// }
+//
+// #[allow(clippy::too_many_arguments)]
+// pub fn color<'a, Message: 'a + Clone + 'static, F>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     show_picker: bool,
+//     color: Option<Color>,
+//     default_color: Option<Color>,
+//     on_toggle: impl Fn(bool) -> Message,
+//     on_submit: F,
+//     disable_args: Option<DisableArgs<'a, Message>>,
+// ) -> Element<'a, Message>
+// where
+//     F: 'static + Fn(Option<Color>) -> Message,
+// {
+//     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
+//     let default_color_internal = default_color.unwrap_or_default();
+//     let color_internal = color.unwrap_or(default_color_internal);
+//     let is_dirty = ((color_internal != default_color_internal)
+//         || (default_color.is_none() && color.is_some()))
+//         && !should_disable;
+//     let label = if is_dirty {
+//         row![name, reset_button(on_submit(default_color))]
+//             .spacing(5)
+//             .height(30)
+//             .align_y(Center)
+//     } else {
+//         row![name].height(30).align_y(Center)
+//     };
+//     let on_press = if should_disable {
+//         None
+//     } else {
+//         Some(on_toggle(true))
+//     };
+//     let on_submit_internal = move |v| on_submit(Some(v));
+//     let underlay = button(text(color_internal.as_hex_string()))
+//         .on_press_maybe(on_press)
+//         .style(move |t, s| button::Style {
+//             background: Some(color_internal.into()),
+//             text_color: if color_internal.r.max(color_internal.g.max(color_internal.b)) < 0.5 {
+//                 Color::WHITE
+//             } else {
+//                 Color::BLACK
+//             },
+//             ..button::secondary(t, s)
+//         })
+//         .into();
+//     let element = row![label_element_with_description(label, description)]
+//         .push_maybe(disable_checkbox(disable_args))
+//         .push(color_picker_simple(
+//             show_picker,
+//             color_internal,
+//             underlay,
+//             on_toggle(false),
+//             on_submit_internal,
+//         ))
+//         .spacing(10)
+//         .align_y(Center);
+//     opt_box(element).into()
+// }
 
 ///Creates a `checkbox` with `name` as label
 ///
@@ -992,7 +992,11 @@ where
     // https://stackoverflow.com/a/3943023
     let linear_bg = bg_color.into_linear();
     let luminance = 0.2126 * linear_bg[0] + 0.7152 * linear_bg[1] + 0.0722 * linear_bg[2];
-    let text_color = if luminance > 0.179 { Color::BLACK } else { Color::WHITE };
+    let text_color = if luminance > 0.179 {
+        Color::BLACK
+    } else {
+        Color::WHITE
+    };
 
     let element = row![column![
         label_element_with_description(label, description),

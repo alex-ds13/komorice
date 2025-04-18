@@ -1,22 +1,20 @@
 use crate::live_debug::Message;
 
-use std::io::BufReader;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::sync::Arc;
 use std::time::Duration;
 
-use iced::futures::SinkExt;
-use iced::Subscription;
-use komorebi_client::SocketMessage;
-use komorebi_client::SubscribeOptions;
+use iced::{
+    futures::{channel::mpsc, SinkExt},
+    Subscription,
+};
+use komorebi_client::{SocketMessage, SubscribeOptions};
 
 pub fn connect() -> Subscription<Message> {
     struct Worker;
-    let id = std::any::TypeId::of::<Worker>();
 
-    Subscription::run_with_id(
-        id,
-        iced::stream::channel(10, move |mut output| async move {
+    Subscription::run(|| {
+        iced::stream::channel(10, |mut output: mpsc::Sender<Message>| async move {
             let subscriber_name = "komorice";
 
             let listener = komorebi_client::subscribe_with_options(
@@ -90,6 +88,6 @@ pub fn connect() -> Subscription<Message> {
                     }
                 }
             }).await;
-        }),
-    )
+        })
+    })
 }
