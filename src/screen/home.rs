@@ -1,4 +1,4 @@
-use super::{ConfigType, Screen};
+use super::ConfigType;
 
 use crate::EMOJI_FONT;
 
@@ -33,14 +33,17 @@ impl Home {
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::EditActiveConfig => {
-                (Action::ChangeConfigType(ConfigType::Komorebi), Task::none())
+                return (Action::ChangeConfigType(ConfigType::Komorebi), Task::none());
             }
-            Message::LoadConfig => todo!(),
-            Message::NewConfig => todo!(),
-            Message::EditActiveWhkdrc => (Action::ChangeConfigType(ConfigType::Whkd), Task::none()),
-            Message::LoadWhkdrc => todo!(),
-            Message::NewWhkdrc => todo!(),
+            Message::LoadConfig => { /*TODO*/ }
+            Message::NewConfig => { /*TODO*/ }
+            Message::EditActiveWhkdrc => {
+                return (Action::ChangeConfigType(ConfigType::Whkd), Task::none());
+            }
+            Message::LoadWhkdrc => { /*TODO*/ }
+            Message::NewWhkdrc => { /*TODO*/ }
         }
+        (Action::None, Task::none())
     }
 
     pub fn view(&self) -> Element<Message> {

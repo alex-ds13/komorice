@@ -472,11 +472,11 @@ impl Komorice {
             | Screen::Theme
             | Screen::LiveDebug
             | Screen::Settings
-            | Screen::Whkd
             | Screen::WhkdBinding => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
             Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
             Screen::Rules => self.rules.subscription().map(Message::Rules),
+            Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
         };
 
         Subscription::batch([
