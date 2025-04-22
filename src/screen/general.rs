@@ -23,8 +23,8 @@ use lazy_static::lazy_static;
 lazy_static! {
     static ref FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS: [DisplayOption<FocusFollowsMouseImplementation>; 3] = [
         DisplayOption(None),
-        DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
         DisplayOption(Some(FocusFollowsMouseImplementation::Komorebi)),
+        DisplayOption(Some(FocusFollowsMouseImplementation::Windows)),
     ];
 }
 
