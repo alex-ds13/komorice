@@ -51,6 +51,7 @@ where
     }
 
     /// Create a new `Expandable` with all fields specified directly
+    #[allow(clippy::too_many_arguments)]
     pub fn with(
         name: Option<impl text::IntoFragment<'a>>,
         description: Option<&'a str>,
@@ -191,7 +192,7 @@ where
                     .push_maybe(
                         self.on_default
                             .as_ref()
-                            .map(|d| reset_button(InternalMessage::Message(d.clone()))),
+                            .map(|d| reset_button(Some(InternalMessage::Message(d.clone())))),
                     )
                     .spacing(5)
                     .height(30)

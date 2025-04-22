@@ -519,7 +519,7 @@ impl Komorice {
                 Screen::Border => self.border = border::Border::default(),
                 Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
                 Screen::Transparency => self.transparency = transparency::Transparency::default(),
-                Screen::Animations => self.animation = animation::Animation::default(),
+                Screen::Animations => self.animation = animation::Animation,
                 Screen::Theme => self.theme_screen = theme::Theme::default(),
                 Screen::Rules => self.rules = rules::Rules::default(),
                 Screen::LiveDebug => self.live_debug.reset_screen(),
