@@ -2,13 +2,18 @@ mod helpers;
 pub mod icons;
 pub mod modal;
 pub mod monitors_viewer;
+pub mod number_input;
 pub mod opt_helpers;
 
 pub use helpers::*;
 pub use modal::modal;
 
+use std::fmt::Display;
+use std::str::FromStr;
+
 use iced::{Color, Font};
 use lazy_static::lazy_static;
+use num_traits::{Bounded, Num, NumAssignOps};
 
 lazy_static! {
     pub static ref YELLOW: Color = Color::from_rgba8(0xEE, 0xD2, 0x02, 1.0);
@@ -17,3 +22,19 @@ lazy_static! {
 }
 
 pub const ICONS: Font = Font::with_name("icons");
+
+/// Creates a new [`NumberInput`].
+///
+/// Number inputs display fields that can be filled with numbers.
+pub fn number_input<'a, T, Message, Theme, Renderer>(
+    placeholder: &str,
+    value: T,
+) -> number_input::NumberInput<'a, T, Message, Theme, Renderer>
+where
+    Message: Clone,
+    Theme: number_input::Catalog + 'a,
+    Renderer: iced::advanced::text::Renderer,
+    T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
+{
+    number_input::NumberInput::new(placeholder, value)
+}

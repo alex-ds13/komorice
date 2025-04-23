@@ -3239,14 +3239,17 @@ dependencies = [
  "clipboard-win",
  "dirs",
  "iced",
+ "iced_core",
  "iced_fontello",
  "komorebi-client",
  "komorebi-themes",
  "lazy_static",
  "notify-debouncer-mini",
+ "num-traits",
  "serde",
  "serde_json_lenient",
  "smol",
+ "unicode-segmentation",
  "winres",
 ]
 
