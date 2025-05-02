@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 clipboard-win= "5"
 dirs = "6"
-iced = { version = "0.14.0-dev", features = ["advanced", "debug", "image", "smol"] }
+iced = { version = "0.14.0-dev", features = ["advanced", "canvas", "debug", "image", "lazy", "smol"] }
 iced_core = { version = "0.14.0-dev" }
 komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git" }
 komorebi-themes = { git = "https://github.com/LGUG2Z/komorebi.git" }
@@ -19,8 +19,8 @@ smol = "2.0.2"
 unicode-segmentation = "1.11.0"
 
 [patch.crates-io]
-iced = { git = "https://github.com/iced-rs/iced.git", rev = "388a419ed5c229aadbca57bb09b474b1475b1ef9" }
-iced_core = { git = "https://github.com/iced-rs/iced.git", rev = "388a419ed5c229aadbca57bb09b474b1475b1ef9" }
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "301aac794b9de4f021d402a6aba45e8677ed4716" }
+iced_core = { git = "https://github.com/iced-rs/iced.git", rev = "301aac794b9de4f021d402a6aba45e8677ed4716" }
 
 [build-dependencies]
 iced_fontello = { git = "https://github.com/alex-ds13/iced_fontello.git", branch = "feat/custom-icons" }

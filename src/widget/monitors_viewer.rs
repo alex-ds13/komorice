@@ -380,7 +380,11 @@ where
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        let mut interaction = mouse::Interaction::default();
+        let mut interaction = if cursor.is_over(layout.bounds()) {
+            mouse::Interaction::Idle
+        } else {
+            mouse::Interaction::None
+        };
         for child_layout in layout.children() {
             let bounds = child_layout.children().next().unwrap().bounds();
             let is_mouse_over = cursor.position_over(bounds).is_some();
