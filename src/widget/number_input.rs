@@ -47,6 +47,7 @@ use iced::keyboard;
 use iced::keyboard::key;
 use iced::time::{Duration, Instant};
 use iced::touch;
+use iced::widget::button;
 use iced::window;
 use iced::{
     Background, Border, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
@@ -112,6 +113,8 @@ where
     icon: Option<Icon<Renderer::Font>>,
     class: Theme::Class<'a>,
     last_status: Option<Status>,
+    increment_button: Element<'a, ButtonMessage, Theme, Renderer>,
+    decrement_button: Element<'a, ButtonMessage, Theme, Renderer>,
 }
 
 /// The default [`Padding`] of a [`NumberInput`].
@@ -120,8 +123,8 @@ pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
 impl<'a, T, Message, Theme, Renderer> NumberInput<'a, T, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog,
-    Renderer: text::Renderer,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
     /// Creates a new [`NumberInput`] with the given placeholder and
@@ -130,6 +133,16 @@ where
         let v_str = value.to_string();
         let _number_value = value;
         let value = Value::new(&v_str);
+        let increment_button = button("^")
+            .width(5)
+            .height(8)
+            .on_press(ButtonMessage::Increment)
+            .into();
+        let decrement_button = button("v")
+            .width(5)
+            .height(8)
+            .on_press(ButtonMessage::Decrement)
+            .into();
         NumberInput {
             id: None,
             placeholder: String::from(placeholder),
@@ -148,8 +161,10 @@ where
             on_paste: None,
             on_submit: None,
             icon: None,
-            class: Theme::default(),
+            class: <Theme as Catalog>::default(),
             last_status: None,
+            increment_button,
+            decrement_button,
         }
     }
 
@@ -271,7 +286,7 @@ where
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
     where
-        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
+        <Theme as Catalog>::Class<'a>: From<StyleFn<'a, Theme>>,
     {
         self.class = (Box::new(style) as StyleFn<'a, Theme>).into();
         self
@@ -279,7 +294,7 @@ where
 
     /// Sets the style class of the [`NumberInput`].
     #[must_use]
-    pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
+    pub fn class(mut self, class: impl Into<<Theme as Catalog>::Class<'a>>) -> Self {
         self.class = class.into();
         self
     }
@@ -444,7 +459,11 @@ where
         let mut children_layout = layout.children();
         let text_bounds = children_layout.next().unwrap().bounds();
 
-        let style = theme.style(&self.class, self.last_status.unwrap_or(Status::Disabled));
+        let style = <Theme as Catalog>::style(
+            theme,
+            &self.class,
+            self.last_status.unwrap_or(Status::Disabled),
+        );
 
         renderer.fill_quad(
             renderer::Quad {
@@ -593,8 +612,8 @@ impl<'a, T, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for NumberInput<'a, T, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog,
-    Renderer: text::Renderer,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
     fn tag(&self) -> tree::Tag {
@@ -605,6 +624,13 @@ where
         tree::State::new(State::<Renderer::Paragraph>::new())
     }
 
+    fn children(&self) -> Vec<Tree> {
+        vec![
+            Tree::new(&self.increment_button),
+            Tree::new(&self.decrement_button),
+        ]
+    }
+
     fn diff(&self, tree: &mut Tree) {
         let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
@@ -612,6 +638,19 @@ where
         if self.on_input.is_none() {
             state.is_pasting = None;
         }
+
+        let increment_button: Element<_> = button("^")
+            .width(5)
+            .height(8)
+            .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Increment))
+            .into();
+        let decrement_button: Element<_> = button("v")
+            .width(5)
+            .height(8)
+            .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Decrement))
+            .into();
+
+        tree.diff_children(&[&increment_button, &decrement_button]);
     }
 
     fn size(&self) -> Size<Length> {
@@ -1449,7 +1488,7 @@ impl<'a, T, Message, Theme, Renderer> From<NumberInput<'a, T, Message, Theme, Re
     for Element<'a, Message, Theme, Renderer>
 where
     Message: Clone + 'a,
-    Theme: Catalog + 'a,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
     Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
@@ -1891,4 +1930,10 @@ fn alignment_offset(
             alignment::Horizontal::Right => text_bounds_width - text_min_width,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+enum ButtonMessage {
+    Increment,
+    Decrement,
 }
