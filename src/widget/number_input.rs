@@ -33,7 +33,7 @@ use editor::Editor;
 use value::Value;
 
 use iced::advanced::clipboard::{self, Clipboard};
-use iced::advanced::layout;
+use iced::advanced::layout::{self, Limits};
 use iced::advanced::mouse::{self, click};
 use iced::advanced::renderer;
 use iced::advanced::text::paragraph::{self, Paragraph as _};
@@ -115,10 +115,14 @@ where
     last_status: Option<Status>,
     increment_button: Element<'a, ButtonMessage, Theme, Renderer>,
     decrement_button: Element<'a, ButtonMessage, Theme, Renderer>,
+    buttons_width: Pixels,
 }
 
 /// The default [`Padding`] of a [`NumberInput`].
 pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
+
+/// The default [`Pixels`] width of a [`NumberInput`] increment/decrement buttons.
+pub const DEFAULT_BUTTON_WIDTH: Pixels = Pixels(15.0);
 
 impl<'a, T, Message, Theme, Renderer> NumberInput<'a, T, Message, Theme, Renderer>
 where
@@ -133,14 +137,17 @@ where
         let v_str = value.to_string();
         let _number_value = value;
         let value = Value::new(&v_str);
-        let increment_button = button("^")
-            .width(5)
-            .height(8)
+        let text_size = Pixels(16.0);
+        let line_height = text::LineHeight::default();
+        let height = line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
+        let increment_button: Element<ButtonMessage, Theme, Renderer> = button("^")
+            .width(DEFAULT_BUTTON_WIDTH)
+            .height(height)
             .on_press(ButtonMessage::Increment)
             .into();
-        let decrement_button = button("v")
-            .width(5)
-            .height(8)
+        let decrement_button: Element<ButtonMessage, Theme, Renderer> = button("v")
+            .width(DEFAULT_BUTTON_WIDTH)
+            .height(height)
             .on_press(ButtonMessage::Decrement)
             .into();
         NumberInput {
@@ -155,7 +162,7 @@ where
             width: Length::Fixed(125.0),
             padding: DEFAULT_PADDING,
             size: None,
-            line_height: text::LineHeight::default(),
+            line_height,
             alignment: alignment::Horizontal::Left,
             on_input: None,
             on_paste: None,
@@ -165,6 +172,7 @@ where
             last_status: None,
             increment_button,
             decrement_button,
+            buttons_width: DEFAULT_BUTTON_WIDTH,
         }
     }
 
@@ -264,6 +272,12 @@ where
         self
     }
 
+    /// Sets the [`Pixels`] width of the [`NumberInput`] increment/decrement buttons.
+    pub fn buttons_width<P: Into<Pixels>>(mut self, width: P) -> Self {
+        self.buttons_width = width.into();
+        self
+    }
+
     /// Sets the text size of the [`NumberInput`].
     pub fn size(mut self, size: impl Into<Pixels>) -> Self {
         self.size = Some(size.into());
@@ -317,7 +331,10 @@ where
         let padding = self.padding.fit(Size::ZERO, limits.max());
         let height = self.line_height.to_absolute(text_size);
 
-        let limits = limits.width(self.width).shrink(padding);
+        let limits = limits
+            .width(self.width)
+            .shrink(padding)
+            .shrink(Size::new(self.buttons_width.into(), 0.0));
         let text_bounds = limits.resolve(self.width, height, Size::ZERO);
 
         let placeholder_text = Text {
@@ -342,6 +359,21 @@ where
             ..placeholder_text
         });
 
+        let button_limits = Limits::new(
+            Size::ZERO,
+            Size::new(self.buttons_width.into(), (f32::from(height) + padding.vertical()) / 2.0),
+        );
+        let increment_node = self.increment_button.as_widget().layout(
+            &mut tree.children[0],
+            renderer,
+            &button_limits,
+        );
+        let decrement_node = self.decrement_button.as_widget().layout(
+            &mut tree.children[1],
+            renderer,
+            &button_limits,
+        );
+
         if let Some(icon) = &self.icon {
             let mut content = [0; 4];
 
@@ -361,16 +393,41 @@ where
 
             let icon_width = state.icon.min_width();
 
-            let (text_position, icon_position) = match icon.side {
-                Side::Left => (
-                    Point::new(padding.left + icon_width + icon.spacing, padding.top),
-                    Point::new(padding.left, padding.top),
-                ),
-                Side::Right => (
-                    Point::new(padding.left, padding.top),
-                    Point::new(padding.left + text_bounds.width - icon_width, padding.top),
-                ),
-            };
+            let (text_position, icon_position, increment_position, decrement_position) =
+                match icon.side {
+                    Side::Left => (
+                        Point::new(padding.left + icon_width + icon.spacing, padding.top),
+                        Point::new(padding.left, padding.top),
+                        Point::new(
+                            padding.left
+                                + icon_width
+                                + icon.spacing
+                                + text_bounds.width
+                                + padding.right,
+                            0.0,
+                        ),
+                        Point::new(
+                            padding.left
+                                + icon_width
+                                + icon.spacing
+                                + text_bounds.width
+                                + padding.right,
+                            button_limits.max().height / 2.0,
+                        ),
+                    ),
+                    Side::Right => (
+                        Point::new(padding.left, padding.top),
+                        Point::new(padding.left + text_bounds.width - icon_width, padding.top),
+                        Point::new(
+                            padding.left + text_bounds.width + icon_width + padding.right,
+                            0.0,
+                        ),
+                        Point::new(
+                            padding.left + text_bounds.width + icon_width + padding.right,
+                            button_limits.max().height / 2.0,
+                        ),
+                    ),
+                };
 
             let text_node =
                 layout::Node::new(text_bounds - Size::new(icon_width + icon.spacing, 0.0))
@@ -379,12 +436,31 @@ where
             let icon_node =
                 layout::Node::new(Size::new(icon_width, text_bounds.height)).move_to(icon_position);
 
-            layout::Node::with_children(text_bounds.expand(padding), vec![text_node, icon_node])
-        } else {
-            let text =
-                layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top));
+            let increment_node = increment_node.move_to(increment_position);
+            let decrement_node = decrement_node.move_to(decrement_position);
 
-            layout::Node::with_children(text_bounds.expand(padding), vec![text])
+            layout::Node::with_children(
+                text_bounds
+                    .expand(padding)
+                    .expand(Size::new(self.buttons_width.into(), 0.0)),
+                vec![text_node, icon_node, increment_node, decrement_node],
+            )
+        } else {
+            let text_node =
+                layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top));
+            let increment_node =
+                increment_node.move_to(Point::new(text_bounds.width + padding.horizontal(), 0.0));
+            let decrement_node = decrement_node.move_to(Point::new(
+                text_bounds.width + padding.horizontal(),
+                button_limits.max().height / 2.0,
+            ));
+
+            layout::Node::with_children(
+                text_bounds
+                    .expand(padding)
+                    .expand(Size::new(self.buttons_width.into(), 0.0)),
+                vec![text_node, increment_node, decrement_node],
+            )
         }
     }
 
@@ -442,8 +518,9 @@ where
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Theme,
+        renderer_style: &renderer::Style,
         layout: Layout<'_>,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
         value: Option<&Value>,
         viewport: &Rectangle,
     ) {
@@ -484,6 +561,28 @@ where
                 *viewport,
             );
         }
+
+        let increment_layout = children_layout.next().unwrap();
+        self.increment_button.as_widget().draw(
+            &tree.children[0],
+            renderer,
+            theme,
+            renderer_style,
+            increment_layout,
+            cursor,
+            viewport,
+        );
+
+        let decrement_layout = children_layout.next().unwrap();
+        self.decrement_button.as_widget().draw(
+            &tree.children[0],
+            renderer,
+            theme,
+            renderer_style,
+            decrement_layout,
+            cursor,
+            viewport,
+        );
 
         let text = value.to_string();
 
@@ -639,14 +738,16 @@ where
             state.is_pasting = None;
         }
 
+        let text_size = self.size.unwrap_or(Pixels(16.0));
+        let height = self.line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
         let increment_button: Element<_> = button("^")
-            .width(5)
-            .height(8)
+            .width(self.buttons_width)
+            .height(height)
             .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Increment))
             .into();
         let decrement_button: Element<_> = button("v")
-            .width(5)
-            .height(8)
+            .width(self.buttons_width)
+            .height(height)
             .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Decrement))
             .into();
 
@@ -692,8 +793,61 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
-        _viewport: &Rectangle,
+        viewport: &Rectangle,
     ) {
+        let (increment_layout, decrement_layout) = if self.icon.is_some() {
+            (
+                layout.children().nth(2).unwrap(),
+                layout.children().nth(3).unwrap(),
+            )
+        } else {
+            (
+                layout.children().nth(1).unwrap(),
+                layout.children().nth(2).unwrap(),
+            )
+        };
+        let mut buttons_messages = Vec::<ButtonMessage>::new();
+        let mut buttons_shell = Shell::new(&mut buttons_messages);
+
+        // Reconcile buttons shell with main shell:
+        if shell.is_event_captured() {
+            buttons_shell.capture_event();
+        }
+
+        self.increment_button.as_widget_mut().update(
+            &mut tree.children[0],
+            event,
+            increment_layout,
+            cursor,
+            renderer,
+            clipboard,
+            &mut buttons_shell,
+            viewport,
+        );
+        self.decrement_button.as_widget_mut().update(
+            &mut tree.children[0],
+            event,
+            decrement_layout,
+            cursor,
+            renderer,
+            clipboard,
+            &mut buttons_shell,
+            viewport,
+        );
+
+        // Reconcile main shell with buttons shell
+        match buttons_shell.redraw_request() {
+            window::RedrawRequest::NextFrame => shell.request_redraw(),
+            window::RedrawRequest::At(instant) => shell.request_redraw_at(instant),
+            window::RedrawRequest::Wait => {}
+        }
+
+        if buttons_shell.is_event_captured() {
+            // if the buttons handled the event we can simply capture on the main shell and return
+            shell.capture_event();
+            return;
+        }
+
         let update_cache = |state, value| {
             replace_paragraph(
                 renderer,
@@ -1456,12 +1610,12 @@ where
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Theme,
-        _style: &renderer::Style,
+        style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        self.draw(tree, renderer, theme, layout, cursor, None, viewport);
+        self.draw(tree, renderer, theme, style, layout, cursor, None, viewport);
     }
 
     fn mouse_interaction(
