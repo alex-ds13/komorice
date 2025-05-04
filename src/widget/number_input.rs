@@ -47,7 +47,7 @@ use iced::keyboard;
 use iced::keyboard::key;
 use iced::time::{Duration, Instant};
 use iced::touch;
-use iced::widget::button;
+use iced::widget::{button, Button};
 use iced::window;
 use iced::{
     Background, Border, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
@@ -91,7 +91,7 @@ use num_traits::{Bounded, Num, NumAssignOps};
 #[allow(missing_debug_implementations)]
 pub struct NumberInput<'a, T, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where
-    Theme: Catalog,
+    Theme: Catalog + button::Catalog,
     Renderer: text::Renderer,
 {
     id: Option<Id>,
@@ -111,10 +111,10 @@ where
     on_paste: Option<Box<dyn Fn(T) -> Message + 'a>>,
     on_submit: Option<Message>,
     icon: Option<Icon<Renderer::Font>>,
-    class: Theme::Class<'a>,
+    class: <Theme as Catalog>::Class<'a>,
     last_status: Option<Status>,
-    increment_button: Element<'a, ButtonMessage, Theme, Renderer>,
-    decrement_button: Element<'a, ButtonMessage, Theme, Renderer>,
+    increment_button: Button<'a, ButtonMessage, Theme, Renderer>,
+    decrement_button: Button<'a, ButtonMessage, Theme, Renderer>,
     buttons_width: Pixels,
 }
 
@@ -140,16 +140,16 @@ where
         let text_size = Pixels(16.0);
         let line_height = text::LineHeight::default();
         let height = line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
-        let increment_button: Element<ButtonMessage, Theme, Renderer> = button("^")
-            .width(DEFAULT_BUTTON_WIDTH)
-            .height(height)
-            .on_press(ButtonMessage::Increment)
-            .into();
-        let decrement_button: Element<ButtonMessage, Theme, Renderer> = button("v")
-            .width(DEFAULT_BUTTON_WIDTH)
-            .height(height)
-            .on_press(ButtonMessage::Decrement)
-            .into();
+        let increment_button: Button<ButtonMessage, Theme, Renderer> =
+            button(iced::widget::text("^").size(13.0).center())
+                .width(DEFAULT_BUTTON_WIDTH)
+                .height(height)
+                .padding(0);
+        let decrement_button: Button<ButtonMessage, Theme, Renderer> =
+            button(iced::widget::text("v").size(11.0).center())
+                .width(DEFAULT_BUTTON_WIDTH)
+                .height(height)
+                .padding(0);
         NumberInput {
             id: None,
             placeholder: String::from(placeholder),
@@ -206,6 +206,8 @@ where
     /// If this method is not called, the [`NumberInput`] will be disabled.
     pub fn on_input(mut self, on_input: impl Fn(T) -> Message + 'a) -> Self {
         self.on_input = Some(Box::new(on_input));
+        self.increment_button = self.increment_button.on_press(ButtonMessage::Increment);
+        self.decrement_button = self.decrement_button.on_press(ButtonMessage::Decrement);
         self
     }
 
@@ -215,6 +217,10 @@ where
     /// If `None`, the [`NumberInput`] will be disabled.
     pub fn on_input_maybe(mut self, on_input: Option<impl Fn(T) -> Message + 'a>) -> Self {
         self.on_input = on_input.map(|f| Box::new(f) as _);
+        if self.on_input.is_some() {
+            self.increment_button = self.increment_button.on_press(ButtonMessage::Increment);
+            self.decrement_button = self.decrement_button.on_press(ButtonMessage::Decrement);
+        }
         self
     }
 
@@ -359,20 +365,21 @@ where
             ..placeholder_text
         });
 
+        let button_padding = 1.0;
         let button_limits = Limits::new(
             Size::ZERO,
-            Size::new(self.buttons_width.into(), (f32::from(height) + padding.vertical()) / 2.0),
+            Size::new(
+                f32::from(self.buttons_width) - 2.0 * button_padding,
+                (f32::from(height) + padding.vertical()) / 2.0 - button_padding,
+            ),
         );
-        let increment_node = self.increment_button.as_widget().layout(
-            &mut tree.children[0],
-            renderer,
-            &button_limits,
-        );
-        let decrement_node = self.decrement_button.as_widget().layout(
-            &mut tree.children[1],
-            renderer,
-            &button_limits,
-        );
+
+        let increment_node =
+            self.increment_button
+                .layout(&mut tree.children[0], renderer, &button_limits);
+        let decrement_node =
+            self.decrement_button
+                .layout(&mut tree.children[1], renderer, &button_limits);
 
         if let Some(icon) = &self.icon {
             let mut content = [0; 4];
@@ -403,28 +410,38 @@ where
                                 + icon_width
                                 + icon.spacing
                                 + text_bounds.width
-                                + padding.right,
-                            0.0,
+                                + padding.right
+                                + button_padding,
+                            button_padding,
                         ),
                         Point::new(
                             padding.left
                                 + icon_width
                                 + icon.spacing
                                 + text_bounds.width
-                                + padding.right,
-                            button_limits.max().height / 2.0,
+                                + padding.right
+                                + button_padding,
+                            button_limits.max().height + (button_padding / 2.0),
                         ),
                     ),
                     Side::Right => (
                         Point::new(padding.left, padding.top),
                         Point::new(padding.left + text_bounds.width - icon_width, padding.top),
                         Point::new(
-                            padding.left + text_bounds.width + icon_width + padding.right,
-                            0.0,
+                            padding.left
+                                + text_bounds.width
+                                + icon_width
+                                + padding.right
+                                + button_padding,
+                            button_padding,
                         ),
                         Point::new(
-                            padding.left + text_bounds.width + icon_width + padding.right,
-                            button_limits.max().height / 2.0,
+                            padding.left
+                                + text_bounds.width
+                                + icon_width
+                                + padding.right
+                                + button_padding,
+                            button_limits.max().height + (button_padding / 2.0),
                         ),
                     ),
                 };
@@ -448,11 +465,13 @@ where
         } else {
             let text_node =
                 layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top));
-            let increment_node =
-                increment_node.move_to(Point::new(text_bounds.width + padding.horizontal(), 0.0));
+            let increment_node = increment_node.move_to(Point::new(
+                text_bounds.width + padding.horizontal() + button_padding,
+                button_padding,
+            ));
             let decrement_node = decrement_node.move_to(Point::new(
-                text_bounds.width + padding.horizontal(),
-                button_limits.max().height / 2.0,
+                text_bounds.width + padding.horizontal() + button_padding,
+                button_limits.max().height + (button_padding / 2.0),
             ));
 
             layout::Node::with_children(
@@ -563,7 +582,7 @@ where
         }
 
         let increment_layout = children_layout.next().unwrap();
-        self.increment_button.as_widget().draw(
+        self.increment_button.draw(
             &tree.children[0],
             renderer,
             theme,
@@ -574,8 +593,8 @@ where
         );
 
         let decrement_layout = children_layout.next().unwrap();
-        self.decrement_button.as_widget().draw(
-            &tree.children[0],
+        self.decrement_button.draw(
+            &tree.children[1],
             renderer,
             theme,
             renderer_style,
@@ -725,8 +744,8 @@ where
 
     fn children(&self) -> Vec<Tree> {
         vec![
-            Tree::new(&self.increment_button),
-            Tree::new(&self.decrement_button),
+            Tree::new(&self.increment_button as &dyn Widget<_, _, _>),
+            Tree::new(&self.decrement_button as &dyn Widget<_, _, _>),
         ]
     }
 
@@ -739,13 +758,13 @@ where
         }
 
         let text_size = self.size.unwrap_or(Pixels(16.0));
-        let height = self.line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
-        let increment_button: Element<_> = button("^")
+        let height = (self.line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical()) / 2.0;
+        let increment_button: Element<_> = button(iced::widget::text("^").size(13.0).center())
             .width(self.buttons_width)
             .height(height)
             .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Increment))
             .into();
-        let decrement_button: Element<_> = button("v")
+        let decrement_button: Element<_> = button(iced::widget::text("v").size(11.0).center())
             .width(self.buttons_width)
             .height(height)
             .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Decrement))
@@ -814,7 +833,7 @@ where
             buttons_shell.capture_event();
         }
 
-        self.increment_button.as_widget_mut().update(
+        self.increment_button.update(
             &mut tree.children[0],
             event,
             increment_layout,
@@ -824,7 +843,7 @@ where
             &mut buttons_shell,
             viewport,
         );
-        self.decrement_button.as_widget_mut().update(
+        self.decrement_button.update(
             &mut tree.children[0],
             event,
             decrement_layout,
@@ -1983,6 +2002,17 @@ pub enum Status {
     Disabled,
 }
 
+impl Status {
+    pub fn to_button(self) -> button::Status {
+        match self {
+            Status::Active => button::Status::Active,
+            Status::Hovered => button::Status::Active,
+            Status::Focused { is_hovered: _ } => button::Status::Active,
+            Status::Disabled => button::Status::Disabled,
+        }
+    }
+}
+
 /// The appearance of a number input.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
@@ -1998,6 +2028,8 @@ pub struct Style {
     pub value: Color,
     /// The [`Color`] of the selection of the number input.
     pub selection: Color,
+    /// The [`button::Style`] of the increment/decrement buttons.
+    pub buttons: button::Style,
 }
 
 /// The theme catalog of a [`NumberInput`].
@@ -2044,6 +2076,7 @@ pub fn default(theme: &Theme, status: Status) -> Style {
         placeholder: palette.background.strongest.color,
         value: palette.background.base.text,
         selection: palette.primary.weak.color,
+        buttons: button::secondary(theme, status.to_button()),
     };
 
     match status {
@@ -2091,3 +2124,37 @@ enum ButtonMessage {
     Increment,
     Decrement,
 }
+
+// struct ButtonTheme<Theme: button::Catalog + Clone> {
+//     theme: Theme,
+// }
+// impl<Theme: button::Catalog + Clone> button::Catalog for ButtonTheme<Theme> {
+//     type Class<'a> = <Theme as button::Catalog>::Class<'a>;
+//
+//     fn default<'a>() -> Self::Class<'a> {
+//         <Theme as button::Catalog>::default()
+//     }
+//
+//     fn style(&self, class: &Self::Class<'_>, status: button::Status) -> button::Style {
+//         let default = <Theme as button::Catalog>::style(&self.theme, class, status);
+//         button::secondary(&self.theme, status)
+//         // button::Style {
+//         //     background: self.color.into(),
+//         //     value: Color {
+//         //         a: 1.0,
+//         //         ..Hsv {
+//         //             hue: 0,
+//         //             saturation: 0.0,
+//         //             value: if hsv.value < 0.5 { 1.0 } else { 0.0 },
+//         //         }
+//         //         .into()
+//         //     },
+//         //     border: Border {
+//         //         color: default.border.color,
+//         //         width: 1.0,
+//         //         radius: 5.0.into(),
+//         //     },
+//         //     ..default
+//         // }
+//     }
+// }
