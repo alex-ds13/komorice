@@ -1738,7 +1738,24 @@ where
             if self.on_input.is_none() {
                 mouse::Interaction::Idle
             } else {
-                mouse::Interaction::Text
+                let (increment_layout, decrement_layout) = if self.icon.is_some() {
+                    (
+                        layout.children().nth(2).unwrap(),
+                        layout.children().nth(3).unwrap(),
+                    )
+                } else {
+                    (
+                        layout.children().nth(1).unwrap(),
+                        layout.children().nth(2).unwrap(),
+                    )
+                };
+                if cursor.is_over(increment_layout.bounds())
+                    || cursor.is_over(decrement_layout.bounds())
+                {
+                    mouse::Interaction::Pointer
+                } else {
+                    mouse::Interaction::Text
+                }
             }
         } else {
             mouse::Interaction::default()
