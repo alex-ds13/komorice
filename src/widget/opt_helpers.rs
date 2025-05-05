@@ -529,7 +529,7 @@ where
         .push_maybe(disable_checkbox(disable_args))
         .push(
             number_input("", value)
-                .on_input(on_change)
+                .on_input_maybe((!should_disable).then_some(on_change))
                 .style(num_input_style(should_disable)),
             // iced_aw::number_input(value, bounds, on_change)
             //     .style(num_button_style)
@@ -588,7 +588,7 @@ where
         .push_maybe(disable_checkbox(disable_args))
         .push(
             number_input("", value_internal)
-                .on_input(on_change)
+                .on_input_maybe((!should_disable).then_some(on_change))
                 .style(num_input_style(should_disable)),
             // iced_aw::number_input(value_internal, bounds, on_change)
             //     .style(num_button_style)
@@ -651,7 +651,7 @@ where
             number_input("", value_internal)
                 .max(max)
                 .min(min)
-                .on_input(on_change)
+                .on_input_maybe((!should_disable).then_some(on_change))
                 .style(num_input_style(should_disable)),
             // iced_aw::number_input(value_internal, bounds, on_change)
             //     .style(num_button_style)

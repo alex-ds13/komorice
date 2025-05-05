@@ -91,7 +91,7 @@ use num_traits::{Bounded, Num, NumAssignOps};
 #[allow(missing_debug_implementations)]
 pub struct NumberInput<'a, T, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where
-    Theme: Catalog + button::Catalog,
+    Theme: Catalog + button::Catalog + iced::widget::text::Catalog,
     Renderer: text::Renderer,
 {
     id: Option<Id>,
@@ -112,7 +112,10 @@ where
     on_submit: Option<Message>,
     icon: Option<Icon<Renderer::Font>>,
     class: <Theme as Catalog>::Class<'a>,
+    // button_class: <Theme as button::Catalog>::Class<'a>,
     last_status: Option<Status>,
+    // increment_button: Button<'a, ButtonMessage, ButtonTheme<'a, 'b, Theme>, Renderer>,
+    // decrement_button: Button<'a, ButtonMessage, ButtonTheme<'a, 'b, Theme>, Renderer>,
     increment_button: Button<'a, ButtonMessage, Theme, Renderer>,
     decrement_button: Button<'a, ButtonMessage, Theme, Renderer>,
     buttons_width: Pixels,
@@ -127,7 +130,7 @@ pub const DEFAULT_BUTTON_WIDTH: Pixels = Pixels(15.0);
 impl<'a, T, Message, Theme, Renderer> NumberInput<'a, T, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + Clone + 'a,
     Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
@@ -144,11 +147,13 @@ where
             button(iced::widget::text("^").size(13.0).center())
                 .width(DEFAULT_BUTTON_WIDTH)
                 .height(height)
+                .class(<Theme as Catalog>::default_button())
                 .padding(0);
         let decrement_button: Button<ButtonMessage, Theme, Renderer> =
             button(iced::widget::text("v").size(11.0).center())
                 .width(DEFAULT_BUTTON_WIDTH)
                 .height(height)
+                .class(<Theme as Catalog>::default_button())
                 .padding(0);
         NumberInput {
             id: None,
@@ -169,6 +174,7 @@ where
             on_submit: None,
             icon: None,
             class: <Theme as Catalog>::default(),
+            // button_class: <Theme as Catalog>::default_button(),
             last_status: None,
             increment_button,
             decrement_button,
@@ -483,12 +489,12 @@ where
         }
     }
 
-    fn input_method<'b>(
+    fn input_method<'c>(
         &self,
-        state: &'b State<Renderer::Paragraph>,
+        state: &'c State<Renderer::Paragraph>,
         layout: Layout<'_>,
         value: &Value,
-    ) -> InputMethod<&'b str> {
+    ) -> InputMethod<&'c str> {
         let Some(Focus {
             is_window_focused: true,
             ..
@@ -581,10 +587,19 @@ where
             );
         }
 
+        // let button_class = (theme as Catalog).style_button(class, status)
+        // let button_theme = ButtonTheme {
+        //     // theme: (*theme).clone(),
+        //     // class: style.button_style,
+        //     theme,
+        //     class: &self.button_class,
+        // };
+
         let increment_layout = children_layout.next().unwrap();
         self.increment_button.draw(
             &tree.children[0],
             renderer,
+            // &button_theme,
             theme,
             renderer_style,
             increment_layout,
@@ -596,6 +611,7 @@ where
         self.decrement_button.draw(
             &tree.children[1],
             renderer,
+            // &button_theme,
             theme,
             renderer_style,
             decrement_layout,
@@ -730,7 +746,7 @@ impl<'a, T, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for NumberInput<'a, T, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + Clone + 'a,
     Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
@@ -1661,7 +1677,7 @@ impl<'a, T, Message, Theme, Renderer> From<NumberInput<'a, T, Message, Theme, Re
     for Element<'a, Message, Theme, Renderer>
 where
     Message: Clone + 'a,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Theme: Catalog + button::Catalog + widget::text::Catalog + Clone + 'a,
     Renderer: text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
@@ -2014,7 +2030,7 @@ impl Status {
 }
 
 /// The appearance of a number input.
-#[derive(Debug, Clone, Copy, PartialEq)]
+// #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
     /// The [`Background`] of the number input.
     pub background: Background,
@@ -2028,20 +2044,29 @@ pub struct Style {
     pub value: Color,
     /// The [`Color`] of the selection of the number input.
     pub selection: Color,
-    /// The [`button::Style`] of the increment/decrement buttons.
-    pub buttons: button::Style,
+    // /// The [`button::Style`] of the increment/decrement buttons.
+    // pub button_style: <Theme as button::Catalog>::Class<'a>,
+    // pub button_style: button::StyleFn<'a, Theme>,
 }
 
 /// The theme catalog of a [`NumberInput`].
-pub trait Catalog: Sized {
+pub trait Catalog: Sized + button::Catalog {
     /// The item class of the [`Catalog`].
     type Class<'a>;
 
     /// The default class produced by the [`Catalog`].
-    fn default<'a>() -> Self::Class<'a>;
+    fn default<'a>() -> <Self as Catalog>::Class<'a>;
+
+    /// The default class for the increment/decrement buttons of the [`NumberInput`].
+    fn default_button<'a>() -> <Self as button::Catalog>::Class<'a> {
+        <Self as button::Catalog>::default()
+    }
 
     /// The [`Style`] of a class with the given status.
-    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
+    fn style(&self, class: &<Self as Catalog>::Class<'_>, status: Status) -> Style;
+
+    /// The button [`button::Style`] of a button class with the given button status.
+    fn style_button(&self, class: &<Self as button::Catalog>::Class<'_>, status: button::Status) -> button::Style;
 }
 
 /// A styling function for a [`NumberInput`].
@@ -2052,11 +2077,19 @@ pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
 impl Catalog for Theme {
     type Class<'a> = StyleFn<'a, Self>;
 
-    fn default<'a>() -> Self::Class<'a> {
+    fn default<'a>() -> <Self as Catalog>::Class<'a> {
         Box::new(default)
     }
 
-    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style {
+    fn default_button<'a>() -> <Self as button::Catalog>::Class<'a> {
+        Box::new(button::secondary) as button::StyleFn<'_, Theme>
+    }
+
+    fn style(&self, class: &<Self as Catalog>::Class<'_>, status: Status) -> Style {
+        class(self, status)
+    }
+
+    fn style_button(&self, class: &<Self as button::Catalog>::Class<'_>, status: button::Status) -> button::Style {
         class(self, status)
     }
 }
@@ -2076,7 +2109,7 @@ pub fn default(theme: &Theme, status: Status) -> Style {
         placeholder: palette.background.strongest.color,
         value: palette.background.base.text,
         selection: palette.primary.weak.color,
-        buttons: button::secondary(theme, status.to_button()),
+        // button_style: (Box::new(button::secondary) as button::StyleFn<'_, Theme>).into(),
     };
 
     match status {
@@ -2125,36 +2158,33 @@ enum ButtonMessage {
     Decrement,
 }
 
-// struct ButtonTheme<Theme: button::Catalog + Clone> {
-//     theme: Theme,
-// }
-// impl<Theme: button::Catalog + Clone> button::Catalog for ButtonTheme<Theme> {
-//     type Class<'a> = <Theme as button::Catalog>::Class<'a>;
-//
-//     fn default<'a>() -> Self::Class<'a> {
-//         <Theme as button::Catalog>::default()
-//     }
-//
-//     fn style(&self, class: &Self::Class<'_>, status: button::Status) -> button::Style {
-//         let default = <Theme as button::Catalog>::style(&self.theme, class, status);
-//         button::secondary(&self.theme, status)
-//         // button::Style {
-//         //     background: self.color.into(),
-//         //     value: Color {
-//         //         a: 1.0,
-//         //         ..Hsv {
-//         //             hue: 0,
-//         //             saturation: 0.0,
-//         //             value: if hsv.value < 0.5 { 1.0 } else { 0.0 },
-//         //         }
-//         //         .into()
-//         //     },
-//         //     border: Border {
-//         //         color: default.border.color,
-//         //         width: 1.0,
-//         //         radius: 5.0.into(),
-//         //     },
-//         //     ..default
-//         // }
-//     }
-// }
+struct ButtonTheme<'a, 'b, Theme: button::Catalog + iced::widget::text::Catalog> {
+    theme: &'b Theme,
+    // class: button::StyleFn<'a, Theme>,
+    class: &'b <Theme as button::Catalog>::Class<'a>,
+}
+
+impl<Theme: button::Catalog + iced::widget::text::Catalog> button::Catalog for ButtonTheme<'_, '_, Theme> {
+    type Class<'a> = <Theme as button::Catalog>::Class<'a>;
+
+    fn default<'a>() -> Self::Class<'a> {
+        <Theme as button::Catalog>::default()
+    }
+
+    fn style(&self, _class: &Self::Class<'_>, status: button::Status) -> button::Style {
+        <Theme as button::Catalog>::style(self.theme, self.class, status)
+        // (self.class)(&self.theme, status)
+    }
+}
+
+impl<Theme: button::Catalog + iced::widget::text::Catalog> iced::widget::text::Catalog for ButtonTheme<'_, '_, Theme> {
+    type Class<'a> = <Theme as iced::widget::text::Catalog>::Class<'a>;
+
+    fn default<'a>() -> Self::Class<'a> {
+        <Theme as iced::widget::text::Catalog>::default()
+    }
+
+    fn style(&self, item: &Self::Class<'_>) -> widget::text::Style {
+        <Theme as iced::widget::text::Catalog>::style(self.theme, item)
+    }
+}
