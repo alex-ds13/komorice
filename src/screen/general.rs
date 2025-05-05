@@ -56,7 +56,7 @@ pub enum ConfigChange {
     GlobalWorkAreaOffsetLeft(i32),
     MouseFollowsFocus(Option<bool>),
     ResizeDelta(Option<i32>),
-    SlowApplicationCompensationTime(Option<i32>),
+    SlowApplicationCompensationTime(Option<u64>),
     UnmanagedWindowBehaviour(Option<OperationBehaviour>),
     WindowContainerBehaviour(Option<WindowContainerBehaviour>),
     WindowHidingBehaviour(Option<HidingBehaviour>),
@@ -217,11 +217,6 @@ impl General {
                     config.resize_delta = value;
                 }
                 ConfigChange::SlowApplicationCompensationTime(value) => {
-                    let value = value.and_then(|v| {
-                        v.try_into()
-                            .ok()
-                            .or(config.slow_application_compensation_time)
-                    });
                     config.slow_application_compensation_time = value;
                 }
                 ConfigChange::UnmanagedWindowBehaviour(value) => {
@@ -328,22 +323,22 @@ impl General {
                     DEFAULT_CONFIG.cross_monitor_move_behaviour,
                     None,
                 ),
-                // opt_helpers::number_with_disable_default_option(
-                //     "Default Container Padding",
-                //     Some("Global default container padding (default: 10)"),
-                //     config.default_container_padding.or(DEFAULT_CONFIG.default_container_padding),
-                //     DEFAULT_CONFIG.default_container_padding,
-                //     |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
-                //     None,
-                // ),
-                // opt_helpers::number_with_disable_default_option(
-                //     "Default Workspace Padding",
-                //     Some("Global default workspace padding (default: 10)"),
-                //     config.default_workspace_padding.or(DEFAULT_CONFIG.default_workspace_padding),
-                //     DEFAULT_CONFIG.default_workspace_padding,
-                //     |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default_option(
+                    "Default Container Padding",
+                    Some("Global default container padding (default: 10)"),
+                    config.default_container_padding.or(DEFAULT_CONFIG.default_container_padding),
+                    DEFAULT_CONFIG.default_container_padding,
+                    |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
+                    None,
+                ),
+                opt_helpers::number_with_disable_default_option(
+                    "Default Workspace Padding",
+                    Some("Global default workspace padding (default: 10)"),
+                    config.default_workspace_padding.or(DEFAULT_CONFIG.default_workspace_padding),
+                    DEFAULT_CONFIG.default_workspace_padding,
+                    |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
+                    None,
+                ),
                 opt_helpers::toggle_with_disable_default(
                     "Float Override",
                     Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
@@ -371,30 +366,30 @@ impl General {
                     "Global Work Area Offset",
                     Some("Global work area (space used for tiling) offset (default: None)"),
                     [
-                        // opt_helpers::number(
-                        //     "left",
-                        //     None,
-                        //     config.global_work_area_offset.map_or(0, |r| r.left),
-                        //     |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value)),
-                        // ),
-                        // opt_helpers::number(
-                        //     "top",
-                        //     None,
-                        //     config.global_work_area_offset.map_or(0, |r| r.top),
-                        //     |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
-                        // ),
-                        // opt_helpers::number(
-                        //     "bottom",
-                        //     None,
-                        //     config.global_work_area_offset.map_or(0, |r| r.bottom),
-                        //     |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value)),
-                        // ),
-                        // opt_helpers::number(
-                        //     "right",
-                        //     None,
-                        //     config.global_work_area_offset.map_or(0, |r| r.right),
-                        //     |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
-                        // ),
+                        opt_helpers::number(
+                            "left",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.left),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value)),
+                        ),
+                        opt_helpers::number(
+                            "top",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.top),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
+                        ),
+                        opt_helpers::number(
+                            "bottom",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.bottom),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value)),
+                        ),
+                        opt_helpers::number(
+                            "right",
+                            None,
+                            config.global_work_area_offset.map_or(0, |r| r.right),
+                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
+                        ),
                     ],
                     self.global_work_area_offset_expanded,
                     self.global_work_area_offset_hovered,
@@ -416,25 +411,25 @@ impl General {
                     |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value)),
                     None,
                 ),
-                // opt_helpers::number_with_disable_default_option(
-                //     "Resize Delta",
-                //     Some("Delta to resize windows by (default 50)"),
-                //     config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
-                //     DEFAULT_CONFIG.resize_delta,
-                //     |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
-                //     None,
-                // ),
-                // opt_helpers::number_with_disable_default_option(
-                //     "Slow Application Compensation Time",
-                //     Some("How long to wait when compensating for slow applications, \
-                //     in milliseconds (default: 20)\n\n\
-                //     Value must be greater or equal to 0."
-                //     ),
-                //     (config.slow_application_compensation_time.or(DEFAULT_CONFIG.slow_application_compensation_time)).and_then(|v| v.try_into().ok()),
-                //     DEFAULT_CONFIG.slow_application_compensation_time.and_then(|v| v.try_into().ok()),
-                //     |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default_option(
+                    "Resize Delta",
+                    Some("Delta to resize windows by (default 50)"),
+                    config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
+                    DEFAULT_CONFIG.resize_delta,
+                    |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
+                    None,
+                ),
+                opt_helpers::number_with_disable_default_option(
+                    "Slow Application Compensation Time",
+                    Some("How long to wait when compensating for slow applications, \
+                    in milliseconds (default: 20)\n\n\
+                    Value must be greater or equal to 0."
+                    ),
+                    config.slow_application_compensation_time.or(DEFAULT_CONFIG.slow_application_compensation_time),
+                    DEFAULT_CONFIG.slow_application_compensation_time,
+                    |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
+                    None,
+                ),
                 opt_helpers::choose_with_disable_default(
                     "Unmanaged Window Behaviour",
                     Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
@@ -516,36 +511,36 @@ impl General {
                         |selected| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(selected.into()))),
                     ).into(),
                     [
-                        // opt_helpers::number(
-                        //     "width:",
-                        //     None,
-                        //     config.floating_window_aspect_ratio.map_or(0, |ar| {
-                        //         match ar {
-                        //             AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
-                        //                 PredefinedAspectRatio::Ultrawide => 21,
-                        //                 PredefinedAspectRatio::Widescreen => 16,
-                        //                 PredefinedAspectRatio::Standard => 4,
-                        //             }
-                        //             AspectRatio::Custom(w, _) => w,
-                        //         }
-                        //     }),
-                        //     |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioWidth(v)),
-                        // ),
-                        // opt_helpers::number(
-                        //     "height:",
-                        //     None,
-                        //     config.floating_window_aspect_ratio.map_or(0, |ar| {
-                        //         match ar {
-                        //             AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
-                        //                 PredefinedAspectRatio::Ultrawide => 9,
-                        //                 PredefinedAspectRatio::Widescreen => 9,
-                        //                 PredefinedAspectRatio::Standard => 3,
-                        //             }
-                        //             AspectRatio::Custom(_, h) => h,
-                        //         }
-                        //     }),
-                        //     |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
-                        // ),
+                        opt_helpers::number(
+                            "width:",
+                            None,
+                            config.floating_window_aspect_ratio.map_or(0, |ar| {
+                                match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                        PredefinedAspectRatio::Ultrawide => 21,
+                                        PredefinedAspectRatio::Widescreen => 16,
+                                        PredefinedAspectRatio::Standard => 4,
+                                    }
+                                    AspectRatio::Custom(w, _) => w,
+                                }
+                            }),
+                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioWidth(v)),
+                        ),
+                        opt_helpers::number(
+                            "height:",
+                            None,
+                            config.floating_window_aspect_ratio.map_or(0, |ar| {
+                                match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                                        PredefinedAspectRatio::Ultrawide => 9,
+                                        PredefinedAspectRatio::Widescreen => 9,
+                                        PredefinedAspectRatio::Standard => 3,
+                                    }
+                                    AspectRatio::Custom(_, h) => h,
+                                }
+                            }),
+                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
+                        ),
                     ],
                     matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
                     false,

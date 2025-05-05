@@ -31,11 +31,11 @@ pub enum Message {
     ToggleMonitorButtonHover(usize, bool),
     ToggleIndexPreferenceExpand,
     IndexPreferenceHover(bool),
-    ChangeNewIndexPreferenceIndex(i32),
+    ChangeNewIndexPreferenceIndex(usize),
     ChangeNewIndexPreferenceId(String),
     AddNewIndexPreference,
     RemoveIndexPreference(usize),
-    ChangeIndexPreferenceIndex(usize, i32),
+    ChangeIndexPreferenceIndex(usize, usize),
     ChangeIndexPreferenceId(usize, String),
     ChangeDisplayIndexPreferences(Option<HashMap<usize, String>>),
 }
@@ -255,9 +255,7 @@ impl Monitors {
             }
             Message::IndexPreferenceHover(hover) => self.index_preferences_hovered = hover,
             Message::ChangeNewIndexPreferenceIndex(idx) => {
-                if let Ok(idx) = idx.try_into() {
-                    self.new_idx_preference_index = idx;
-                }
+                self.new_idx_preference_index = idx;
             }
             Message::ChangeNewIndexPreferenceId(id) => self.new_idx_preference_id = id,
             Message::AddNewIndexPreference => {
@@ -284,12 +282,10 @@ impl Monitors {
                 }
             }
             Message::ChangeIndexPreferenceIndex(idx, new_idx) => {
-                if let Ok(new_idx) = new_idx.try_into() {
-                    if let Some(dip) = display_index_preferences {
-                        if let Some(preference) = dip.remove(&idx) {
-                            dip.insert(new_idx, preference);
-                            *display_info = get_display_information(display_index_preferences);
-                        }
+                if let Some(dip) = display_index_preferences {
+                    if let Some(preference) = dip.remove(&idx) {
+                        dip.insert(new_idx, preference);
+                        *display_info = get_display_information(display_index_preferences);
                     }
                 }
             }
@@ -491,12 +487,11 @@ impl Monitors {
 fn index_preference<'a>(
     index: usize,
     id: &'a str,
-    index_message: impl Fn(i32) -> Message + Copy + 'static,
+    index_message: impl Fn(usize) -> Message + Copy + 'static,
     id_changed_message: impl Fn(String) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    // let number = opt_helpers::number_simple(index as i32, index_message).content_width(50);
-    let number = Space::with_width(Shrink);
+    let number = opt_helpers::number_simple(index, index_message).width(50);
     let input = container(crate::widget::input("", id, id_changed_message, None))
         .max_width(200)
         .width(Fill);

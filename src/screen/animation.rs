@@ -1,5 +1,7 @@
-use crate::config::DEFAULT_CONFIG;
-use crate::widget::opt_helpers;
+use crate::{
+    config::DEFAULT_CONFIG,
+    widget::{number_input, opt_helpers},
+};
 
 use std::collections::HashMap;
 
@@ -69,7 +71,7 @@ pub enum ConfigChange {
     DurationPerType(AnimationPrefix, u64),
     StyleGlobal(AnimationStyle),
     StylePerType(AnimationPrefix, AnimationStyle),
-    Fps(Option<i32>),
+    Fps(Option<u64>),
 }
 
 #[derive(Clone, Debug)]
@@ -147,9 +149,7 @@ impl Animation {
                     }
                 }
                 ConfigChange::Fps(value) => {
-                    if let Some(fps) = value.and_then(|v| v.try_into().ok()) {
-                        config.fps = Some(fps);
-                    }
+                    config.fps = value;
                 }
             },
             Message::ToggleEnableExpand => self.enable_expanded = !self.enable_expanded,
@@ -351,10 +351,9 @@ impl Animation {
                                 ]
                                 .push_maybe(config.duration.as_ref().map(|d| -> Element<Message> {
                                     if let PerAnimationPrefixConfig::Global(duration) = d {
-                                        // iced_aw::number_input(*duration, u64::MIN..=u64::MAX, |v| Message::ConfigChange(ConfigChange::DurationGlobal(v)))
-                                        //     .style(opt_helpers::num_button_style)
-                                        //     .into()
-                                        horizontal_space().into()
+                                        number_input("", *duration)
+                                            .on_input(|v| Message::ConfigChange(ConfigChange::DurationGlobal(v)))
+                                            .into()
                                     } else {
                                         horizontal_space().into()
                                     }
@@ -365,13 +364,14 @@ impl Animation {
                         .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
                             if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
                                 if let Some(duration) = hm.get(&AnimationPrefix::Movement) {
-                                    // opt_helpers::number(
-                                    //     "Set Duration for Movement Animations",
-                                    //     None,
-                                    //     (*duration).try_into().unwrap_or(250),
-                                    //     |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Movement, v.try_into().unwrap_or_default())),
-                                    // )
-                                    horizontal_space().into()
+                                    opt_helpers::number_with_disable_default(
+                                        "Set Duration for Movement Animations",
+                                        None,
+                                        *duration,
+                                        250,
+                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Movement, v)),
+                                        None,
+                                    )
                                 } else {
                                     horizontal_space().into()
                                 }
@@ -382,13 +382,14 @@ impl Animation {
                         .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(|| -> Element<Message> {
                             if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration {
                                 if let Some(duration) = hm.get(&AnimationPrefix::Transparency) {
-                                    // opt_helpers::number(
-                                    //     "Set Duration for Transparency Animations",
-                                    //     None,
-                                    //     (*duration).try_into().unwrap_or(250),
-                                    //     |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Transparency, v.try_into().unwrap_or_default())),
-                                    // )
-                                    horizontal_space().into()
+                                    opt_helpers::number_with_disable_default(
+                                        "Set Duration for Transparency Animations",
+                                        None,
+                                        *duration,
+                                        250,
+                                        |v| Message::ConfigChange(ConfigChange::DurationPerType(AnimationPrefix::Transparency, v)),
+                                        None,
+                                    )
                                 } else {
                                     horizontal_space().into()
                                 }
@@ -488,14 +489,14 @@ impl Animation {
                     Message::ConfigChange(ConfigChange::StyleGlobal(AnimationStyle::Linear)),
                     None,
                 ),
-                // opt_helpers::number_with_disable_default_option(
-                //     "FPS",
-                //     Some("Set the animation FPS for all animations"),
-                //     config.fps.map(|f| f as i32),
-                //     DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps.map(|v| v as i32)),
-                //     |v| Message::ConfigChange(ConfigChange::Fps(v)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default_option(
+                    "FPS",
+                    Some("Set the animation FPS for all animations"),
+                    config.fps,
+                    DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps),
+                    |v| Message::ConfigChange(ConfigChange::Fps(v)),
+                    None,
+                ),
             ],
         )
     }

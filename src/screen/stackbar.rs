@@ -148,14 +148,14 @@ impl Stackbar {
         opt_helpers::section_view(
             "Stackbar:",
             [
-                // opt_helpers::number_with_disable_default(
-                //     "Stackbar Height",
-                //     Some("Stackbar height. (default: 40)"),
-                //     config.height.unwrap_or(40),
-                //     40,
-                //     |value| Message::ConfigChange(ConfigChange::Height(value)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default(
+                    "Stackbar Height",
+                    Some("Stackbar height. (default: 40)"),
+                    config.height.unwrap_or(40),
+                    40,
+                    |value| Message::ConfigChange(ConfigChange::Height(value)),
+                    None,
+                ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Label",
                     Some("Stackbar label. (default: \"Process\")"),
@@ -188,14 +188,14 @@ impl Stackbar {
                     Some(StackbarMode::OnStack),
                     None,
                 ),
-                // opt_helpers::number_with_disable_default(
-                //     "Stackbar Tabs Width",
-                //     Some("Tabs width. (default: 200)"),
-                //     config.tabs.as_ref().and_then(|t| t.width).unwrap_or(200),
-                //     200,
-                //     |value| Message::ConfigChange(ConfigChange::Width(value)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default(
+                    "Stackbar Tabs Width",
+                    Some("Tabs width. (default: 200)"),
+                    config.tabs.as_ref().and_then(|t| t.width).unwrap_or(200),
+                    200,
+                    |value| Message::ConfigChange(ConfigChange::Width(value)),
+                    None,
+                ),
                 opt_helpers::input_with_disable_default(
                     "Stackbar Font Family",
                     Some("Tabs font family name. (default: empty string)\n\nWhen empty use system font."),
@@ -210,14 +210,14 @@ impl Stackbar {
                     None,
                     None,
                 ),
-                // opt_helpers::number_with_disable_default(
-                //     "Stackbar Font Size",
-                //     Some("Tabs font size. (default: '0')\n\nWhen '0' use system font size."),
-                //     config.tabs.as_ref().and_then(|t| t.font_size).unwrap_or(0),
-                //     0,
-                //     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
-                //     None,
-                // ),
+                opt_helpers::number_with_disable_default(
+                    "Stackbar Font Size",
+                    Some("Tabs font size. (default: '0')\n\nWhen '0' use system font size."),
+                    config.tabs.as_ref().and_then(|t| t.font_size).unwrap_or(0),
+                    0,
+                    |value| Message::ConfigChange(ConfigChange::FontSize(value)),
+                    None,
+                ),
                 // opt_helpers::color(
                 //     "Stackbar Background Colour",
                 //     Some("Tab background colour. (default: '0x333333')"),

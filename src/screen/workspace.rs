@@ -25,13 +25,13 @@ pub enum Message {
     ToggleOverrideGlobal(OverrideConfig),
     ToggleLayoutRulesExpand,
     LayoutRulesHover(bool),
-    ChangeNewLayoutRuleLimit(i32),
+    ChangeNewLayoutRuleLimit(usize),
     ChangeNewLayoutRuleLayout(Layout),
     AddNewLayoutRule,
     RemoveLayoutRule(usize),
     ToggleBehaviourRulesExpand,
     BehaviourRulesHover(bool),
-    ChangeNewBehaviourRuleLimit(i32),
+    ChangeNewBehaviourRuleLimit(usize),
     ChangeNewBehaviourRuleBehaviour(WindowContainerBehaviour),
     AddNewBehaviourRule,
     RemoveBehaviourRule(usize),
@@ -54,12 +54,12 @@ pub enum ConfigChange {
     Layout(Option<Layout>),
     LayoutFlip(Option<Axis>),
     LayoutRules(Option<HashMap<usize, DefaultLayout>>),
-    LayoutRuleLimit((usize, i32)),
+    LayoutRuleLimit((usize, usize)),
     LayoutRuleLayout((usize, Layout)),
     Name(String),
     WindowContainerBehaviour(Option<WindowContainerBehaviour>),
     BehaviourRules(Option<HashMap<usize, WindowContainerBehaviour>>),
-    BehaviourRuleLimit((usize, i32)),
+    BehaviourRuleLimit((usize, usize)),
     BehaviourRuleBehaviour((usize, WindowContainerBehaviour)),
     WorkspacePadding(Option<i32>),
     FloatingLayerBehaviour(Option<FloatingLayerBehaviour>),
@@ -135,12 +135,10 @@ impl WorkspaceScreen for WorkspaceConfig {
                     self.layout_rules = value;
                 }
                 ConfigChange::LayoutRuleLimit((previous_limit, new_limit)) => {
-                    if let Ok(new_limit) = new_limit.try_into() {
-                        if let Some(layout_rules) = &mut self.layout_rules {
-                            if !layout_rules.contains_key(&new_limit) {
-                                if let Some(layout) = layout_rules.remove(&previous_limit) {
-                                    layout_rules.insert(new_limit, layout);
-                                }
+                    if let Some(layout_rules) = &mut self.layout_rules {
+                        if !layout_rules.contains_key(&new_limit) {
+                            if let Some(layout) = layout_rules.remove(&previous_limit) {
+                                layout_rules.insert(new_limit, layout);
                             }
                         }
                     }
@@ -159,12 +157,10 @@ impl WorkspaceScreen for WorkspaceConfig {
                     self.window_container_behaviour_rules = value;
                 }
                 ConfigChange::BehaviourRuleLimit((previous_limit, new_limit)) => {
-                    if let Ok(new_limit) = new_limit.try_into() {
-                        if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
-                            if !behaviour_rules.contains_key(&new_limit) {
-                                if let Some(layout) = behaviour_rules.remove(&previous_limit) {
-                                    behaviour_rules.insert(new_limit, layout);
-                                }
+                    if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
+                        if !behaviour_rules.contains_key(&new_limit) {
+                            if let Some(layout) = behaviour_rules.remove(&previous_limit) {
+                                behaviour_rules.insert(new_limit, layout);
                             }
                         }
                     }
@@ -219,9 +215,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 workspace.layout_rules_hovered = hover;
             }
             Message::ChangeNewLayoutRuleLimit(limit) => {
-                if let Ok(limit) = limit.try_into() {
-                    workspace.new_layout_rule_limit = limit;
-                }
+                workspace.new_layout_rule_limit = limit;
             }
             Message::ChangeNewLayoutRuleLayout(layout) => {
                 workspace.new_layout_rule_layout = layout;
@@ -257,9 +251,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                 workspace.behaviour_rules_hovered = hover;
             }
             Message::ChangeNewBehaviourRuleLimit(limit) => {
-                if let Ok(limit) = limit.try_into() {
-                    workspace.new_behaviour_rule_limit = limit;
-                }
+                workspace.new_behaviour_rule_limit = limit;
             }
             Message::ChangeNewBehaviourRuleBehaviour(behaviour) => {
                 workspace.new_behaviour_rule_behaviour = behaviour;
@@ -383,18 +375,18 @@ impl Workspace {
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
             None,
         );
-        // let container_padding = opt_helpers::number_with_disable_default_option(
-        //     "Container Padding",
-        //     Some("Container padding (default: global)"),
-        //     ws_config.container_padding,
-        //     DEFAULT_WORKSPACE_CONFIG.container_padding,
-        //     |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
-        //     Some(opt_helpers::DisableArgs {
-        //         disable: ws_config.container_padding.is_none(),
-        //         label: Some("Global"),
-        //         on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
-        //     }),
-        // );
+        let container_padding = opt_helpers::number_with_disable_default_option(
+            "Container Padding",
+            Some("Container padding (default: global)"),
+            ws_config.container_padding,
+            DEFAULT_WORKSPACE_CONFIG.container_padding,
+            |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
+            Some(opt_helpers::DisableArgs {
+                disable: ws_config.container_padding.is_none(),
+                label: Some("Global"),
+                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
+            }),
+        );
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
             Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
@@ -499,18 +491,18 @@ impl Workspace {
                 },
             }),
         );
-        // let workspace_padding = opt_helpers::number_with_disable_default_option(
-        //     "Workspace Padding",
-        //     Some("Workspace padding (default: global)"),
-        //     ws_config.workspace_padding,
-        //     DEFAULT_WORKSPACE_CONFIG.workspace_padding,
-        //     |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
-        //     Some(opt_helpers::DisableArgs {
-        //         disable: ws_config.workspace_padding.is_none(),
-        //         label: Some("Global"),
-        //         on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
-        //     }),
-        // );
+        let workspace_padding = opt_helpers::number_with_disable_default_option(
+            "Workspace Padding",
+            Some("Workspace padding (default: global)"),
+            ws_config.workspace_padding,
+            DEFAULT_WORKSPACE_CONFIG.workspace_padding,
+            |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
+            Some(opt_helpers::DisableArgs {
+                disable: ws_config.workspace_padding.is_none(),
+                label: Some("Global"),
+                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
+            }),
+        );
         let initial_workspace_rules_button = opt_helpers::opt_button(
             "Initial Workspace Rules",
             Some(
@@ -535,13 +527,13 @@ impl Workspace {
             layout,
             layout_flip,
             apply_window_based_offset,
-            // container_padding,
+            container_padding,
             float_override,
             floating_layer_behaviour,
             layout_rules,
             window_container_behaviour,
             window_container_behaviour_rules,
-            // workspace_padding,
+            workspace_padding,
             initial_workspace_rules_button,
             workspace_rules_button,
         ]
@@ -586,12 +578,11 @@ fn get_rules_from_config_mut<'a>(
 fn layout_rule<'a>(
     limit: usize,
     layout: Layout,
-    limit_message: impl Fn(i32) -> Message + Copy + 'static,
+    limit_message: impl Fn(usize) -> Message + Copy + 'static,
     layout_message: impl Fn(Layout) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    // let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
-    let number = Space::with_width(Shrink);
+    let number = opt_helpers::number_simple(limit, limit_message).width(50);
     let choose = container(
         pick_list(
             &LAYOUT_OPTIONS_WITHOUT_NONE[..],
@@ -687,12 +678,11 @@ fn layout_rules_children<'a>(
 fn behaviour_rule<'a>(
     limit: usize,
     behaviour: WindowContainerBehaviour,
-    limit_message: impl Fn(i32) -> Message + Copy + 'static,
+    limit_message: impl Fn(usize) -> Message + Copy + 'static,
     behaviour_message: impl Fn(WindowContainerBehaviour) -> Message + 'a,
     is_add: bool,
 ) -> Element<'a, Message> {
-    // let number = opt_helpers::number_simple(limit as i32, limit_message).content_width(50);
-    let number = Space::with_width(Shrink);
+    let number = opt_helpers::number_simple(limit, limit_message).width(50);
     let choose = container(
         pick_list(
             [
