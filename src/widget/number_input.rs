@@ -885,6 +885,8 @@ where
         if shell.is_event_captured() {
             buttons_shell.capture_event();
         }
+        buttons_shell.request_redraw_at(shell.redraw_request());
+        buttons_shell.request_input_method(shell.input_method());
 
         self.increment_button.update(
             &mut tree.children[0],
@@ -897,7 +899,7 @@ where
             viewport,
         );
         self.decrement_button.update(
-            &mut tree.children[0],
+            &mut tree.children[1],
             event,
             decrement_layout,
             cursor,
@@ -908,15 +910,49 @@ where
         );
 
         // Reconcile main shell with buttons shell
-        match buttons_shell.redraw_request() {
-            window::RedrawRequest::NextFrame => shell.request_redraw(),
-            window::RedrawRequest::At(instant) => shell.request_redraw_at(instant),
-            window::RedrawRequest::Wait => {}
-        }
-
+        shell.request_redraw_at(buttons_shell.redraw_request());
+        shell.request_input_method(buttons_shell.input_method());
         if buttons_shell.is_event_captured() {
             // if the buttons handled the event we can simply capture on the main shell and return
             shell.capture_event();
+        }
+
+        if !buttons_messages.is_empty() {
+            if let Some(on_input) = &self.on_input {
+                for message in buttons_messages {
+                    match message {
+                        ButtonMessage::Increment => {
+                            if let Ok(mut parsed) = self.value.to_string().parse() {
+                                if parsed < self.max {
+                                    parsed += T::one();
+                                    if parsed > self.max {
+                                        parsed = self.max.clone();
+                                    }
+                                    let message = (on_input)(parsed);
+                                    shell.publish(message);
+                                }
+                            }
+                        }
+                        ButtonMessage::Decrement => {
+                            if let Ok(mut parsed) = self.value.to_string().parse() {
+                                if parsed > self.min {
+                                    parsed -= T::one();
+                                    if parsed < self.min {
+                                        parsed = self.min.clone();
+                                    }
+                                    let message = (on_input)(parsed);
+                                    shell.publish(message);
+                                }
+                            }
+                        }
+                    }
+                    shell.request_redraw();
+                    shell.capture_event();
+                }
+            }
+        }
+
+        if shell.is_event_captured() {
             return;
         }
 
