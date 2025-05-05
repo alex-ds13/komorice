@@ -32,7 +32,7 @@ pub fn number_input<'a, T, Message, Theme, Renderer>(
 ) -> number_input::NumberInput<'a, T, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: number_input::Catalog + iced::widget::button::Catalog + iced::widget::text::Catalog + Clone + 'a,
+    Theme: number_input::Catalog + iced::widget::button::Catalog + iced::widget::text::Catalog + 'a,
     Renderer: iced::advanced::text::Renderer + 'a,
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
