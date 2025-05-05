@@ -474,7 +474,7 @@ where
                                 + text_bounds.width
                                 + padding.right
                                 + button_padding,
-                            button_limits.max().height + (button_padding / 2.0),
+                            button_limits.max().height + button_padding,
                         ),
                     ),
                     Side::Right => (
@@ -494,7 +494,7 @@ where
                                 + icon_width
                                 + padding.right
                                 + button_padding,
-                            button_limits.max().height + (button_padding / 2.0),
+                            button_limits.max().height + button_padding,
                         ),
                     ),
                 };
@@ -524,7 +524,7 @@ where
             ));
             let decrement_node = decrement_node.move_to(Point::new(
                 text_bounds.width + padding.horizontal() + button_padding,
-                button_limits.max().height + (button_padding / 2.0),
+                button_limits.max().height + button_padding,
             ));
 
             layout::Node::with_children(
