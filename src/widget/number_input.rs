@@ -809,21 +809,6 @@ where
         if self.on_input.is_none() {
             state.is_pasting = None;
         }
-
-        let text_size = self.size.unwrap_or(Pixels(16.0));
-        let height = (self.line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical()) / 2.0;
-        let increment_button: Element<_> = button(iced::widget::text("^").size(13.0).center())
-            .width(self.buttons_width)
-            .height(height)
-            .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Increment))
-            .into();
-        let decrement_button: Element<_> = button(iced::widget::text("v").size(11.0).center())
-            .width(self.buttons_width)
-            .height(height)
-            .on_press_maybe(self.on_input.is_some().then_some(ButtonMessage::Decrement))
-            .into();
-
-        tree.diff_children(&[&increment_button, &decrement_button]);
     }
 
     fn size(&self) -> Size<Length> {
@@ -913,7 +898,6 @@ where
         shell.request_redraw_at(buttons_shell.redraw_request());
         shell.request_input_method(buttons_shell.input_method());
         if buttons_shell.is_event_captured() {
-            // if the buttons handled the event we can simply capture on the main shell and return
             shell.capture_event();
         }
 
@@ -953,6 +937,7 @@ where
         }
 
         if shell.is_event_captured() {
+            // if the buttons handled the event we can simply return
             return;
         }
 
@@ -2108,19 +2093,8 @@ pub enum Status {
     Disabled,
 }
 
-impl Status {
-    pub fn to_button(self) -> button::Status {
-        match self {
-            Status::Active => button::Status::Active,
-            Status::Hovered => button::Status::Active,
-            Status::Focused { is_hovered: _ } => button::Status::Active,
-            Status::Disabled => button::Status::Disabled,
-        }
-    }
-}
-
 /// The appearance of a number input.
-// #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
     /// The [`Background`] of the number input.
     pub background: Background,
@@ -2134,9 +2108,6 @@ pub struct Style {
     pub value: Color,
     /// The [`Color`] of the selection of the number input.
     pub selection: Color,
-    // /// The [`button::Style`] of the increment/decrement buttons.
-    // pub button_style: <Theme as button::Catalog>::Class<'a>,
-    // pub button_style: button::StyleFn<'a, Theme>,
 }
 
 /// The theme catalog of a [`NumberInput`].
