@@ -284,6 +284,8 @@ where
     /// Sets the [`Pixels`] width of the [`NumberInput`] increment/decrement buttons.
     pub fn buttons_width<P: Into<Pixels>>(mut self, width: P) -> Self {
         self.buttons_width = width.into();
+        self.increment_button = self.increment_button.width(self.buttons_width);
+        self.decrement_button = self.decrement_button.width(self.buttons_width);
         self
     }
 
