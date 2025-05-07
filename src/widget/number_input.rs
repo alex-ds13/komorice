@@ -50,8 +50,9 @@ use iced::touch;
 use iced::widget::{button, Button};
 use iced::window;
 use iced::{
-    Background, Border, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
-    Task, Theme, Vector,
+    border::{self, Border},
+    Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size, Task,
+    Theme, Vector,
 };
 use iced_core::input_method::{self, InputMethod};
 use num_traits::{Bounded, Num, NumAssignOps};
@@ -122,7 +123,7 @@ where
 pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
 
 /// The default [`Pixels`] width of a [`NumberInput`] increment/decrement buttons.
-pub const DEFAULT_BUTTON_WIDTH: Pixels = Pixels(15.0);
+pub const DEFAULT_BUTTON_WIDTH: Pixels = Pixels(16.0);
 
 impl<'a, T, Message, Theme, Renderer> NumberInput<'a, T, Message, Theme, Renderer>
 where
@@ -2219,11 +2220,7 @@ pub fn default(theme: &Theme, status: Status) -> Style {
 pub fn top_button(theme: &Theme, status: button::Status) -> button::Style {
     let base = button::secondary(theme, status);
     button::Style {
-        border: iced::Border {
-            width: 1.0,
-            radius: iced::border::Radius::default().top(2),
-            color: base.border.color,
-        },
+        border: border::rounded(border::top(2)),
         ..base
     }
 }
@@ -2232,11 +2229,7 @@ pub fn top_button(theme: &Theme, status: button::Status) -> button::Style {
 pub fn bottom_button(theme: &Theme, status: button::Status) -> button::Style {
     let base = button::secondary(theme, status);
     button::Style {
-        border: iced::Border {
-            width: 1.0,
-            radius: iced::border::Radius::default().bottom(2),
-            color: base.border.color,
-        },
+        border: border::rounded(border::bottom(2)),
         ..base
     }
 }
