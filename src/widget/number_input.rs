@@ -142,13 +142,13 @@ where
         let line_height = text::LineHeight::default();
         let height = line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
         let increment_button: Button<ButtonMessage, Theme, Renderer> =
-            button(iced::widget::text("^").size(13.0).center())
+            button(iced::widget::text("▲").size(8.0).center())
                 .width(DEFAULT_BUTTON_WIDTH)
                 .height(height)
                 .class(<Theme as Catalog>::default_increment_button())
                 .padding(0);
         let decrement_button: Button<ButtonMessage, Theme, Renderer> =
-            button(iced::widget::text("v").size(11.0).center())
+            button(iced::widget::text("▼").size(8.0).center())
                 .width(DEFAULT_BUTTON_WIDTH)
                 .height(height)
                 .class(<Theme as Catalog>::default_decrement_button())
