@@ -112,21 +112,6 @@ fn disable_checkbox<'a, Message: 'a + Clone>(
     })
 }
 
-fn num_input_style(
-    disable: bool,
-) -> impl Fn(&iced::Theme, number_input::Status) -> number_input::Style {
-    move |t: &iced::Theme, s: number_input::Status| {
-        number_input::default(
-            t,
-            if disable {
-                number_input::Status::Disabled
-            } else {
-                s
-            },
-        )
-    }
-}
-
 pub fn to_description_text(t: Text) -> Text {
     t.style(|t: &iced::Theme| {
         let palette = t.extended_palette();
@@ -409,7 +394,6 @@ pub fn number_simple<'a, T, Message: 'a + Clone>(
 where
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
-    // iced_aw::number_input(value, i32::MIN..=i32::MAX, on_change).style(num_button_style)
     number_input("", value).on_input(on_change)
 }
 
@@ -457,21 +441,9 @@ where
             on_change(v)
         }
     };
-    // let bounds = if should_disable {
-    //     value..=value
-    // } else {
-    //     i32::MIN..=i32::MAX
-    // };
     let element = row![label_with_description(name, description),]
         .push_maybe(disable_checkbox(disable_args))
-        .push(
-            number_input("", value)
-                .on_input(on_change)
-                .style(num_input_style(should_disable)),
-            // iced_aw::number_input(value, bounds, on_change)
-            //     .style(num_button_style)
-            //     .input_style(num_input_style(should_disable)),
-        )
+        .push(number_input("", value).on_input_maybe((!should_disable).then_some(on_change)))
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
@@ -510,21 +482,9 @@ where
             on_change(v)
         }
     };
-    // let bounds = if should_disable {
-    //     value..=value
-    // } else {
-    //     i32::MIN..=i32::MAX
-    // };
     let element = row![label_element_with_description(label, description)]
         .push_maybe(disable_checkbox(disable_args))
-        .push(
-            number_input("", value)
-                .on_input_maybe((!should_disable).then_some(on_change))
-                .style(num_input_style(should_disable)),
-            // iced_aw::number_input(value, bounds, on_change)
-            //     .style(num_button_style)
-            //     .input_style(num_input_style(should_disable)),
-        )
+        .push(number_input("", value).on_input_maybe((!should_disable).then_some(on_change)))
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
@@ -569,20 +529,10 @@ where
             on_change(Some(v))
         }
     };
-    // let bounds = if should_disable {
-    //     value_internal..=value_internal
-    // } else {
-    //     i32::MIN..=i32::MAX
-    // };
     let element = row![label_element_with_description(label, description)]
         .push_maybe(disable_checkbox(disable_args))
         .push(
-            number_input("", value_internal)
-                .on_input_maybe((!should_disable).then_some(on_change))
-                .style(num_input_style(should_disable)),
-            // iced_aw::number_input(value_internal, bounds, on_change)
-            //     .style(num_button_style)
-            //     .input_style(num_input_style(should_disable)),
+            number_input("", value_internal).on_input_maybe((!should_disable).then_some(on_change)),
         )
         .spacing(10)
         .align_y(Center);
@@ -596,6 +546,7 @@ where
 ///This version of `number` uses values as `Option`s to allow the default value to be `None`.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
 pub fn number_with_disable_default_option_bounded<'a, T, Message: 'a + Clone>(
     name: &'a str,
     description: Option<&'a str>,
@@ -630,11 +581,6 @@ where
             on_change(Some(v))
         }
     };
-    // let bounds = if should_disable {
-    //     value_internal..=value_internal
-    // } else {
-    //     i32::MIN..=i32::MAX
-    // };
     let element = row![label_element_with_description(label, description)]
         .push_maybe(disable_checkbox(disable_args))
         .push(
@@ -642,10 +588,6 @@ where
                 .max(max)
                 .min(min)
                 .on_input_maybe((!should_disable).then_some(on_change))
-                .style(num_input_style(should_disable)),
-            // iced_aw::number_input(value_internal, bounds, on_change)
-            //     .style(num_button_style)
-            //     .input_style(num_input_style(should_disable)),
         )
         .spacing(10)
         .align_y(Center);
