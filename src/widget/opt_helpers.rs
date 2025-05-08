@@ -1,8 +1,14 @@
 #![allow(dead_code)]
 use super::{icons, ICONS};
 
-use crate::widget::number_input;
-use crate::{widget, BOLD_FONT, EMOJI_FONT};
+use crate::{
+    widget::{
+        self,
+        color_picker::{color_picker, HexString},
+        number_input,
+    },
+    BOLD_FONT, EMOJI_FONT,
+};
 
 use std::fmt::Display;
 use std::str::FromStr;
@@ -15,7 +21,6 @@ use iced::{
     },
     Center, Color, Element, Fill,
 };
-// use iced_aw::core::color::HexString;
 use num_traits::{Bounded, Num, NumAssignOps};
 
 pub struct DisableArgs<'a, Message> {
@@ -93,7 +98,7 @@ fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
     })
 }
 
-fn disable_checkbox<'a, Message: 'a + Clone>(
+fn disable_checkbox<'a, Message: Clone + 'a>(
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Option<Element<'a, Message>> {
     disable_args.map(|args| {
@@ -157,7 +162,7 @@ pub fn label_with_description<'a, Message: 'a>(
 ///Creates a `button` with `name` as label and with a custom element as the button itself.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn opt_custom_button<'a, Message: 'a + Clone>(
+pub fn opt_custom_button<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     on_press: Message,
@@ -182,7 +187,7 @@ pub fn opt_custom_button<'a, Message: 'a + Clone>(
 ///Creates a `button` with `name` as label.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn opt_button<'a, Message: 'a + Clone>(
+pub fn opt_button<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     hovered: bool,
@@ -207,7 +212,7 @@ pub fn opt_button<'a, Message: 'a + Clone>(
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn opt_button_add_move<'a, Message: 'a + Clone>(
+pub fn opt_button_add_move<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     hovered: bool,
@@ -304,7 +309,7 @@ pub fn opt_button_add_move<'a, Message: 'a + Clone>(
 ///using the remainder parameters for it.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn input<'a, Message: 'a + Clone>(
+pub fn input<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     placeholder: &'a str,
@@ -325,12 +330,12 @@ pub fn input<'a, Message: 'a + Clone>(
 ///toggling the input on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn input_with_disable<'a, Message: 'a + Clone>(
+pub fn input_with_disable<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     placeholder: &'a str,
     value: &'a str,
-    on_change: impl Fn(String) -> Message + 'a + Clone,
+    on_change: impl Fn(String) -> Message + Clone + 'a,
     on_submit: Option<Message>,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
@@ -351,13 +356,13 @@ pub fn input_with_disable<'a, Message: 'a + Clone>(
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn input_with_disable_default<'a, Message: 'a + Clone>(
+pub fn input_with_disable_default<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     placeholder: &'a str,
     value: &'a str,
     default_value: String,
-    on_change: impl Fn(String) -> Message + 'a + Clone,
+    on_change: impl Fn(String) -> Message + Clone + 'a,
     on_submit: Option<Message>,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
@@ -387,9 +392,9 @@ pub fn input_with_disable_default<'a, Message: 'a + Clone>(
 ///using the remainder parameters for it.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn number_simple<'a, T, Message: 'a + Clone>(
+pub fn number_simple<'a, T, Message: Clone + 'a>(
     value: T,
-    on_change: impl Fn(T) -> Message + 'a + Clone,
+    on_change: impl Fn(T) -> Message + Clone + 'a,
 ) -> number_input::NumberInput<'a, T, Message>
 where
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
@@ -401,11 +406,11 @@ where
 ///using the remainder parameters for it.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn number<'a, T, Message: 'a + Clone>(
+pub fn number<'a, T, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: T,
-    on_change: impl Fn(T) -> Message + 'a + Clone,
+    on_change: impl Fn(T) -> Message + Clone + 'a,
 ) -> Element<'a, Message>
 where
     T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
@@ -423,11 +428,11 @@ where
 ///toggling the number input on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable<'a, T, Message: 'a + Clone>(
+pub fn number_with_disable<'a, T, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: T,
-    on_change: impl Fn(T) -> Message + 'a + Clone,
+    on_change: impl Fn(T) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
@@ -454,12 +459,12 @@ where
 ///is diferent from `default_value` to send a message with the default value.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable_default<'a, T, Message: 'a + Clone>(
+pub fn number_with_disable_default<'a, T, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: T,
     default_value: T,
-    on_change: impl Fn(T) -> Message + 'a + Copy + 'static,
+    on_change: impl Fn(T) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
@@ -497,12 +502,12 @@ where
 ///This version of `number` uses values as `Option`s to allow the default value to be `None`.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn number_with_disable_default_option<'a, T, Message: 'a + Clone>(
+pub fn number_with_disable_default_option<'a, T, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: Option<T>,
     default_value: Option<T>,
-    on_change: impl Fn(Option<T>) -> Message + 'a + Clone + 'static,
+    on_change: impl Fn(Option<T>) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
@@ -547,14 +552,14 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn number_with_disable_default_option_bounded<'a, T, Message: 'a + Clone>(
+pub fn number_with_disable_default_option_bounded<'a, T, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: Option<T>,
     max: T,
     min: T,
     default_value: Option<T>,
-    on_change: impl Fn(Option<T>) -> Message + 'a + Clone + 'static,
+    on_change: impl Fn(Option<T>) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
@@ -587,89 +592,89 @@ where
             number_input("", value_internal)
                 .max(max)
                 .min(min)
-                .on_input_maybe((!should_disable).then_some(on_change))
+                .on_input_maybe((!should_disable).then_some(on_change)),
         )
         .spacing(10)
         .align_y(Center);
     opt_box(element).into()
 }
 
-// ///Creates a row with a label with `name` and a `colo_picker`
-// ///using the remainder parameters for it.
-// ///
-// ///If `Some(description)` is given, it adds the description below the label.
-// pub fn color_picker_simple<'a, Message: 'a + Clone, F>(
-//     show_picker: bool,
-//     color: Color,
-//     underlay: Element<'a, Message>,
-//     on_cancel: Message,
-//     on_submit: F,
-// ) -> iced_aw::ColorPicker<'a, Message>
-// where
-//     F: 'static + Fn(Color) -> Message,
-// {
-//     iced_aw::color_picker(show_picker, color, underlay, on_cancel, on_submit)
-// }
-//
-// #[allow(clippy::too_many_arguments)]
-// pub fn color<'a, Message: 'a + Clone + 'static, F>(
-//     name: &'a str,
-//     description: Option<&'a str>,
-//     show_picker: bool,
-//     color: Option<Color>,
-//     default_color: Option<Color>,
-//     on_toggle: impl Fn(bool) -> Message,
-//     on_submit: F,
-//     disable_args: Option<DisableArgs<'a, Message>>,
-// ) -> Element<'a, Message>
-// where
-//     F: 'static + Fn(Option<Color>) -> Message,
-// {
-//     let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
-//     let default_color_internal = default_color.unwrap_or_default();
-//     let color_internal = color.unwrap_or(default_color_internal);
-//     let is_dirty = ((color_internal != default_color_internal)
-//         || (default_color.is_none() && color.is_some()))
-//         && !should_disable;
-//     let label = if is_dirty {
-//         row![name, reset_button(on_submit(default_color))]
-//             .spacing(5)
-//             .height(30)
-//             .align_y(Center)
-//     } else {
-//         row![name].height(30).align_y(Center)
-//     };
-//     let on_press = if should_disable {
-//         None
-//     } else {
-//         Some(on_toggle(true))
-//     };
-//     let on_submit_internal = move |v| on_submit(Some(v));
-//     let underlay = button(text(color_internal.as_hex_string()))
-//         .on_press_maybe(on_press)
-//         .style(move |t, s| button::Style {
-//             background: Some(color_internal.into()),
-//             text_color: if color_internal.r.max(color_internal.g.max(color_internal.b)) < 0.5 {
-//                 Color::WHITE
-//             } else {
-//                 Color::BLACK
-//             },
-//             ..button::secondary(t, s)
-//         })
-//         .into();
-//     let element = row![label_element_with_description(label, description)]
-//         .push_maybe(disable_checkbox(disable_args))
-//         .push(color_picker_simple(
-//             show_picker,
-//             color_internal,
-//             underlay,
-//             on_toggle(false),
-//             on_submit_internal,
-//         ))
-//         .spacing(10)
-//         .align_y(Center);
-//     opt_box(element).into()
-// }
+///Creates a row with a label with `name` and a `color_picker`
+///using the remainder parameters for it.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn color_picker_simple<'a, Message: Clone + 'a, F>(
+    show_picker: bool,
+    color: Color,
+    underlay: Element<'a, Message>,
+    on_cancel: Message,
+    on_submit: F,
+) -> Element<'a, Message>
+where
+    F: Fn(Color) -> Message + 'a,
+{
+    color_picker(show_picker, color, underlay, on_cancel, on_submit).into()
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn color<'a, Message: Clone + 'a, F>(
+    name: &'a str,
+    description: Option<&'a str>,
+    show_picker: bool,
+    color: Option<Color>,
+    default_color: Option<Color>,
+    on_toggle: impl Fn(bool) -> Message,
+    on_submit: F,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message>
+where
+    F: Fn(Option<Color>) -> Message + 'a,
+{
+    let should_disable = disable_args.as_ref().is_some_and(|args| args.disable);
+    let default_color_internal = default_color.unwrap_or_default();
+    let color_internal = color.unwrap_or(default_color_internal);
+    let is_dirty = ((color_internal != default_color_internal)
+        || (default_color.is_none() && color.is_some()))
+        && !should_disable;
+    let label = if is_dirty {
+        row![name, reset_button(on_submit(default_color))]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+    } else {
+        row![name].height(30).align_y(Center)
+    };
+    let on_press = if should_disable {
+        None
+    } else {
+        Some(on_toggle(true))
+    };
+    let on_submit_internal = move |v| on_submit(Some(v));
+    let underlay = button(text(color_internal.as_hex_string()))
+        .on_press_maybe(on_press)
+        .style(move |t, s| button::Style {
+            background: Some(color_internal.into()),
+            text_color: if color_internal.r.max(color_internal.g.max(color_internal.b)) < 0.5 {
+                Color::WHITE
+            } else {
+                Color::BLACK
+            },
+            ..button::secondary(t, s)
+        })
+        .into();
+    let element = row![label_element_with_description(label, description)]
+        .push_maybe(disable_checkbox(disable_args))
+        .push(color_picker_simple(
+            show_picker,
+            color_internal,
+            underlay,
+            on_toggle(false),
+            on_submit_internal,
+        ))
+        .spacing(10)
+        .align_y(Center);
+    opt_box(element).into()
+}
 
 ///Creates a `checkbox` with `name` as label
 ///
@@ -693,7 +698,7 @@ pub fn bool<'a, Message: 'a>(
 ///toggling the bool on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn bool_with_disable<'a, Message: 'a + Clone>(
+pub fn bool_with_disable<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -734,7 +739,7 @@ pub fn toggle<'a, Message: 'a>(
 ///toggling the toggler on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn toggle_with_disable<'a, Message: 'a + Clone>(
+pub fn toggle_with_disable<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
@@ -759,12 +764,12 @@ pub fn toggle_with_disable<'a, Message: 'a + Clone>(
 ///toggling the toggler on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn toggle_with_disable_default_no_option<'a, Message: 'a + Clone>(
+pub fn toggle_with_disable_default_no_option<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: bool,
     default_value: bool,
-    on_toggle: impl Fn(bool) -> Message + 'a + Clone,
+    on_toggle: impl Fn(bool) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_c = on_toggle.clone();
@@ -796,12 +801,12 @@ pub fn toggle_with_disable_default_no_option<'a, Message: 'a + Clone>(
 ///toggling the toggler on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
+pub fn toggle_with_disable_default<'a, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     value: Option<bool>,
     default_value: Option<bool>,
-    on_toggle: impl Fn(Option<bool>) -> Message + 'a + Clone,
+    on_toggle: impl Fn(Option<bool>) -> Message + Clone + 'a,
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message> {
     let on_toggle_c = on_toggle.clone();
@@ -838,7 +843,7 @@ pub fn toggle_with_disable_default<'a, Message: 'a + Clone>(
 ///`pick_list` on a row with a label with `name`.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn choose<'a, T, V, L, Message: 'a + Clone>(
+pub fn choose<'a, T, V, L, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     options: L,
@@ -863,7 +868,7 @@ where
 ///checkbox which allows toggling the choose on/off.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn choose_with_disable<'a, T, V, L, Message: 'a + Clone>(
+pub fn choose_with_disable<'a, T, V, L, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     options: L,
@@ -891,7 +896,7 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn choose_with_disable_default<'a, T, V, L, Message: 'a + Clone>(
+pub fn choose_with_disable_default<'a, T, V, L, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     options_descriptions: Vec<Element<'a, Message>>,
@@ -961,7 +966,7 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn choose_with_disable_default_bg<'a, T, V, L, Message: 'a + Clone>(
+pub fn choose_with_disable_default_bg<'a, T, V, L, Message: Clone + 'a>(
     name: &'a str,
     description: Option<&'a str>,
     options_descriptions: Vec<Element<'a, Message>>,
@@ -1048,7 +1053,7 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn combo_with_disable_default<'a, T, Message: 'a + Clone>(
+pub fn combo_with_disable_default<'a, T, Message: Clone + 'a>(
     name: &'a str,
     placeholder: &'a str,
     description: Option<&'a str>,
@@ -1112,7 +1117,7 @@ where
 ///Creates an expandable option with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn expandable<'a, Message: 'a + Clone>(
+pub fn expandable<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     children: impl IntoIterator<Item = Element<'a, Message>>,
@@ -1165,7 +1170,7 @@ pub fn expandable<'a, Message: 'a + Clone>(
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_with_disable_default<'a, Message: 'a + Clone>(
+pub fn expandable_with_disable_default<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     children: impl IntoIterator<Item = Element<'a, Message>>,
@@ -1214,7 +1219,7 @@ pub fn expandable_with_disable_default<'a, Message: 'a + Clone>(
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_with_disable_default_custom<'a, Message: 'a + Clone>(
+pub fn expandable_with_disable_default_custom<'a, Message: Clone + 'a>(
     name: impl Into<Text<'a>>,
     description: Option<&'a str>,
     right_element: impl FnOnce(bool) -> Element<'a, Message>,

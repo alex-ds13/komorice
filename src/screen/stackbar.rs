@@ -218,45 +218,45 @@ impl Stackbar {
                     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
                     None,
                 ),
-                // opt_helpers::color(
-                //     "Stackbar Background Colour",
-                //     Some("Tab background colour. (default: '0x333333')"),
-                //     self.show_background_picker,
-                //     config
-                //         .tabs
-                //         .as_ref()
-                //         .and_then(|t| t.background.map(into_color)),
-                //     Some(iced::color!(0x333333)),
-                //     Message::ToggleBackgroundPicker,
-                //     |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
-                //     None,
-                // ),
-                // opt_helpers::color(
-                //     "Stackbar Focused Text Colour",
-                //     Some("Focused Tab text colour. (default: '0xFFFFFF')"),
-                //     self.show_focused_text_picker,
-                //     config
-                //         .tabs
-                //         .as_ref()
-                //         .and_then(|t| t.focused_text.map(into_color)),
-                //     Some(iced::color!(0xffffff)),
-                //     Message::ToggleFocusedTextPicker,
-                //     |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
-                //     None,
-                // ),
-                // opt_helpers::color(
-                //     "Stackbar Unfocused Text Colour",
-                //     Some("Unfocused Tab text colour. (default: '0xB3B3B3')"),
-                //     self.show_unfocused_text_picker,
-                //     config
-                //         .tabs
-                //         .as_ref()
-                //         .and_then(|t| t.unfocused_text.map(into_color)),
-                //     Some(iced::color!(0xb3b3b3)),
-                //     Message::ToggleUnfocusedTextPicker,
-                //     |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
-                //     None,
-                // ),
+                opt_helpers::color(
+                    "Stackbar Background Colour",
+                    Some("Tab background colour. (default: '0x333333')"),
+                    self.show_background_picker,
+                    config
+                        .tabs
+                        .as_ref()
+                        .and_then(|t| t.background.map(into_color)),
+                    Some(iced::color!(0x333333)),
+                    Message::ToggleBackgroundPicker,
+                    |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Stackbar Focused Text Colour",
+                    Some("Focused Tab text colour. (default: '0xFFFFFF')"),
+                    self.show_focused_text_picker,
+                    config
+                        .tabs
+                        .as_ref()
+                        .and_then(|t| t.focused_text.map(into_color)),
+                    Some(iced::color!(0xffffff)),
+                    Message::ToggleFocusedTextPicker,
+                    |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
+                    None,
+                ),
+                opt_helpers::color(
+                    "Stackbar Unfocused Text Colour",
+                    Some("Unfocused Tab text colour. (default: '0xB3B3B3')"),
+                    self.show_unfocused_text_picker,
+                    config
+                        .tabs
+                        .as_ref()
+                        .and_then(|t| t.unfocused_text.map(into_color)),
+                    Some(iced::color!(0xb3b3b3)),
+                    Message::ToggleUnfocusedTextPicker,
+                    |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
+                    None,
+                ),
                 tabs_demo(config),
             ],
         )

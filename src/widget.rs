@@ -1,3 +1,4 @@
+pub mod color_picker;
 mod helpers;
 pub mod icons;
 pub mod modal;
