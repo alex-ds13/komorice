@@ -51,8 +51,8 @@ use iced::widget::{button, Button};
 use iced::window;
 use iced::{
     border::{self, Border},
-    Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size, Task,
-    Theme, Vector,
+    Alignment, Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
+    Task, Theme, Vector,
 };
 use iced_core::input_method::{self, InputMethod};
 use num_traits::{Bounded, Num, NumAssignOps};
@@ -629,9 +629,15 @@ where
         if self.icon.is_some() {
             let icon_layout = children_layout.next().unwrap();
 
+            let icon = state.icon.raw();
+
             renderer.fill_paragraph(
-                state.icon.raw(),
-                icon_layout.bounds().center(),
+                icon,
+                icon_layout.bounds().anchor(
+                    icon.min_bounds(),
+                    Alignment::Center,
+                    Alignment::Center,
+                ),
                 style.icon,
                 *viewport,
             );
@@ -763,8 +769,11 @@ where
 
             renderer.fill_paragraph(
                 paragraph,
-                Point::new(text_bounds.x, text_bounds.center_y())
-                    + Vector::new(alignment_offset - offset, 0.0),
+                text_bounds.anchor(
+                    paragraph.min_bounds(),
+                    Alignment::Start,
+                    Alignment::Center,
+                ) + Vector::new(alignment_offset - offset, 0.0),
                 if text.is_empty() {
                     style.placeholder
                 } else {
@@ -2068,7 +2077,7 @@ fn replace_paragraph<Renderer>(
     state.value = paragraph::Plain::new(Text {
         font,
         line_height,
-        content: &value.to_string(),
+        content: value.to_string(),
         bounds: Size::new(f32::INFINITY, text_bounds.height),
         size: text_size,
         align_x: text::Alignment::Default,

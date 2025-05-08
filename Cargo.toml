@@ -19,8 +19,8 @@ smol = "2.0.2"
 unicode-segmentation = "1.11.0"
 
 [patch.crates-io]
-iced = { git = "https://github.com/iced-rs/iced.git", rev = "301aac794b9de4f021d402a6aba45e8677ed4716" }
-iced_core = { git = "https://github.com/iced-rs/iced.git", rev = "301aac794b9de4f021d402a6aba45e8677ed4716" }
+iced = { git = "https://github.com/iced-rs/iced.git" }
+iced_core = { git = "https://github.com/iced-rs/iced.git" }
 
 [build-dependencies]
 iced_fontello = { git = "https://github.com/alex-ds13/iced_fontello.git", branch = "feat/custom-icons" }
