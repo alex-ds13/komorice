@@ -83,11 +83,10 @@ impl Sidebar {
         )
         .height(Fill);
         let fixed_width_wider = Space::new(135, Shrink);
-        let fixed_width = Space::new(120, Shrink);
         let bottom_content = column![
             fixed_width_wider,
             container(horizontal_rule(2.0)).padding(padding::bottom(5)),
-            column![fixed_width, home].width(Shrink),
+            home.padding(padding::right(15)),
         ]
         .width(Shrink)
         .padding(padding::left(5));

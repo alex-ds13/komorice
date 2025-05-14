@@ -296,11 +296,11 @@ impl Whkd {
                         .iter()
                         .filter(|k| !self.pb_mods.contains(k))
                         .count();
-                    let keys = pause_binding
+                    let mut keys = pause_binding
                         .iter_mut()
                         .filter(|k| !self.pb_mods.contains(k));
                     if count <= 1 {
-                        if let Some(k) = keys.last() {
+                        if let Some(k) = keys.next_back() {
                             *k = key;
                         } else {
                             pause_binding.push(key);
@@ -469,7 +469,7 @@ fn keys<'a>(whkdrc: &'a Whkdrc, pb_mods: &'a [String]) -> Element<'a, Message> {
         whkdrc.pause_binding.as_ref().map_or("", |pb| {
             pb.iter()
                 .filter(|k| !pb_mods.contains(k))
-                .last()
+                .next_back()
                 .map_or("", |s| s.as_str())
         }),
         Message::PBKey,

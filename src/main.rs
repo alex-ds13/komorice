@@ -59,7 +59,6 @@ fn main() -> iced::Result {
         .subscription(Komorice::subscription)
         .theme(Komorice::theme)
         .default_font(*DEFAULT_FONT)
-        // .font(iced_aw::iced_fonts::REQUIRED_FONT_BYTES)
         .font(icons::FONT)
         .window(iced::window::Settings {
             icon: match iced::window::icon::from_rgba(
