@@ -205,7 +205,13 @@ impl Komorice {
                     home::Action::ChangeConfigType(config_type) => {
                         self.sidebar.config_type = config_type;
                         self.main_screen = self.sidebar.selected_screen();
-                        Task::none()
+                        if matches!(self.sidebar.config_type, screen::ConfigType::Whkd)
+                            && !self.whkd.loaded_commands
+                        {
+                            self.whkd.load_commands().map(Message::Whkd)
+                        } else {
+                            Task::none()
+                        }
                     }
                 };
                 return Task::batch([task.map(Message::Home), action_task]);
@@ -423,8 +429,14 @@ impl Komorice {
                 .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => self.settings.view().map(Message::Settings),
-            Screen::Whkd => self.whkd.view(&self.whkdrc).map(Message::Whkd),
-            Screen::WhkdBinding => self.whkd.view(&self.whkdrc).map(Message::Whkd),
+            Screen::Whkd => self
+                .whkd
+                .view(&self.whkdrc, &self.settings.theme)
+                .map(Message::Whkd),
+            Screen::WhkdBinding => self
+                .whkd
+                .view(&self.whkdrc, &self.settings.theme)
+                .map(Message::Whkd),
         };
 
         if matches!(self.main_screen, Screen::Home) {

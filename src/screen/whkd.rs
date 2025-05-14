@@ -3,11 +3,12 @@ use crate::{
     widget::{self, opt_helpers},
 };
 
-use std::sync::LazyLock;
+use std::{collections::HashMap, sync::LazyLock};
 
+use async_compat::Compat;
 use iced::{
-    widget::{column, pick_list, row, text},
-    Element, Subscription, Task,
+    widget::{column, markdown, pick_list, rich_text, row, text},
+    Element, Subscription, Task, Theme,
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
@@ -211,11 +212,16 @@ pub enum Message {
     ChangeBindingKeys(usize, Vec<String>),
     ChangeBindingCommand(usize, String),
 
+    LoadedCommands(Vec<String>),
+    FailedToLoadCommands(String),
+    LoadedCommandDescription(String, String),
+    FailedToLoadCommandsDescription(String),
     KeyPress(Option<String>, String),
     KeyRelease,
     Navigate(NavMessage),
     NavigateForward,
     NavigateBack,
+    UrlClicked(markdown::Url),
     Nothing,
 }
 
@@ -226,6 +232,10 @@ pub enum Action {
 
 #[derive(Debug, Default)]
 pub struct Whkd {
+    pub loaded_commands: bool,
+    commands: Vec<String>,
+    pub loaded_commands_desc: bool,
+    commands_desc: HashMap<String, Vec<markdown::Item>>,
     pressed_key: String,
     pressed_mod: String,
     pb_mods: Vec<String>,
@@ -348,11 +358,31 @@ impl Whkd {
             Message::NavigateForward => {}
             Message::NavigateBack => {}
             Message::Nothing => {}
+            Message::LoadedCommands(commands) => {
+                // println!("{commands:?}");
+                self.commands = commands;
+                self.loaded_commands = true;
+                return (Action::None, self.load_commands_description());
+            }
+            Message::FailedToLoadCommands(error) => {
+                println!("WHKD -> Failed to load commands: {error}");
+            }
+            Message::LoadedCommandDescription(command, description) => {
+                println!("received description for command: {command}");
+                let md = markdown::parse(&description).collect();
+                self.commands_desc.insert(command, md);
+            }
+            Message::FailedToLoadCommandsDescription(error) => {
+                println!("WHKD -> Failed to load commands: {error}");
+            }
+            Message::UrlClicked(url) => {
+                println!("Clicked url: {}", url);
+            }
         }
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, whkdrc: &'a Whkdrc) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, whkdrc: &'a Whkdrc, theme: &Theme) -> Element<'a, Message> {
         let shell = opt_helpers::choose_with_disable_default(
             "Shell",
             Some("The Shell you want whkd to use. (default: pwsh)"),
@@ -371,7 +401,12 @@ impl Whkd {
             None,
             None,
         );
-        let pause_hook = hook_custom(&whkdrc.pause_hook);
+        let pause_hook = hook_custom(
+            &whkdrc.pause_hook,
+            &self.commands,
+            &self.commands_desc,
+            theme,
+        );
 
         let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
@@ -422,6 +457,91 @@ impl Whkd {
         let navigation = navigation_sub().map(Message::Navigate);
 
         Subscription::batch([press, release, navigation])
+    }
+
+    pub fn load_commands(&self) -> Task<Message> {
+        Task::future(Compat::new(async {
+            static APP_USER_AGENT: &str =
+                concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+
+            println!("Running GET request: {}", APP_USER_AGENT);
+
+            let client = reqwest::Client::builder()
+                .user_agent(APP_USER_AGENT)
+                .build()?;
+            client
+                .get("https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli")
+                .send()
+                .await
+        }))
+        .then(|res| match res {
+            Ok(response) => Task::perform(
+                Compat::new(async {
+                    #[derive(serde::Deserialize)]
+                    struct Command {
+                        name: String,
+                    }
+                    response.json::<Vec<Command>>().await
+                }),
+                |res| match res {
+                    Ok(commands) => Message::LoadedCommands(
+                        commands
+                            .into_iter()
+                            .flat_map(|c| c.name.strip_suffix(".md").map(|v| v.to_string()))
+                            .collect(),
+                    ),
+                    Err(error) => Message::FailedToLoadCommands(error.to_string()),
+                },
+            ),
+            Err(error) => Task::done(Message::FailedToLoadCommands(error.to_string())),
+        })
+    }
+
+    pub fn load_commands_description(&self) -> Task<Message> {
+        Task::batch(self.commands.iter().map(|command| {
+            let command_c = command.clone();
+            let command_c1 = command.clone();
+            Task::future(Compat::new(async move {
+                static APP_USER_AGENT: &str =
+                    concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+
+                println!(
+                    "Running GET request for command {} description: {}",
+                    &command_c1, APP_USER_AGENT
+                );
+
+                let client = reqwest::Client::builder()
+                    .user_agent(APP_USER_AGENT)
+                    .build()?;
+                client
+                    .get(format!(
+                        "https://raw.githubusercontent.com/lgug2z/komorebi/master/docs/cli/{}.md",
+                        &command_c1,
+                    ))
+                    .send()
+                    .await
+            }))
+            .then(move |res| {
+                let command_c = command_c.clone();
+                match res {
+                    Ok(response) => {
+                        Task::perform(Compat::new(async { response.text().await }), move |res| {
+                            match res {
+                                Ok(description) => {
+                                    Message::LoadedCommandDescription(command_c, description)
+                                }
+                                Err(error) => {
+                                    Message::FailedToLoadCommandsDescription(error.to_string())
+                                }
+                            }
+                        })
+                    }
+                    Err(error) => {
+                        Task::done(Message::FailedToLoadCommandsDescription(error.to_string()))
+                    }
+                }
+            })
+        }))
     }
 }
 
@@ -486,9 +606,14 @@ fn keys<'a>(whkdrc: &'a Whkdrc, pb_mods: &'a [String]) -> Element<'a, Message> {
         .into()
 }
 
-fn hook_custom(pause_hook: &Option<String>) -> Element<Message> {
-    let (hook_command, hook_custom) = split_pause_hook(pause_hook);
-    let pick = pick_list((*COMMANDS).as_ref(), Some(hook_command), move |v| {
+fn hook_custom<'a>(
+    pause_hook: &'a Option<String>,
+    commands: &'a [String],
+    commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
+    theme: &Theme,
+) -> Element<'a, Message> {
+    let (hook_command, hook_custom) = split_pause_hook(pause_hook, commands);
+    let pick = pick_list(commands, Some(hook_command.to_string()), move |v| {
         let hook = Some(if hook_custom.is_empty() {
             format!("komorebic {v}")
         } else {
@@ -521,9 +646,26 @@ fn hook_custom(pause_hook: &Option<String>) -> Element<Message> {
     .width(iced::Shrink)
     .spacing(10);
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
+    let md = if let Some(items) =
+        commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
+    {
+        markdown(items, theme)
+    } else {
+        iced::widget::horizontal_space().into()
+    };
+    let description = Element::from(
+        column![
+            opt_helpers::to_description_text(
+                "A command that should run on pause keybind trigger".into()
+            ),
+            md,
+        ]
+        .spacing(10),
+    )
+    .map(Message::UrlClicked);
     opt_helpers::opt_custom_el_disable_default(
         "Pause Hook",
-        Some("todo!"),
+        Some(description),
         element,
         is_dirty,
         Some(Message::PauseHook(DEFAULT_WHKDRC.pause_hook.clone())),
@@ -531,11 +673,14 @@ fn hook_custom(pause_hook: &Option<String>) -> Element<Message> {
     )
 }
 
-fn split_pause_hook(pause_hook: &Option<String>) -> (&str, &str) {
+fn split_pause_hook<'a>(
+    pause_hook: &'a Option<String>,
+    commands: &'a [String],
+) -> (&'a str, &'a str) {
     let mut pause_hook_command = "";
     let mut pause_hook_custom = "";
     if let Some(hook) = pause_hook {
-        if let Some((command, custom)) = COMMANDS.iter().find_map(|c| {
+        if let Some((command, custom)) = commands.iter().find_map(|c| {
             let potential_cmd = format!("komorebic {}", c);
             hook.starts_with(&potential_cmd)
                 .then(|| hook.split_at(potential_cmd.len()))
