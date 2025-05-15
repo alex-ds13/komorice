@@ -5,7 +5,7 @@ use crate::{
     widget::{
         self,
         color_picker::{color_picker, HexString},
-        number_input,
+        number_input, opt_button as opt_button_internal,
     },
     BOLD_FONT, EMOJI_FONT,
 };
@@ -139,7 +139,7 @@ pub fn description_text(s: &str) -> Text {
 ///
 ///If `Some(description)` is given, it adds the description below the name.
 pub fn label_element_with_description<'a, Message: 'a>(
-    label_el: impl Into<Element<'a, Message>>,
+    label_el: impl Into<Element<'a, Message>> + 'a,
     description: Option<&'a str>,
 ) -> Element<'a, Message> {
     column![label_el.into()]
@@ -162,72 +162,30 @@ pub fn label_with_description<'a, Message: 'a>(
 ///Creates a `button` with `name` as label and with a custom element as the button itself.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn opt_custom_button<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
+pub fn opt_custom_button<'a, Message: Clone + 'a, F, I>(
+    name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
     on_press: Message,
-    on_hover: impl Fn(bool) -> Message,
-    element: impl Into<Element<'a, Message>>,
-) -> Element<'a, Message> {
-    let main = row![label_with_description(name, description), element.into()]
-        .align_y(Center)
-        .padding(padding::right(10));
-
-    let area = |el| {
-        mouse_area(el)
-            .on_press(on_press)
-            .on_enter(on_hover(true))
-            .on_exit(on_hover(false))
-            .interaction(iced::mouse::Interaction::Pointer)
-    };
-
-    area(opt_box(main)).into()
+    element: F,
+) -> Element<'a, Message>
+where
+    F: Fn(bool) -> I + 'a,
+    I: Into<Element<'a, Message>> + 'a,
+{
+    opt_button_internal::OptButton::with(name, description, on_press, element).into()
 }
+
+// fn h<Message: Clone>(hovered: bool) -> impl Into<Element<'_, Message>> {}
 
 ///Creates a `button` with `name` as label.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 pub fn opt_button<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
+    name: &'a str,
     description: Option<&'a str>,
-    hovered: bool,
     on_press: Message,
-    on_hover: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
-    let right_button = button(text("›").font(*EMOJI_FONT).size(25))
-        .on_press(on_press.clone())
-        .padding(padding::left(10).right(10))
-        .style(move |t, s| {
-            if hovered {
-                button::secondary(t, button::Status::Active)
-            } else {
-                button::text(t, s)
-            }
-        });
-
-    opt_custom_button(name, description, on_press, on_hover, right_button)
-}
-
-///Creates a `button` with `name` as label with "Delete", "Move Up" and "Move Down" buttons.
-///
-///If `Some(description)` is given, it adds the description below the label.
-#[allow(clippy::too_many_arguments)]
-pub fn opt_button_add_move<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
-    description: Option<&'a str>,
-    hovered: bool,
-    show_delete: bool,
-    show_up: bool,
-    show_down: bool,
-    on_press: Message,
-    on_delete: Message,
-    on_add_up: Message,
-    on_add_down: Message,
-    on_move_up: Message,
-    on_move_down: Message,
-    on_hover: impl Fn(bool) -> Message,
-) -> Element<'a, Message> {
-    let right_button = container(
+    opt_custom_button(name, description, on_press.clone(), move |hovered| {
         button(text("›").font(*EMOJI_FONT).size(25))
             .on_press(on_press.clone())
             .padding(padding::left(10).right(10))
@@ -237,73 +195,206 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
                 } else {
                     button::text(t, s)
                 }
-            }),
-    )
-    .padding(padding::left(5));
-
-    let add_buttons = Column::new()
-        .push(
-            button(row![text("+").size(10), icons::level_up().size(10)].spacing(2.5))
-                .on_press(on_add_up.clone())
-                .padding(padding::left(5).right(5)),
-        )
-        .push(
-            button(row![text("+").size(10), icons::level_down().size(10)].spacing(2.5))
-                .on_press(on_add_down.clone())
-                .padding(padding::left(5).right(5)),
-        )
-        .spacing(2.5);
-
-    let delete_button = Column::new().push_maybe(
-        show_delete.then_some(
-            button(icons::delete().size(18))
-                .on_press(on_delete.clone())
-                .padding(padding::left(5).right(5))
-                .style(button::danger),
-        ),
-    );
-
-    let move_buttons = Column::new()
-        .push_maybe(
-            show_up.then_some(
-                button(icons::up_chevron().size(10))
-                    .on_press(on_move_up.clone())
-                    .style(button::secondary)
-                    .padding(padding::left(5).right(5)),
-            ),
-        )
-        .push_maybe(
-            show_down.then_some(
-                button(icons::down_chevron().size(10))
-                    .on_press(on_move_down.clone())
-                    .style(button::secondary)
-                    .padding(padding::left(5).right(5)),
-            ),
-        )
-        .spacing(2.5);
-
-    let align_buttons = |el| {
-        container(el)
-            .align_y(match (show_up, show_down) {
-                (true, false) => iced::Top,
-                (false, true) => iced::Bottom,
-                _ => iced::Center.into(),
             })
-            .height(Fill)
+    })
+}
+
+///Creates a `button` with `name` as label with "Delete", "Move Up" and "Move Down" buttons.
+///
+///If `Some(description)` is given, it adds the description below the label.
+#[allow(clippy::too_many_arguments)]
+pub fn opt_button_add_move<'a, Message: Clone + 'a>(
+    name: impl text::IntoFragment<'a>,
+    description: Option<&'a str>,
+    show_delete: bool,
+    show_up: bool,
+    show_down: bool,
+    on_press: Message,
+    on_delete: Message,
+    on_add_up: Message,
+    on_add_down: Message,
+    on_move_up: Message,
+    on_move_down: Message,
+) -> Element<'a, Message> {
+    let on_press_c = on_press.clone();
+    let element = move |hovered| {
+        let right_button = container(
+            button(text("›").font(*EMOJI_FONT).size(25))
+                .on_press(on_press_c.clone())
+                .padding(padding::left(10).right(10))
+                .style(move |t, s| {
+                    if hovered {
+                        button::secondary(t, button::Status::Active)
+                    } else {
+                        button::text(t, s)
+                    }
+                }),
+        )
+        .padding(padding::left(5));
+
+        let add_buttons = Column::new()
+            .push(
+                button(row![text("+").size(10), icons::level_up().size(10)].spacing(2.5))
+                    .on_press(on_add_up.clone())
+                    .padding(padding::left(5).right(5)),
+            )
+            .push(
+                button(row![text("+").size(10), icons::level_down().size(10)].spacing(2.5))
+                    .on_press(on_add_down.clone())
+                    .padding(padding::left(5).right(5)),
+            )
+            .spacing(2.5);
+
+        let delete_button = Column::new().push_maybe(
+            show_delete.then_some(
+                button(icons::delete().size(18))
+                    .on_press(on_delete.clone())
+                    .padding(padding::left(5).right(5))
+                    .style(button::danger),
+            ),
+        );
+
+        let move_buttons = Column::new()
+            .push_maybe(
+                show_up.then_some(
+                    button(icons::up_chevron().size(10))
+                        .on_press(on_move_up.clone())
+                        .style(button::secondary)
+                        .padding(padding::left(5).right(5)),
+                ),
+            )
+            .push_maybe(
+                show_down.then_some(
+                    button(icons::down_chevron().size(10))
+                        .on_press(on_move_down.clone())
+                        .style(button::secondary)
+                        .padding(padding::left(5).right(5)),
+                ),
+            )
+            .spacing(2.5);
+
+        let align_buttons = |el| {
+            container(el)
+                .align_y(match (show_up, show_down) {
+                    (true, false) => iced::Top,
+                    (false, true) => iced::Bottom,
+                    _ => iced::Center.into(),
+                })
+                .height(Fill)
+        };
+
+        let element = row![
+            align_buttons(add_buttons),
+            delete_button,
+            align_buttons(move_buttons),
+            right_button
+        ]
+        .spacing(10)
+        .height(iced::Shrink)
+        .align_y(Center);
+
+        element
     };
 
-    let element = row![
-        align_buttons(add_buttons),
-        delete_button,
-        align_buttons(move_buttons),
-        right_button
-    ]
-    .spacing(10)
-    .height(iced::Shrink)
-    .align_y(Center);
-
-    opt_custom_button(name, description, on_press, on_hover, element)
+    opt_custom_button(name, description, on_press.clone(), element)
 }
+
+// #[allow(clippy::too_many_arguments)]
+// pub fn opt_button_add_move<'a, Message: Clone + 'a>(
+//     name: &'a str,
+//     description: Option<&'a str>,
+//     _hovered: bool,
+//     show_delete: bool,
+//     show_up: bool,
+//     show_down: bool,
+//     on_press: Message,
+//     on_delete: Message,
+//     on_add_up: Message,
+//     on_add_down: Message,
+//     on_move_up: Message,
+//     on_move_down: Message,
+//     _on_hover: impl Fn(bool) -> Message,
+// ) -> Element<'a, Message> {
+//     let on_press_c = on_press.clone();
+//     let element = move |hovered| {
+//         let right_button = container(
+//             button(text("›").font(*EMOJI_FONT).size(25))
+//                 .on_press(on_press.clone())
+//                 .padding(padding::left(10).right(10))
+//                 .style(move |t, s| {
+//                     if hovered {
+//                         button::secondary(t, button::Status::Active)
+//                     } else {
+//                         button::text(t, s)
+//                     }
+//                 }),
+//         )
+//         .padding(padding::left(5));
+
+//         let add_buttons = Column::new()
+//             .push(
+//                 button(row![text("+").size(10), icons::level_up().size(10)].spacing(2.5))
+//                     .on_press(on_add_up.clone())
+//                     .padding(padding::left(5).right(5)),
+//             )
+//             .push(
+//                 button(row![text("+").size(10), icons::level_down().size(10)].spacing(2.5))
+//                     .on_press(on_add_down.clone())
+//                     .padding(padding::left(5).right(5)),
+//             )
+//             .spacing(2.5);
+
+//         let delete_button = Column::new().push_maybe(
+//             show_delete.then_some(
+//                 button(icons::delete().size(18))
+//                     .on_press(on_delete.clone())
+//                     .padding(padding::left(5).right(5))
+//                     .style(button::danger),
+//             ),
+//         );
+
+//         let move_buttons = Column::new()
+//             .push_maybe(
+//                 show_up.then_some(
+//                     button(icons::up_chevron().size(10))
+//                         .on_press(on_move_up.clone())
+//                         .style(button::secondary)
+//                         .padding(padding::left(5).right(5)),
+//                 ),
+//             )
+//             .push_maybe(
+//                 show_down.then_some(
+//                     button(icons::down_chevron().size(10))
+//                         .on_press(on_move_down.clone())
+//                         .style(button::secondary)
+//                         .padding(padding::left(5).right(5)),
+//                 ),
+//             )
+//             .spacing(2.5);
+
+//         let align_buttons = |el| {
+//             container(el)
+//                 .align_y(match (show_up, show_down) {
+//                     (true, false) => iced::Top,
+//                     (false, true) => iced::Bottom,
+//                     _ => iced::Center.into(),
+//                 })
+//                 .height(Fill)
+//         };
+
+//         row![
+//             align_buttons(add_buttons),
+//             delete_button,
+//             align_buttons(move_buttons),
+//             right_button
+//         ]
+//         .spacing(10)
+//         .height(iced::Shrink)
+//         .align_y(Center)
+//     };
+
+//     opt_custom_button(name, description, on_press_c, _on_hover, element)
+// }
 
 ///Creates a row with a label with `name` and a `text_input`
 ///using the remainder parameters for it.

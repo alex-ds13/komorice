@@ -30,8 +30,6 @@ pub enum Message {
     SetSubScreenMonitor,
     SetSubScreenWorkspaces,
     SetSubScreenWorkspace(usize),
-    ToggleWorkspacesHover(bool),
-    ToggleWorkspaceHover(usize, bool),
     DeleteWorkspace(usize),
     AddWorkspaceUp(usize),
     AddWorkspaceDown(usize),
@@ -96,7 +94,6 @@ pub struct Monitor {
     pub window_based_work_area_offset_hovered: bool,
     pub work_area_offset_expanded: bool,
     pub work_area_offset_hovered: bool,
-    pub workspaces_button_hovered: bool,
     pub workspaces: HashMap<usize, workspace::Workspace>,
 }
 
@@ -261,7 +258,6 @@ impl Monitor {
             }
             Message::SetSubScreenWorkspaces => {
                 self.sub_screen = SubScreen::Workspaces;
-                self.workspaces_button_hovered = false;
                 return iced::widget::scrollable::scroll_to(
                     iced::widget::scrollable::Id::new("monitors_scrollable"),
                     iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
@@ -269,22 +265,11 @@ impl Monitor {
             }
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
-                self.workspaces
-                    .entry(idx)
-                    .and_modify(|ws| ws.is_hovered = false)
-                    .or_default()
-                    .screen = workspace::Screen::Workspace;
+                self.workspaces.entry(idx).or_default().screen = workspace::Screen::Workspace;
                 return iced::widget::scrollable::scroll_to(
                     iced::widget::scrollable::Id::new("monitors_scrollable"),
                     iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
-            }
-            Message::ToggleWorkspacesHover(hover) => {
-                self.workspaces_button_hovered = hover;
-            }
-            Message::ToggleWorkspaceHover(idx, hover) => {
-                let ws = self.workspaces.entry(idx).or_default();
-                ws.is_hovered = hover;
             }
             Message::DeleteWorkspace(idx) => {
                 config.workspaces.remove(idx);
@@ -298,8 +283,6 @@ impl Monitor {
                 } else {
                     self.workspaces.remove(&idx);
                 }
-                let ws = self.workspaces.entry(idx).or_default();
-                ws.is_hovered = true;
             }
             Message::AddWorkspaceUp(idx) => {
                 config
@@ -309,14 +292,12 @@ impl Monitor {
                     idx,
                     workspace::Workspace {
                         index: idx,
-                        is_hovered: true,
                         ..Default::default()
                     },
                 );
                 for i in (idx + 1)..(self.workspaces.len() + 1) {
                     if let Some(mut w) = previous_ws {
                         w.index = i;
-                        w.is_hovered = false;
                         previous_ws = self.workspaces.insert(i, w)
                     }
                 }
@@ -339,7 +320,6 @@ impl Monitor {
                 for i in (idx + 2)..(self.workspaces.len() + 1) {
                     if let Some(mut w) = previous_ws {
                         w.index = i;
-                        w.is_hovered = false;
                         previous_ws = self.workspaces.insert(i, w)
                     }
                 }
@@ -359,10 +339,6 @@ impl Monitor {
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
-                    let ws = self.workspaces.entry(new_idx).or_default();
-                    ws.is_hovered = false;
-                    let ws = self.workspaces.entry(idx).or_default();
-                    ws.is_hovered = true;
                 }
             }
             Message::MoveDownWorkspace(idx) => {
@@ -376,10 +352,6 @@ impl Monitor {
                     self.workspaces.insert(new_idx, current);
                     self.workspaces.insert(idx, target);
                     config.workspaces.swap(idx, new_idx);
-                    let ws = self.workspaces.entry(new_idx).or_default();
-                    ws.is_hovered = false;
-                    let ws = self.workspaces.entry(idx).or_default();
-                    ws.is_hovered = true;
                 }
             }
         }
@@ -532,9 +504,7 @@ impl Monitor {
             opt_helpers::opt_button(
                 "Workspaces",
                 None,
-                self.workspaces_button_hovered,
                 Message::SetSubScreenWorkspaces,
-                Message::ToggleWorkspacesHover,
             ),
         ];
 
@@ -547,11 +517,9 @@ impl Monitor {
             .iter()
             .enumerate()
             .map(|(i, w)| {
-                let title = text!("Workspace [{}] - \"{}\":", i, w.name);
                 opt_helpers::opt_button_add_move(
-                    title,
+                    format!("Workspace [{}] - \"{}\":", i, w.name),
                     None,
-                    self.workspaces[&i].is_hovered,
                     workspaces.len() > 1,
                     i > 0,
                     i < workspaces.len() - 1,
@@ -561,7 +529,6 @@ impl Monitor {
                     Message::AddWorkspaceDown(i),
                     Message::MoveUpWorkspace(i),
                     Message::MoveDownWorkspace(i),
-                    |v| Message::ToggleWorkspaceHover(i, v),
                 )
             })
             .collect();

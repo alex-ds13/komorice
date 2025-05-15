@@ -14,14 +14,6 @@ pub enum Message {
     SetScreen(Screen),
     SetMainRulesScreen,
     Rule(rule::Message),
-    IgnoreRulesHover(bool),
-    FloatingApplicationsHover(bool),
-    ManageRulesHover(bool),
-    TrayAndMultiWindowApplicationsHover(bool),
-    ObjectNameChangeApplicationsHover(bool),
-    SlowApplicationIdentifiersHover(bool),
-    LayeredApplicationsHover(bool),
-    BorderOverflowApplicationsHover(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +31,21 @@ pub enum Screen {
     SlowApplicationIdentifiers,
     LayeredApplications,
     BorderOverflowApplications,
+}
+
+impl Screen {
+    fn to_str(&self) -> &'static str {
+        match self {
+            Screen::IgnoreRules => "Ignore Rules",
+            Screen::FloatingApplications => "Floating Applications Rules",
+            Screen::ManageRules => "Manage Rules",
+            Screen::TrayAndMultiWindowApplications => "Tray and Multi Window Applications",
+            Screen::ObjectNameChangeApplications => "Object Name Change Applications",
+            Screen::SlowApplicationIdentifiers => "Slow Application Identifiers",
+            Screen::LayeredApplications => "Layered Applications",
+            Screen::BorderOverflowApplications => "Border Overflow Applications",
+        }
+    }
 }
 
 impl std::fmt::Display for Screen {
@@ -61,14 +68,6 @@ impl std::fmt::Display for Screen {
 #[derive(Debug, Default)]
 pub struct Rules {
     pub rule_screen: Option<(Rule, Screen)>,
-    pub ignore_rules_hovered: bool,
-    pub floating_applications_hovered: bool,
-    pub manage_rules_hovered: bool,
-    pub tray_and_multi_window_applications_hovered: bool,
-    pub object_name_change_applications_hovered: bool,
-    pub slow_application_identifiers_hovered: bool,
-    pub layered_applications_hovered: bool,
-    pub border_overflow_applications_hovered: bool,
 }
 
 impl Rules {
@@ -99,30 +98,6 @@ impl Rules {
                     );
                 }
             }
-            Message::IgnoreRulesHover(hover) => {
-                self.ignore_rules_hovered = hover;
-            }
-            Message::FloatingApplicationsHover(hover) => {
-                self.floating_applications_hovered = hover;
-            }
-            Message::ManageRulesHover(hover) => {
-                self.manage_rules_hovered = hover;
-            }
-            Message::TrayAndMultiWindowApplicationsHover(hover) => {
-                self.tray_and_multi_window_applications_hovered = hover;
-            }
-            Message::ObjectNameChangeApplicationsHover(hover) => {
-                self.object_name_change_applications_hovered = hover;
-            }
-            Message::SlowApplicationIdentifiersHover(hover) => {
-                self.slow_application_identifiers_hovered = hover;
-            }
-            Message::LayeredApplicationsHover(hover) => {
-                self.layered_applications_hovered = hover;
-            }
-            Message::BorderOverflowApplicationsHover(hover) => {
-                self.border_overflow_applications_hovered = hover;
-            }
         }
         (Action::None, Task::none())
     }
@@ -150,78 +125,62 @@ impl Rules {
             .into()
         } else {
             let ignore_rules_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::IgnoreRules),
+                Screen::IgnoreRules.to_str(),
                 Some(
                     "Individual window ignore rules. Windows ignored \
                     by komorebi will not be hidden and will show on all workspaces.",
                 ),
-                self.ignore_rules_hovered,
                 Message::SetScreen(Screen::IgnoreRules),
-                Message::IgnoreRulesHover,
             );
             let floating_applications_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::FloatingApplications),
+                Screen::FloatingApplications.to_str(),
                 Some(
                     "Identify applications which should be managed \
                     as floating windows. Floating windows can be tiled later using the \
                     command `toggle-float`, they are held by the workspace and can be \
                     moved to specific workspaces using workspace rules.",
                 ),
-                self.floating_applications_hovered,
                 Message::SetScreen(Screen::FloatingApplications),
-                Message::FloatingApplicationsHover,
             );
             let manage_rules_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::ManageRules),
+                Screen::ManageRules.to_str(),
                 Some(
                     "Individual window force-manage rules. You can use this \
                     to try to force manage some window that is not being managed by komorebi.",
                 ),
-                self.manage_rules_hovered,
                 Message::SetScreen(Screen::ManageRules),
-                Message::ManageRulesHover,
             );
             let tray_and_multi_window_applications_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::TrayAndMultiWindowApplications),
+                Screen::TrayAndMultiWindowApplications.to_str(),
                 Some(
                     "Identify tray and multi-window applications. You can try to \
                     use this for windows that close/minimize to tray or apps that open \
                     multiple windows if they are not behaving correctly.",
                 ),
-                self.tray_and_multi_window_applications_hovered,
                 Message::SetScreen(Screen::TrayAndMultiWindowApplications),
-                Message::TrayAndMultiWindowApplicationsHover,
             );
             let object_name_change_apps_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::ObjectNameChangeApplications),
+                Screen::ObjectNameChangeApplications.to_str(),
                 Some(
                     "Identify applications that send EVENT_OBJECT_NAME_CHANGE \
                     on launch (very rare).",
                 ),
-                self.object_name_change_applications_hovered,
                 Message::SetScreen(Screen::ObjectNameChangeApplications),
-                Message::ObjectNameChangeApplicationsHover,
             );
             let slow_application_identifiers_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::SlowApplicationIdentifiers),
+                Screen::SlowApplicationIdentifiers.to_str(),
                 Some("Identify applications which are slow to send initial event notifications."),
-                self.slow_application_identifiers_hovered,
                 Message::SetScreen(Screen::SlowApplicationIdentifiers),
-                Message::SlowApplicationIdentifiersHover,
             );
             let layered_applications_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::LayeredApplications),
+                Screen::LayeredApplications.to_str(),
                 Some("Identify applications that have the WS_EXLAYERED extended window style."),
-                self.layered_applications_hovered,
                 Message::SetScreen(Screen::LayeredApplications),
-                Message::LayeredApplicationsHover,
             );
             let border_overflow_applications_button = opt_helpers::opt_button(
-                iced::widget::value(Screen::BorderOverflowApplications),
+                Screen::BorderOverflowApplications.to_str(),
                 Some("Identify border overflow applications."),
-                self.border_overflow_applications_hovered,
                 Message::SetScreen(Screen::BorderOverflowApplications),
-                Message::BorderOverflowApplicationsHover,
             );
             let mut children = vec![
                 ignore_rules_button,

@@ -35,8 +35,6 @@ pub enum Message {
     ChangeNewBehaviourRuleBehaviour(WindowContainerBehaviour),
     AddNewBehaviourRule,
     RemoveBehaviourRule(usize),
-    WorkspaceRulesHover(bool),
-    InitialWorkspaceRulesHover(bool),
     Rule(rule::Message),
 }
 
@@ -86,7 +84,6 @@ pub struct Workspace {
     pub index: usize,
     pub screen: Screen,
     pub rule: rule::Rule,
-    pub is_hovered: bool,
     pub layout_rules_expanded: bool,
     pub layout_rules_hovered: bool,
     pub new_layout_rule_limit: usize,
@@ -95,8 +92,6 @@ pub struct Workspace {
     pub behaviour_rules_hovered: bool,
     pub new_behaviour_rule_limit: usize,
     pub new_behaviour_rule_behaviour: WindowContainerBehaviour,
-    pub workspace_rules_hovered: bool,
-    pub initial_workspace_rules_hovered: bool,
 }
 
 pub trait WorkspaceScreen {
@@ -279,12 +274,6 @@ impl WorkspaceScreen for WorkspaceConfig {
                 if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
                     behaviour_rules.remove(&limit);
                 }
-            }
-            Message::WorkspaceRulesHover(hover) => {
-                workspace.workspace_rules_hovered = hover;
-            }
-            Message::InitialWorkspaceRulesHover(hover) => {
-                workspace.initial_workspace_rules_hovered = hover;
             }
             Message::Rule(message) => {
                 if matches!(
@@ -509,18 +498,14 @@ impl Workspace {
                 "Initial workspace application rules. The matched windows only move to this worksapace once, \
                 after that you can freely move them anywhere.",
             ),
-            self.initial_workspace_rules_hovered,
             Message::SetScreen(Screen::InitialWorkspaceRules),
-            Message::InitialWorkspaceRulesHover,
         );
         let workspace_rules_button = opt_helpers::opt_button(
             "Workspace Rules",
             Some(
                 "Permanent workspace application rules. The matched windows will always move to this workspace.",
             ),
-            self.workspace_rules_hovered,
             Message::SetScreen(Screen::WorkspaceRules),
-            Message::WorkspaceRulesHover,
         );
         column![
             name,

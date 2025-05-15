@@ -17,8 +17,6 @@ use iced::{
 pub enum Message {
     ConfigMonitor(usize),
     ChangeScreen(Screen),
-    ToggleMonitorsButtonHover(bool),
-    ToggleNotificationsButtonHover(bool),
 
     // Komorebi related Messages
     KomorebiNotification(Arc<komorebi_client::Notification>),
@@ -47,8 +45,6 @@ pub struct LiveDebug {
     pub monitor_to_config: Option<usize>,
     pub notifications: Vec<Arc<komorebi_client::NotificationEvent>>,
     pub komorebi_state: Option<Arc<komorebi_client::State>>,
-    pub monitors_button_hovered: bool,
-    pub notifications_button_hovered: bool,
     pub actual_display_info: HashMap<usize, DisplayInfo>,
 }
 
@@ -69,10 +65,6 @@ impl LiveDebug {
                 }
             }
             Message::ChangeScreen(screen) => self.screen = screen,
-            Message::ToggleMonitorsButtonHover(hover) => self.monitors_button_hovered = hover,
-            Message::ToggleNotificationsButtonHover(hover) => {
-                self.notifications_button_hovered = hover
-            }
             Message::ToggleWorkspaceTile(monitor_idx, workspace_idx, tile) => {
                 let _ = komorebi_client::send_message(
                     &komorebi_client::SocketMessage::WorkspaceTiling(
@@ -129,19 +121,12 @@ impl LiveDebug {
     }
 
     fn main_view(&self) -> Element<Message> {
-        let monitors = opt_helpers::opt_button(
-            "Monitors",
-            None,
-            self.monitors_button_hovered,
-            Message::ChangeScreen(Screen::Monitors),
-            Message::ToggleMonitorsButtonHover,
-        );
+        let monitors =
+            opt_helpers::opt_button("Monitors", None, Message::ChangeScreen(Screen::Monitors));
         let notifications = opt_helpers::opt_button(
             "Notifications",
             None,
-            self.notifications_button_hovered,
             Message::ChangeScreen(Screen::Notifications),
-            Message::ToggleNotificationsButtonHover,
         );
         column![
             text("Live Debug:").size(20).font(*BOLD_FONT),

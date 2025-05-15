@@ -4,10 +4,12 @@ pub mod icons;
 pub mod modal;
 pub mod monitors_viewer;
 pub mod number_input;
+pub mod opt_button;
 pub mod opt_helpers;
 
 pub use helpers::*;
 pub use modal::modal;
+pub use opt_button::opt_button;
 
 use std::fmt::Display;
 use std::str::FromStr;

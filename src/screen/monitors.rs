@@ -13,7 +13,10 @@ use std::collections::{BTreeMap, HashMap};
 
 use iced::{
     padding,
-    widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text, Space},
+    widget::{
+        button, checkbox, column, container, horizontal_rule, horizontal_space, row, scrollable,
+        text, Space,
+    },
     Center, Element, Fill, Shrink, Subscription, Task,
 };
 use komorebi_client::{MonitorConfig, Rect};
@@ -28,7 +31,6 @@ pub enum Message {
     AddMonitorDown(usize),
     MoveUpMonitor(usize),
     MoveDownMonitor(usize),
-    ToggleMonitorButtonHover(usize, bool),
     ToggleIndexPreferenceExpand,
     IndexPreferenceHover(bool),
     ChangeNewIndexPreferenceIndex(usize),
@@ -50,7 +52,6 @@ pub struct Monitors {
     pub monitors: HashMap<usize, Monitor>,
     pub monitor_to_config: Option<usize>,
     pub show_monitors_list: bool,
-    pub monitors_buttons_hovered: Vec<bool>,
     pub index_preferences_expanded: bool,
     pub index_preferences_hovered: bool,
     pub new_idx_preference_index: usize,
@@ -73,7 +74,6 @@ impl Monitors {
                             window_based_work_area_offset_hovered: false,
                             work_area_offset_expanded: false,
                             work_area_offset_hovered: false,
-                            workspaces_button_hovered: false,
                             workspaces: m
                                 .workspaces
                                 .iter()
@@ -86,15 +86,10 @@ impl Monitors {
                 .collect()
         });
 
-        let monitors_buttons_hovered = config.monitors.as_ref().map_or(Vec::new(), |monitors| {
-            monitors.iter().map(|_| false).collect()
-        });
-
         Monitors {
             monitors,
             monitor_to_config: None,
             show_monitors_list: false,
-            monitors_buttons_hovered,
             index_preferences_expanded: false,
             index_preferences_hovered: false,
             new_idx_preference_id: String::new(),
@@ -119,15 +114,9 @@ impl Monitors {
                         device_id
                     );
                     self.monitor_to_config = Some(idx);
-                    if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
-                        *hovered = false;
-                    }
                 } else {
                     println!("Go to ConfigMonitor screen for monitor {idx} which doesn't exist");
                     self.monitor_to_config = Some(idx);
-                    if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
-                        *hovered = false;
-                    }
                 }
             }
             Message::MonitorConfigChanged(idx, message) => {
@@ -146,7 +135,6 @@ impl Monitors {
             }
             Message::DeleteMonitor(idx) => {
                 monitors_config.remove(idx);
-                self.monitors_buttons_hovered.remove(idx);
                 if idx < self.monitors.len() - 1 {
                     for i in (self.monitors.len() - 1)..(idx + 1) {
                         if let Some(mut m) = self.monitors.remove(&i) {
@@ -166,10 +154,6 @@ impl Monitors {
                         ..*DEFAULT_MONITOR_CONFIG
                     },
                 );
-                if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
-                    *hovered = false;
-                }
-                self.monitors_buttons_hovered.insert(idx, true);
                 let mut previous_m = self.monitors.insert(
                     idx,
                     monitor::Monitor {
@@ -191,7 +175,6 @@ impl Monitors {
                         workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
                         ..*DEFAULT_MONITOR_CONFIG
                     });
-                    self.monitors_buttons_hovered.push(false);
                 } else {
                     monitors_config.insert(
                         idx + 1,
@@ -200,7 +183,6 @@ impl Monitors {
                             ..*DEFAULT_MONITOR_CONFIG
                         },
                     );
-                    self.monitors_buttons_hovered.insert(idx + 1, false);
                 }
                 let mut previous_m = self.monitors.insert(
                     idx + 1,
@@ -243,11 +225,6 @@ impl Monitors {
                     self.monitors.insert(new_idx, current);
                     self.monitors.insert(idx, target);
                     monitors_config.swap(idx, new_idx);
-                }
-            }
-            Message::ToggleMonitorButtonHover(idx, hover) => {
-                if let Some(hovered) = self.monitors_buttons_hovered.get_mut(idx) {
-                    *hovered = hover;
                 }
             }
             Message::ToggleIndexPreferenceExpand => {
@@ -318,7 +295,9 @@ impl Monitors {
             row![text("Monitors:").size(20).font(*BOLD_FONT)]
         };
 
-        let mut col = column![].spacing(10).padding(padding::bottom(10).right(20));
+        let mut col = column![horizontal_space()]
+            .spacing(10)
+            .padding(padding::bottom(10).right(20));
 
         if let Some((Some(monitor), Some(m_config))) = self
             .monitor_to_config
@@ -342,9 +321,8 @@ impl Monitors {
                         |dip| dip.get(&idx).map_or("[Display Not Found]", |d| d),
                     );
                     col.push(opt_helpers::opt_button_add_move(
-                        text!("Monitor [{}] - {}", idx, info),
+                        format!("Monitor [{}] - {}", idx, info),
                         None,
-                        self.monitors_buttons_hovered.get(idx).is_some_and(|v| *v),
                         monitors_config.len() > 1,
                         idx > 0,
                         idx < monitors_config.len() - 1,
@@ -354,7 +332,6 @@ impl Monitors {
                         Message::AddMonitorDown(idx),
                         Message::MoveUpMonitor(idx),
                         Message::MoveDownMonitor(idx),
-                        |v| Message::ToggleMonitorButtonHover(idx, v),
                     ))
                 });
         };

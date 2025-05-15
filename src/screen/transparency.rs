@@ -15,7 +15,6 @@ pub enum Message {
     ConfigChange(ConfigChange),
     SetScreen(Screen),
     Rule(rule::Message),
-    ToggleIgnoreRulesButtonHover(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -47,7 +46,6 @@ pub enum Action {
 #[derive(Debug, Default)]
 pub struct Transparency {
     pub screen: Screen,
-    pub transparency_rules_button_hovered: bool,
     pub rule: Rule,
 }
 
@@ -83,9 +81,6 @@ impl Transparency {
                     Action::None,
                     Task::batch([task.map(Message::Rule), action_task]),
                 );
-            }
-            Message::ToggleIgnoreRulesButtonHover(hover) => {
-                self.transparency_rules_button_hovered = hover;
             }
         }
         (Action::None, Task::none())
@@ -144,9 +139,7 @@ impl Transparency {
                         "Individual window transparency ignore rules. Windows \
                         matched by these rules won't get transparency applied to them.",
                     ),
-                    self.transparency_rules_button_hovered,
                     Message::SetScreen(Screen::TransparencyIgnoreRules),
-                    Message::ToggleIgnoreRulesButtonHover,
                 ),
             ],
         )
