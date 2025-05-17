@@ -31,8 +31,6 @@ pub enum Message {
     AddMonitorDown(usize),
     MoveUpMonitor(usize),
     MoveDownMonitor(usize),
-    ToggleIndexPreferenceExpand,
-    IndexPreferenceHover(bool),
     ChangeNewIndexPreferenceIndex(usize),
     ChangeNewIndexPreferenceId(String),
     AddNewIndexPreference,
@@ -52,8 +50,6 @@ pub struct Monitors {
     pub monitors: HashMap<usize, Monitor>,
     pub monitor_to_config: Option<usize>,
     pub show_monitors_list: bool,
-    pub index_preferences_expanded: bool,
-    pub index_preferences_hovered: bool,
     pub new_idx_preference_index: usize,
     pub new_idx_preference_id: String,
 }
@@ -70,10 +66,6 @@ impl Monitors {
                         monitor::Monitor {
                             index,
                             sub_screen: monitor::SubScreen::Monitor,
-                            window_based_work_area_offset_expanded: false,
-                            window_based_work_area_offset_hovered: false,
-                            work_area_offset_expanded: false,
-                            work_area_offset_hovered: false,
                             workspaces: m
                                 .workspaces
                                 .iter()
@@ -90,8 +82,6 @@ impl Monitors {
             monitors,
             monitor_to_config: None,
             show_monitors_list: false,
-            index_preferences_expanded: false,
-            index_preferences_hovered: false,
             new_idx_preference_id: String::new(),
             new_idx_preference_index: 0,
         }
@@ -227,10 +217,6 @@ impl Monitors {
                     monitors_config.swap(idx, new_idx);
                 }
             }
-            Message::ToggleIndexPreferenceExpand => {
-                self.index_preferences_expanded = !self.index_preferences_expanded
-            }
-            Message::IndexPreferenceHover(hover) => self.index_preferences_hovered = hover,
             Message::ChangeNewIndexPreferenceIndex(idx) => {
                 self.new_idx_preference_index = idx;
             }
@@ -337,7 +323,7 @@ impl Monitors {
         };
 
         let dip = self.monitor_to_config.is_none().then(|| {
-            opt_helpers::expandable_with_disable_default(
+            opt_helpers::expandable(
                 "Display Index Preferences",
                 Some(
                     "Set display index preferences (default: None)\n\n\
@@ -348,11 +334,7 @@ impl Monitors {
                     Sometimes the 'device_id' might change on restart, so it is better to use \
                     the 'serial_number_id' instead!",
                 ),
-                self.display_index_preference_children(display_index_preferences),
-                self.index_preferences_expanded,
-                self.index_preferences_hovered,
-                Message::ToggleIndexPreferenceExpand,
-                Message::IndexPreferenceHover,
+                || self.display_index_preference_children(display_index_preferences),
                 display_index_preferences.is_some(),
                 Message::ChangeDisplayIndexPreferences(None),
                 Some(opt_helpers::DisableArgs {

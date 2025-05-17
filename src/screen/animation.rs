@@ -52,14 +52,8 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
-    ToggleEnableExpand,
-    ToggleEnableHover(bool),
     ToggleEnableConfigType(ConfigType),
-    ToggleDurationExpand,
-    ToggleDurationHover(bool),
     ToggleDurationConfigType(ConfigType),
-    ToggleStyleExpand,
-    ToggleStyleHover(bool),
     ToggleStyleConfigType(ConfigType),
 }
 
@@ -95,14 +89,7 @@ impl std::fmt::Display for ConfigType {
 }
 
 #[derive(Debug, Default)]
-pub struct Animation {
-    pub enable_hovered: bool,
-    pub enable_expanded: bool,
-    pub duration_hovered: bool,
-    pub duration_expanded: bool,
-    pub style_hovered: bool,
-    pub style_expanded: bool,
-}
+pub struct Animation;
 
 impl Animation {
     pub fn update(
@@ -152,8 +139,6 @@ impl Animation {
                     config.fps = value;
                 }
             },
-            Message::ToggleEnableExpand => self.enable_expanded = !self.enable_expanded,
-            Message::ToggleEnableHover(hover) => self.enable_hovered = hover,
             Message::ToggleEnableConfigType(c_type) => {
                 match c_type {
                     ConfigType::Global => {
@@ -175,8 +160,6 @@ impl Animation {
                     }
                 }
             }
-            Message::ToggleDurationExpand => self.duration_expanded = !self.duration_expanded,
-            Message::ToggleDurationHover(hover) => self.duration_hovered = hover,
             Message::ToggleDurationConfigType(c_type) => {
                 match c_type {
                     ConfigType::Global => {
@@ -209,8 +192,6 @@ impl Animation {
                     }
                 }
             }
-            Message::ToggleStyleExpand => self.style_expanded = !self.style_expanded,
-            Message::ToggleStyleHover(hover) => self.style_hovered = hover,
             Message::ToggleStyleConfigType(c_type) => {
                 match c_type {
                     ConfigType::Global => {
@@ -268,10 +249,10 @@ impl Animation {
         opt_helpers::section_view(
             "Animations:",
             [
-                opt_helpers::expandable_with_disable_default(
+                opt_helpers::expandable(
                     "Enable",
                     Some("Enable or disable all animations or per type of animation"),
-                    [
+                    move || [
                         column![
                             opt_helpers::opt_box(
                                 row![
@@ -320,18 +301,14 @@ impl Animation {
                         .spacing(10)
                         .into()
                     ],
-                    self.enable_expanded,
-                    self.enable_hovered,
-                    Message::ToggleEnableExpand,
-                    Message::ToggleEnableHover,
                     DEFAULT_CONFIG.animation.as_ref().map(|a| a.enabled != config.enabled).unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::EnableGlobal(false)),
                     None,
                 ),
-                opt_helpers::expandable_with_disable_default(
+                opt_helpers::expandable(
                     "Duration",
                     Some("Set the animation duration in ms for all animations or per type of animation (default: 250)"),
-                    [
+                    move || [
                         column![
                             opt_helpers::opt_box(
                                 row![
@@ -400,18 +377,14 @@ impl Animation {
                         .spacing(10)
                         .into()
                     ],
-                    self.duration_expanded,
-                    self.duration_hovered,
-                    Message::ToggleDurationExpand,
-                    Message::ToggleDurationHover,
                     DEFAULT_CONFIG.animation.as_ref().map(|a| a.duration != config.duration).unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::DurationGlobal(250)),
                     None,
                 ),
-                opt_helpers::expandable_with_disable_default(
+                opt_helpers::expandable(
                     "Style",
                     Some("Set the animation style for all animations or per type of animation (default: Linear)"),
-                    [
+                    move || [
                         column![
                             opt_helpers::opt_box(
                                 row![
@@ -481,10 +454,6 @@ impl Animation {
                         .spacing(10)
                         .into()
                     ],
-                    self.style_expanded,
-                    self.style_hovered,
-                    Message::ToggleStyleExpand,
-                    Message::ToggleStyleHover,
                     DEFAULT_CONFIG.animation.as_ref().map(|a| a.style != config.style).unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::StyleGlobal(AnimationStyle::Linear)),
                     None,

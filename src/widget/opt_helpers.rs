@@ -1,25 +1,22 @@
 #![allow(dead_code)]
-use super::{icons, ICONS};
-
-use crate::{
-    widget::{
-        self,
-        color_picker::{color_picker, HexString},
-        number_input, opt_button as opt_button_internal,
-    },
-    BOLD_FONT, EMOJI_FONT,
+use super::{
+    color_picker::{color_picker, HexString},
+    expandable::Expandable,
+    icons, number_input, opt_button as opt_button_internal, ICONS,
 };
+
+use crate::{widget, BOLD_FONT, EMOJI_FONT};
 
 use std::fmt::Display;
 use std::str::FromStr;
 
 use iced::{
-    padding,
+    border, padding,
     widget::{
         button, checkbox, column, combo_box, container, horizontal_rule, mouse_area, pick_list,
         row, scrollable, text, toggler, Button, Column, Container, Row, Text,
     },
-    Center, Color, Element, Fill,
+    Background, Center, Color, Element, Fill,
 };
 use num_traits::{Bounded, Num, NumAssignOps};
 
@@ -83,7 +80,7 @@ pub fn opt_box<'a, Message: 'a>(
     container(element).padding(10).style(opt_box_style)
 }
 
-fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
+pub fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
     button(icons::back().size(13).style(|t: &iced::Theme| text::Style {
         color: Some(t.extended_palette().primary.strong.color),
     }))
@@ -98,8 +95,8 @@ fn reset_button<'a, Message>(message: Message) -> Button<'a, Message> {
     })
 }
 
-fn disable_checkbox<'a, Message: Clone + 'a>(
-    disable_args: Option<DisableArgs<'a, Message>>,
+pub fn disable_checkbox<'a, Message: Clone + 'a>(
+    disable_args: Option<&DisableArgs<'a, Message>>,
 ) -> Option<Element<'a, Message>> {
     disable_args.map(|args| {
         mouse_area(
@@ -433,7 +430,7 @@ pub fn input_with_disable<'a, Message: Clone + 'a>(
     let on_input_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
     let element = row![label_with_description(name, description),]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
         )
@@ -470,7 +467,7 @@ pub fn input_with_disable_default<'a, Message: Clone + 'a>(
     let on_input_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_change.clone());
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             widget::input(placeholder, value, on_change, on_submit).on_input_maybe(on_input_maybe),
         )
@@ -538,7 +535,7 @@ where
         }
     };
     let element = row![label_with_description(name, description),]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(number_input("", value).on_input_maybe((!should_disable).then_some(on_change)))
         .spacing(10)
         .align_y(Center);
@@ -579,7 +576,7 @@ where
         }
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(number_input("", value).on_input_maybe((!should_disable).then_some(on_change)))
         .spacing(10)
         .align_y(Center);
@@ -626,7 +623,7 @@ where
         }
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             number_input("", value_internal).on_input_maybe((!should_disable).then_some(on_change)),
         )
@@ -678,7 +675,7 @@ where
         }
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             number_input("", value_internal)
                 .max(max)
@@ -754,7 +751,7 @@ where
         })
         .into();
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(color_picker_simple(
             show_picker,
             color_internal,
@@ -799,7 +796,7 @@ pub fn bool_with_disable<'a, Message: Clone + 'a>(
     let on_toggle_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
     let element = row![label_with_description(name, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(checkbox(if value { "On" } else { "Off" }, value).on_toggle_maybe(on_toggle_maybe))
         .spacing(10)
         .align_y(Center);
@@ -840,7 +837,7 @@ pub fn toggle_with_disable<'a, Message: Clone + 'a>(
     let on_toggle_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
     let element = row![label_with_description(name, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             toggler(value)
                 .label(if value { "On" } else { "Off" })
@@ -877,7 +874,7 @@ pub fn toggle_with_disable_default_no_option<'a, Message: Clone + 'a>(
         row![name].height(30).align_y(Center)
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             toggler(value)
                 .label(if value { "On" } else { "Off" })
@@ -919,7 +916,7 @@ pub fn toggle_with_disable_default<'a, Message: Clone + 'a>(
         row![name].height(30).align_y(Center)
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(
             toggler(value)
                 .label(if value { "On" } else { "Off" })
@@ -976,7 +973,7 @@ where
         .spacing(10)
         .align_y(Center)
         .push_maybe((!name.is_empty()).then_some(label_with_description(name, description)))
-        .push_maybe(disable_checkbox(disable_args))
+        .push_maybe(disable_checkbox(disable_args.as_ref()))
         .push(pick_list(options, selected, on_selected));
     opt_box(element).into()
 }
@@ -1040,7 +1037,7 @@ where
         selected_description
     ]
     .spacing(10)]
-    .push_maybe(disable_checkbox(disable_args))
+    .push_maybe(disable_checkbox(disable_args.as_ref()))
     .push(
         pick_list(options, selected, move |v| on_selected(Some(v)))
             .font(ICONS)
@@ -1122,7 +1119,7 @@ where
         selected_description
     ]
     .spacing(10)]
-    .push_maybe(disable_checkbox(disable_args))
+    .push_maybe(disable_checkbox(disable_args.as_ref()))
     .push(
         pick_list(options, selected, move |v| on_selected(Some(v)))
             .font(ICONS)
@@ -1193,7 +1190,7 @@ where
         selected_description
     ]
     .spacing(10)]
-    .push_maybe(disable_checkbox(disable_args))
+    .push_maybe(disable_checkbox(disable_args.as_ref()))
     .push(
         combo_box(options, placeholder, selected.as_ref(), move |v| {
             on_selected(Some(v))
@@ -1208,171 +1205,95 @@ where
 ///Creates an expandable option with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn expandable<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
-    description: Option<&'a str>,
-    children: impl IntoIterator<Item = Element<'a, Message>>,
-    expanded: bool,
-    hovered: bool,
-    on_press: Message,
-    on_hover: impl Fn(bool) -> Message,
-) -> Element<'a, Message> {
-    let right_button = button(if expanded {
-        text("▲").size(10)
-    } else {
-        text("▼").size(10)
-    })
-    .on_press(on_press.clone())
-    .style(move |t, s| {
-        if hovered {
-            button::secondary(t, button::Status::Active)
-        } else {
-            button::text(t, s)
-        }
-    });
-
-    let main = row![label_with_description(name, description), right_button]
-        .align_y(Center)
-        .padding(padding::right(10));
-
-    let area = |el| {
-        mouse_area(el)
-            .on_press(on_press)
-            .on_enter(on_hover(true))
-            .on_exit(on_hover(false))
-            .interaction(iced::mouse::Interaction::Pointer)
-    };
-
-    let element = if expanded {
-        let top = opt_box(main).style(opt_box_style_top);
-        let wrapped_top = area(top);
-        let inner = Column::with_children(children)
-            .spacing(10)
-            .padding(padding::all(10).left(20));
-        let wrapped_inner = opt_box(inner).style(opt_box_style_bottom);
-        column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
-    } else {
-        area(opt_box(main)).into()
-    };
-    element
-}
-
-///Creates an expandable option with children options to be shown when expanded.
-///
-///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_with_disable_default<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
+pub fn expandable<'a, Message: Clone + 'a, I>(
+    name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
-    children: impl IntoIterator<Item = Element<'a, Message>>,
-    expanded: bool,
-    hovered: bool,
-    on_press: Message,
-    on_hover: impl Fn(bool) -> Message,
+    children: impl Fn() -> I + 'a,
     is_dirty: bool,
     on_default: Message,
     disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message> {
-    let on_press_clone = on_press.clone();
-    let right_button = |hovered: bool| {
-        button(if expanded {
+) -> Element<'a, Message>
+where
+    I: IntoIterator<Item = Element<'a, Message>> + 'a,
+{
+    let right_button = move |hovered: bool, expanded: bool| {
+        container(if expanded {
             text("▲").size(10)
         } else {
             text("▼").size(10)
         })
-        .on_press(on_press_clone)
-        .style(move |t, s| {
-            if hovered {
-                button::secondary(t, button::Status::Active)
+        .padding(padding::all(5).left(10).right(10))
+        .style(move |t: &iced::Theme| {
+            let palette = t.extended_palette();
+            let background = if hovered {
+                // Similar to `button::secondary`
+                Some(Background::Color(palette.secondary.strong.color))
             } else {
-                button::text(t, s)
+                // Similar to `button::text`
+                None
+            };
+            let text_color = if hovered {
+                // Similar to `button::secondary`
+                Some(palette.secondary.base.text)
+            } else {
+                // Similar to `button::text`
+                None
+            };
+            // Use a container style to emulate a button, that changes from
+            // `button::text` to `button::secondary` when hovered
+            container::Style {
+                background,
+                text_color,
+                border: border::rounded(2),
+                shadow: Default::default(),
             }
         })
         .into()
     };
 
-    expandable_with_disable_default_custom(
+    expandable_custom(
         name,
         description,
         right_button,
         children,
-        expanded,
-        hovered,
-        Some(on_press),
-        Some(on_hover),
         is_dirty,
+        false,
         on_default,
         disable_args,
     )
 }
 
-///Creates an expandable option with children options to be shown when expanded.
+///Creates an expandable option with a custom element to the right of the title name and
+///description, with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_with_disable_default_custom<'a, Message: Clone + 'a>(
-    name: impl Into<Text<'a>>,
+pub fn expandable_custom<'a, Message: Clone + 'a, I>(
+    name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
-    right_element: impl FnOnce(bool) -> Element<'a, Message>,
-    children: impl IntoIterator<Item = Element<'a, Message>>,
-    expanded: bool,
-    hovered: bool,
-    on_press: Option<Message>,
-    on_hover: Option<impl Fn(bool) -> Message>,
+    right_element: impl Fn(bool, bool) -> Element<'a, Message> + 'a,
+    children: impl Fn() -> I + 'a,
     is_dirty: bool,
+    force_expand: bool,
     on_default: Message,
     disable_args: Option<DisableArgs<'a, Message>>,
-) -> Element<'a, Message> {
-    let label = if is_dirty {
-        row![name.into(), reset_button(on_default)]
-            .spacing(5)
-            .height(30)
-            .align_y(Center)
-    } else {
-        row![name.into()].height(30).align_y(Center)
-    };
-    let main = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args))
-        .push(right_element(hovered))
-        .align_y(Center)
-        .padding(padding::right(10))
-        .spacing(10);
-
-    let area = |el: Container<'a, Message>| -> Element<'a, Message> {
-        if let (Some(on_press), Some(on_hover)) = (on_press, on_hover) {
-            mouse_area(el)
-                .on_press(on_press)
-                .on_enter(on_hover(true))
-                .on_exit(on_hover(false))
-                .interaction(iced::mouse::Interaction::Pointer)
-                .into()
-        } else {
-            el.into()
-        }
-    };
-    // let disable_area = |el| {
-    //     mouse_area(container(el).width(Fill).height(Fill))
-    //         .on_press(on_default)
-    //         .interaction(iced::mouse::Interaction::NotAllowed)
-    // };
-
-    let element = if expanded {
-        let top = opt_box(main).style(opt_box_style_top);
-        let wrapped_top = area(top);
-        let inner = Column::with_children(children)
-            .spacing(10)
-            .padding(padding::all(10).left(20));
-        let wrapped_inner = opt_box(inner).style(opt_box_style_bottom);
-        // let wrapped_inner: Element<Message> = if should_disable {
-        //     iced::widget::stack([wrapped_inner.into(), disable_area("").into()]).into()
-        // } else {
-        //     wrapped_inner.into()
-        // };
-        column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
-    } else {
-        area(opt_box(main))
-    };
-    element
+) -> Element<'a, Message>
+where
+    I: IntoIterator<Item = Element<'a, Message>> + 'a,
+{
+    Expandable::with(
+        Some(name),
+        description,
+        None,
+        Some(on_default),
+        is_dirty,
+        force_expand,
+        disable_args,
+        right_element,
+        children,
+    )
+    .into()
 }
 
 ///Creates a row of options within a section. This is a simple helper to create

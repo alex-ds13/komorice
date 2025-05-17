@@ -23,14 +23,10 @@ pub enum Message {
     SetScreen(Screen),
     ConfigChange(ConfigChange),
     ToggleOverrideGlobal(OverrideConfig),
-    ToggleLayoutRulesExpand,
-    LayoutRulesHover(bool),
     ChangeNewLayoutRuleLimit(usize),
     ChangeNewLayoutRuleLayout(Layout),
     AddNewLayoutRule,
     RemoveLayoutRule(usize),
-    ToggleBehaviourRulesExpand,
-    BehaviourRulesHover(bool),
     ChangeNewBehaviourRuleLimit(usize),
     ChangeNewBehaviourRuleBehaviour(WindowContainerBehaviour),
     AddNewBehaviourRule,
@@ -84,12 +80,8 @@ pub struct Workspace {
     pub index: usize,
     pub screen: Screen,
     pub rule: rule::Rule,
-    pub layout_rules_expanded: bool,
-    pub layout_rules_hovered: bool,
     pub new_layout_rule_limit: usize,
     pub new_layout_rule_layout: Layout,
-    pub behaviour_rules_expanded: bool,
-    pub behaviour_rules_hovered: bool,
     pub new_behaviour_rule_limit: usize,
     pub new_behaviour_rule_behaviour: WindowContainerBehaviour,
 }
@@ -203,12 +195,6 @@ impl WorkspaceScreen for WorkspaceConfig {
                     }
                 }
             },
-            Message::ToggleLayoutRulesExpand => {
-                workspace.layout_rules_expanded = !workspace.layout_rules_expanded;
-            }
-            Message::LayoutRulesHover(hover) => {
-                workspace.layout_rules_hovered = hover;
-            }
             Message::ChangeNewLayoutRuleLimit(limit) => {
                 workspace.new_layout_rule_limit = limit;
             }
@@ -238,12 +224,6 @@ impl WorkspaceScreen for WorkspaceConfig {
                 if let Some(layout_rules) = &mut self.layout_rules {
                     layout_rules.remove(&limit);
                 }
-            }
-            Message::ToggleBehaviourRulesExpand => {
-                workspace.behaviour_rules_expanded = !workspace.behaviour_rules_expanded;
-            }
-            Message::BehaviourRulesHover(hover) => {
-                workspace.behaviour_rules_hovered = hover;
             }
             Message::ChangeNewBehaviourRuleLimit(limit) => {
                 workspace.new_behaviour_rule_limit = limit;
@@ -405,7 +385,7 @@ impl Workspace {
             DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour,
             None,
         );
-        let layout_rules = opt_helpers::expandable_with_disable_default(
+        let layout_rules = opt_helpers::expandable(
             "Layout Rules",
             Some(
                 "Layout rules (default: None)\n\n\
@@ -415,11 +395,7 @@ impl Workspace {
                 to manually change the layout of a workspace until all layout \
                 rules for that workspace have been cleared.",
             ),
-            layout_rules_children(&ws_config.layout_rules, self),
-            self.layout_rules_expanded,
-            self.layout_rules_hovered,
-            Message::ToggleLayoutRulesExpand,
-            Message::LayoutRulesHover,
+            || layout_rules_children(&ws_config.layout_rules, self),
             ws_config.layout_rules.is_some(),
             Message::ConfigChange(ConfigChange::LayoutRules(None)),
             Some(opt_helpers::DisableArgs {
@@ -453,7 +429,7 @@ impl Workspace {
                 },
             }),
         );
-        let window_container_behaviour_rules = opt_helpers::expandable_with_disable_default(
+        let window_container_behaviour_rules = opt_helpers::expandable(
             "Window Container Behaviour Rules",
             Some(
                 "Window Container Behaviour rules (default: None)\n\n\
@@ -463,11 +439,7 @@ impl Workspace {
                 will not be able to manually change the layout of a workspace until \
                 all behaviour rules for that workspace have been cleared.",
             ),
-            behaviour_rules_children(&ws_config.window_container_behaviour_rules, self),
-            self.behaviour_rules_expanded,
-            self.behaviour_rules_hovered,
-            Message::ToggleBehaviourRulesExpand,
-            Message::BehaviourRulesHover,
+            || behaviour_rules_children(&ws_config.window_container_behaviour_rules, self),
             ws_config.window_container_behaviour_rules.is_some(),
             Message::ConfigChange(ConfigChange::BehaviourRules(None)),
             Some(opt_helpers::DisableArgs {

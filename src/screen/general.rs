@@ -31,10 +31,6 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
-    ToggleAscPathExpand,
-    ToggleAscPathHover(bool),
-    ToggleGlobalWorkAreaOffsetExpand,
-    ToggleGlobalWorkAreaOffsetHover(bool),
 }
 
 #[derive(Clone, Debug)]
@@ -73,10 +69,6 @@ pub enum Action {
 #[derive(Debug, Default)]
 pub struct General {
     pub new_asc_path: String,
-    pub asc_path_expanded: bool,
-    pub asc_path_hovered: bool,
-    pub global_work_area_offset_expanded: bool,
-    pub global_work_area_offset_hovered: bool,
 }
 
 impl General {
@@ -254,18 +246,6 @@ impl General {
                     config.floating_window_aspect_ratio = Some(ratio);
                 }
             },
-            Message::ToggleAscPathExpand => {
-                self.asc_path_expanded = !self.asc_path_expanded;
-            }
-            Message::ToggleAscPathHover(hover) => {
-                self.asc_path_hovered = hover;
-            }
-            Message::ToggleGlobalWorkAreaOffsetExpand => {
-                self.global_work_area_offset_expanded = !self.global_work_area_offset_expanded;
-            }
-            Message::ToggleGlobalWorkAreaOffsetHover(hover) => {
-                self.global_work_area_offset_hovered = hover;
-            }
         }
         (Action::None, Task::none())
     }
@@ -274,14 +254,10 @@ impl General {
         opt_helpers::section_view(
             "General:",
             [
-                opt_helpers::expandable_with_disable_default(
+                opt_helpers::expandable(
                     "App Specific Configuration Path",
                     Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
-                    self.asc_children(&config.app_specific_configuration_path),
-                    self.asc_path_expanded,
-                    self.asc_path_hovered,
-                    Message::ToggleAscPathExpand,
-                    Message::ToggleAscPathHover,
+                    || self.asc_children(&config.app_specific_configuration_path),
                     config.app_specific_configuration_path != DEFAULT_CONFIG.app_specific_configuration_path,
                     Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(DEFAULT_CONFIG.app_specific_configuration_path.clone())),
                     Some(DisableArgs {
@@ -362,10 +338,10 @@ impl General {
                     Some(DisplayOption(DEFAULT_CONFIG.focus_follows_mouse)),
                     None,
                 ),
-                opt_helpers::expandable_with_disable_default(
+                opt_helpers::expandable(
                     "Global Work Area Offset",
                     Some("Global work area (space used for tiling) offset (default: None)"),
-                    [
+                    || [
                         opt_helpers::number(
                             "left",
                             None,
@@ -391,10 +367,6 @@ impl General {
                             |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
                         ),
                     ],
-                    self.global_work_area_offset_expanded,
-                    self.global_work_area_offset_hovered,
-                    Message::ToggleGlobalWorkAreaOffsetExpand,
-                    Message::ToggleGlobalWorkAreaOffsetHover,
                     config.global_work_area_offset.is_some(),
                     Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(None)),
                     Some(DisableArgs {
@@ -470,14 +442,14 @@ impl General {
                     DEFAULT_CONFIG.window_hiding_behaviour,
                     None,
                 ),
-                opt_helpers::expandable_with_disable_default_custom(
+                opt_helpers::expandable_custom(
                     "Floating Window Aspect Ratio",
                     get_aspect_ratio_description(
                         config.floating_window_aspect_ratio
                             .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
                             .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into)
                     ),
-                    |_| pick_list(
+                    |_, _| pick_list(
                         [
                             crate::komo_interop::aspect_ratio::AspectRatio::Standard,
                             crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
@@ -510,7 +482,7 @@ impl General {
                             .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
                         |selected| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(selected.into()))),
                     ).into(),
-                    [
+                    || [
                         opt_helpers::number(
                             "width:",
                             None,
@@ -542,11 +514,8 @@ impl General {
                             |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
                         ),
                     ],
-                    matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
-                    false,
-                    None,
-                    Option::<Box<dyn Fn(bool) -> Message>>::None,
                     config.floating_window_aspect_ratio != DEFAULT_CONFIG.floating_window_aspect_ratio,
+                    matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
                     Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(DEFAULT_CONFIG.floating_window_aspect_ratio)),
                     None,
                 ),

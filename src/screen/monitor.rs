@@ -22,10 +22,6 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
-    ToggleWindowBasedWorkAreaOffsetExpand,
-    ToggleWindowBasedWorkAreaOffsetHover(bool),
-    ToggleWorkAreaOffsetExpand,
-    ToggleWorkAreaOffsetHover(bool),
     Workspace(usize, workspace::Message),
     SetSubScreenMonitor,
     SetSubScreenWorkspaces,
@@ -90,10 +86,6 @@ impl<'a, M> MonitorView<'a, M> {
 pub struct Monitor {
     pub index: usize,
     pub sub_screen: SubScreen,
-    pub window_based_work_area_offset_expanded: bool,
-    pub window_based_work_area_offset_hovered: bool,
-    pub work_area_offset_expanded: bool,
-    pub work_area_offset_hovered: bool,
     pub workspaces: HashMap<usize, workspace::Workspace>,
 }
 
@@ -213,19 +205,6 @@ impl Monitor {
                     }
                 }
             },
-            Message::ToggleWindowBasedWorkAreaOffsetExpand => {
-                self.window_based_work_area_offset_expanded =
-                    !self.window_based_work_area_offset_expanded;
-            }
-            Message::ToggleWindowBasedWorkAreaOffsetHover(hover) => {
-                self.window_based_work_area_offset_hovered = hover;
-            }
-            Message::ToggleWorkAreaOffsetExpand => {
-                self.work_area_offset_expanded = !self.work_area_offset_expanded;
-            }
-            Message::ToggleWorkAreaOffsetHover(hover) => {
-                self.work_area_offset_hovered = hover;
-            }
             Message::Workspace(idx, message) => {
                 if let (Some(workspace_config), Some(workspace)) = (
                     config.workspaces.get_mut(idx),
@@ -372,7 +351,7 @@ impl Monitor {
         }
     }
 
-    pub fn monitor_view(&self, config: &MonitorConfig) -> MonitorView<Message> {
+    pub fn monitor_view<'a>(&'a self, config: &'a MonitorConfig) -> MonitorView<'a, Message> {
         let title = self.get_sub_section_title(None);
         let contents = vec![
             opt_helpers::number_with_disable_default_option(
@@ -399,10 +378,10 @@ impl Monitor {
                     on_toggle: |v| Message::ConfigChange(ConfigChange::WorkspacePadding((!v).then_some(10))),
                 }),
             ),
-            opt_helpers::expandable_with_disable_default(
+            opt_helpers::expandable(
                 "Window Based Work Area Offset",
                 Some("Window based work area offset (default: global)"),
-                [
+                || [
                     opt_helpers::number(
                         "left",
                         None,
@@ -428,10 +407,6 @@ impl Monitor {
                         move |value| Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetRight(value)),
                     ),
                 ],
-                self.window_based_work_area_offset_expanded,
-                self.window_based_work_area_offset_hovered,
-                Message::ToggleWindowBasedWorkAreaOffsetExpand,
-                Message::ToggleWindowBasedWorkAreaOffsetHover,
                 config.window_based_work_area_offset.is_some(),
                 Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
                 Some(opt_helpers::DisableArgs {
@@ -456,10 +431,10 @@ impl Monitor {
                 },
                 None,
             ),
-            opt_helpers::expandable_with_disable_default(
+            opt_helpers::expandable(
                 "Work Area Offset",
                 Some("Monitor-specific work area offset (default: global)"),
-                [
+                || [
                     opt_helpers::number(
                         "left",
                         None,
@@ -485,10 +460,6 @@ impl Monitor {
                         move |value| Message::ConfigChange(ConfigChange::WorkAreaOffsetRight(value)),
                     ),
                 ],
-                self.work_area_offset_expanded,
-                self.work_area_offset_hovered,
-                Message::ToggleWorkAreaOffsetExpand,
-                Message::ToggleWorkAreaOffsetHover,
                 config.work_area_offset.is_some(),
                 Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
                 Some(opt_helpers::DisableArgs {
