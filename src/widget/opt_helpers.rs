@@ -1105,7 +1105,6 @@ where
                 shadow: Default::default(),
             }
         })
-        .into()
     };
 
     expandable_custom(
@@ -1125,10 +1124,10 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_custom<'a, Message: Clone + 'a, I>(
+pub fn expandable_custom<'a, Message: Clone + 'a, E, I>(
     name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
-    right_element: impl Fn(bool, bool) -> Element<'a, Message> + 'a,
+    right_element: impl Fn(bool, bool) -> E + 'a,
     children: impl Fn() -> I + 'a,
     is_dirty: bool,
     force_expand: bool,
@@ -1136,6 +1135,7 @@ pub fn expandable_custom<'a, Message: Clone + 'a, I>(
     disable_args: Option<DisableArgs<'a, Message>>,
 ) -> Element<'a, Message>
 where
+    E: Into<Element<'a, Message>> + 'a,
     I: IntoIterator<Item = Element<'a, Message>> + 'a,
 {
     Expandable::with(

@@ -481,7 +481,7 @@ impl General {
                             .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
                             .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
                         |selected| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(selected.into()))),
-                    ).into(),
+                    ),
                     || [
                         opt_helpers::number(
                             "width:",
