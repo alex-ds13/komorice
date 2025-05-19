@@ -7,7 +7,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use async_compat::Compat;
 use iced::{
-    widget::{column, markdown, pick_list, rich_text, row, text},
+    widget::{column, markdown, pick_list, row, text},
     Element, Subscription, Task, Theme,
 };
 
@@ -382,7 +382,7 @@ impl Whkd {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, whkdrc: &'a Whkdrc, theme: &Theme) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, whkdrc: &'a Whkdrc, theme: &'a Theme) -> Element<'a, Message> {
         let shell = opt_helpers::choose_with_disable_default(
             "Shell",
             Some("The Shell you want whkd to use. (default: pwsh)"),
@@ -610,65 +610,62 @@ fn hook_custom<'a>(
     pause_hook: &'a Option<String>,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
-    theme: &Theme,
+    theme: &'a Theme,
 ) -> Element<'a, Message> {
     let (hook_command, hook_custom) = split_pause_hook(pause_hook, commands);
-    let pick = pick_list(commands, Some(hook_command.to_string()), move |v| {
-        let hook = Some(if hook_custom.is_empty() {
-            format!("komorebic {v}")
-        } else {
-            format!("komorebic {v} {hook_custom}")
-        });
-        Message::PauseHook(hook)
-    });
-    let ph = pause_hook.as_ref().map_or("", String::as_str);
-    let custom = widget::input(
-        "",
-        ph,
-        // move |v| {
-        //     let hook = Some(if hook_command.is_empty() {
-        //         v
-        //     } else {
-        //         format!("{} {}", hook_command, v)
-        //     });
-        //     Message::PauseHook(hook)
-        // },
-        |v| Message::PauseHook(Some(v)),
-        None,
-    )
-    .width(550);
-    let element = column![
-        row!["Komorebic commands:", pick].spacing(5),
-        "Command:",
-        custom,
-        text(ph)
-    ]
-    .width(iced::Shrink)
-    .spacing(10);
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
-    let md = if let Some(items) =
-        commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
-    {
-        markdown(items, theme)
-    } else {
-        iced::widget::horizontal_space().into()
-    };
-    let description = Element::from(
-        column![
-            opt_helpers::to_description_text(
-                "A command that should run on pause keybind trigger".into()
-            ),
-            md,
-        ]
-        .spacing(10),
-    )
-    .map(Message::UrlClicked);
-    opt_helpers::opt_custom_el_disable_default(
+    opt_helpers::expandable_custom(
         "Pause Hook",
-        Some(description),
-        element,
+        Some("A command that should run on pause keybind trigger"),
+        move |_, _| {
+            let pick = pick_list(commands, Some(hook_command.to_string()), move |v| {
+                let hook = Some(if hook_custom.is_empty() {
+                    format!("komorebic {v}")
+                } else {
+                    format!("komorebic {v} {hook_custom}")
+                });
+                Message::PauseHook(hook)
+            });
+            let ph = pause_hook.as_ref().map_or("", String::as_str);
+            let custom = widget::input(
+                "",
+                ph,
+                // move |v| {
+                //     let hook = Some(if hook_command.is_empty() {
+                //         v
+                //     } else {
+                //         format!("{} {}", hook_command, v)
+                //     });
+                //     Message::PauseHook(hook)
+                // },
+                |v| Message::PauseHook(Some(v)),
+                None,
+            )
+            .width(550);
+            column![
+                row!["Komorebic commands:", pick].spacing(5),
+                "Command:",
+                custom,
+                text(ph)
+            ]
+            .width(iced::Shrink)
+            .spacing(10)
+        },
+        move || {
+            [if let Some(items) =
+                commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
+            {
+                markdown(items, theme)
+            } else {
+                iced::widget::horizontal_space().into()
+            }
+            .map(Message::UrlClicked)]
+        },
         is_dirty,
-        Some(Message::PauseHook(DEFAULT_WHKDRC.pause_hook.clone())),
+        commands_desc
+            .get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
+            .is_some(),
+        Message::PauseHook(DEFAULT_WHKDRC.pause_hook.clone()),
         None,
     )
 }
