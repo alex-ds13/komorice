@@ -68,8 +68,9 @@ impl<Message> From<&Screen> for Element<'_, Message> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub enum ConfigType {
+    #[default]
     Komorebi,
     Whkd,
 }
