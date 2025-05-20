@@ -378,19 +378,16 @@ fn hook_custom<'a>(
             .spacing(10)
         },
         move || {
-            [if let Some(items) =
+            if let Some(items) =
                 commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
             {
-                markdown(items, theme)
+                vec![markdown(items, theme).map(Message::UrlClicked)]
             } else {
-                iced::widget::horizontal_space().into()
+                vec![]
             }
-            .map(Message::UrlClicked)]
         },
         is_dirty,
-        commands_desc
-            .get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
-            .is_some(),
+        true,
         Message::PauseHook(DEFAULT_WHKDRC.pause_hook.clone()),
         None,
     )
