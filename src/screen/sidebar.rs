@@ -27,7 +27,6 @@ pub enum Action {
 pub struct Sidebar {
     pub komorebi_selected: Screen,
     pub whkd_selected: Screen,
-    pub config_type: ConfigType,
 }
 
 impl Default for Sidebar {
@@ -35,18 +34,21 @@ impl Default for Sidebar {
         Self {
             komorebi_selected: Screen::General,
             whkd_selected: Screen::Whkd,
-            config_type: ConfigType::Komorebi,
         }
     }
 }
 
 impl Sidebar {
-    pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
+    pub fn update(
+        &mut self,
+        message: Message,
+        config_type: &ConfigType,
+    ) -> (Action, Task<Message>) {
         match message {
             Message::SetHomeScreen => {
                 return (Action::SetHomeScreen, Task::none());
             }
-            Message::SelectScreen(screen) => match self.config_type {
+            Message::SelectScreen(screen) => match config_type {
                 ConfigType::Komorebi => {
                     if screen != self.komorebi_selected || SCREENS_TO_RESET.contains(&screen) {
                         self.komorebi_selected = screen.clone();
@@ -64,7 +66,7 @@ impl Sidebar {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self, config_type: &ConfigType) -> Element<Message> {
         let home = container(
             button(Screen::Home)
                 .on_press(Message::SetHomeScreen)
@@ -72,7 +74,7 @@ impl Sidebar {
                 .width(Fill),
         )
         .width(Fill);
-        let screen_buttons = self.get_screens();
+        let screen_buttons = self.get_screens(config_type);
         let fixed_width = Space::new(120, Shrink);
         let main_content = scrollable(
             column![fixed_width]
@@ -94,15 +96,15 @@ impl Sidebar {
         column![main_content, bottom_content].into()
     }
 
-    pub fn selected_screen(&self) -> Screen {
-        match self.config_type {
+    pub fn selected_screen(&self, config_type: &ConfigType) -> Screen {
+        match config_type {
             ConfigType::Komorebi => self.komorebi_selected.clone(),
             ConfigType::Whkd => self.whkd_selected.clone(),
         }
     }
 
-    fn get_screens(&self) -> Vec<Element<Message>> {
-        match self.config_type {
+    fn get_screens(&self, config_type: &ConfigType) -> Vec<Element<Message>> {
+        match config_type {
             ConfigType::Komorebi => [
                 Screen::General,
                 Screen::Monitors,

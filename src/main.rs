@@ -15,7 +15,7 @@ use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
     animation, border, general, home, live_debug, monitors, rules, sidebar, stackbar, theme,
-    transparency, Screen,
+    transparency, ConfigType, Screen,
 };
 use crate::whkd::Whkdrc;
 use crate::widget::{button_with_icon, icons};
@@ -113,6 +113,7 @@ enum Message {
 
 struct Komorice {
     main_screen: Screen,
+    config_type: ConfigType,
     display_info: HashMap<usize, monitors::DisplayInfo>,
     sidebar: sidebar::Sidebar,
     home: home::Home,
@@ -141,6 +142,7 @@ impl Default for Komorice {
     fn default() -> Self {
         Self {
             main_screen: Default::default(),
+            config_type: Default::default(),
             sidebar: Default::default(),
             display_info: Default::default(),
             home: Default::default(),
@@ -203,9 +205,9 @@ impl Komorice {
                 let action_task = match action {
                     home::Action::None => Task::none(),
                     home::Action::ChangeConfigType(config_type) => {
-                        self.sidebar.config_type = config_type;
-                        self.main_screen = self.sidebar.selected_screen();
-                        if matches!(self.sidebar.config_type, screen::ConfigType::Whkd)
+                        self.config_type = config_type;
+                        self.main_screen = self.sidebar.selected_screen(&self.config_type);
+                        if matches!(self.config_type, screen::ConfigType::Whkd)
                             && !self.whkd.loaded_commands
                         {
                             self.whkd.load_commands().map(Message::Whkd)
@@ -327,7 +329,7 @@ impl Komorice {
                 return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
-                let (action, task) = self.sidebar.update(message);
+                let (action, task) = self.sidebar.update(message, &self.config_type);
                 let action_task = match action {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::SetHomeScreen => {
@@ -443,7 +445,7 @@ impl Komorice {
             return main_screen;
         }
 
-        let sidebar = self.sidebar.view().map(Message::Sidebar);
+        let sidebar = self.sidebar.view(&self.config_type).map(Message::Sidebar);
         let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
         save_buttons = save_buttons.push_maybe((!self.errors.is_empty()).then(|| {
             button("Errors")
