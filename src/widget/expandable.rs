@@ -223,7 +223,7 @@ where
             .padding(padding::right(10))
         };
 
-        let area = |el| {
+        let area = |el| -> Element<_> {
             mouse_area(el)
                 .interaction(iced::mouse::Interaction::Pointer)
                 .on_press(InternalMessage::ToggleExpand)
@@ -243,23 +243,33 @@ where
             .as_ref()
             .is_some_and(|_| state.is_expanded || self.force_expand)
         {
-            let top = opt_box(main).style(opt_box_style_top);
-            let wrapped_top = area(top);
             let children = (self.bottom_elements.as_ref().unwrap())()
                 .into_iter()
-                .map(|e| e.map(InternalMessage::Message));
-            let inner = Column::with_children(children)
-                .spacing(10)
-                .padding(padding::all(10).left(20));
-            let wrapped_inner = opt_box(inner).style(opt_box_style_bottom);
-            // let wrapped_inner: Element<Message> = if should_disable {
-            //     iced::widget::stack([wrapped_inner.into(), disable_area("").into()]).into()
-            // } else {
-            //     wrapped_inner.into()
-            // };
-            column![wrapped_top, horizontal_rule(2.0), wrapped_inner].into()
+                .map(|e| e.map(InternalMessage::Message))
+                .collect::<Vec<_>>();
+            let (wrapped_top, wrapped_inner) = if !children.is_empty() {
+                let top = opt_box(main).style(opt_box_style_top);
+                let wrapped_top = area(top);
+                let inner = Column::with_children(children)
+                    .spacing(10)
+                    .padding(padding::all(10).left(20));
+                let wrapped_inner = opt_box(inner).style(opt_box_style_bottom);
+                // let wrapped_inner: Element<Message> = if should_disable {
+                //     iced::widget::stack([wrapped_inner.into(), disable_area("").into()]).into()
+                // } else {
+                //     wrapped_inner.into()
+                // };
+                (wrapped_top, Some(wrapped_inner))
+            } else {
+                (area(opt_box(main)), None)
+            };
+            column![]
+                .push(wrapped_top)
+                .push_maybe(wrapped_inner.is_some().then_some(horizontal_rule(2.0)))
+                .push_maybe(wrapped_inner)
+                .into()
         } else {
-            area(opt_box(main))
+            column![area(opt_box(main))].into()
         };
         element
     }
