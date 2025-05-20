@@ -104,7 +104,7 @@ enum Message {
     ConfigFileWatcherTx(smol::channel::Sender<config::Input>),
     DiscardChanges,
     TrySave,
-    ToggleConfigModal,
+    ToggleSaveModal,
     Save,
     Saved,
 }
@@ -131,7 +131,7 @@ struct Komorice {
     is_dirty: bool,
     config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
-    show_save_config_modal: bool,
+    show_save_modal: bool,
     show_errors_modal: bool,
 }
 
@@ -159,7 +159,7 @@ impl Default for Komorice {
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
             errors: Default::default(),
-            show_save_config_modal: Default::default(),
+            show_save_modal: Default::default(),
             show_errors_modal: Default::default(),
         }
     }
@@ -366,17 +366,31 @@ impl Komorice {
             }
             Message::TrySave => {
                 if self.settings.show_save_warning {
-                    self.show_save_config_modal = true;
+                    self.show_save_modal = true;
                 } else {
-                    return config::save_task(self.config.clone());
+                    match self.config_type {
+                        ConfigType::Komorebi => {
+                            return config::save_task(self.config.clone());
+                        }
+                        ConfigType::Whkd => {
+                            return whkd::save_task(self.whkd.whkdrc.clone()).map(Message::Whkd);
+                        }
+                    }
                 }
             }
-            Message::ToggleConfigModal => {
-                self.show_save_config_modal = !self.show_save_config_modal;
+            Message::ToggleSaveModal => {
+                self.show_save_modal = !self.show_save_modal;
             }
             Message::Save => {
-                self.show_save_config_modal = false;
-                return config::save_task(self.config.clone());
+                self.show_save_modal = false;
+                match self.config_type {
+                    ConfigType::Komorebi => {
+                        return config::save_task(self.config.clone());
+                    }
+                    ConfigType::Whkd => {
+                        return whkd::save_task(self.whkd.whkdrc.clone()).map(Message::Whkd);
+                    }
+                }
             }
             Message::Saved => {
                 if let Some(sender) = &self.config_watcher_tx {
@@ -385,16 +399,20 @@ impl Komorice {
                 self.loaded_config = Arc::new(self.config.clone());
                 self.is_dirty = false;
             }
-            Message::DiscardChanges => {
-                let update_display_info = self.config.display_index_preferences
-                    != self.loaded_config.display_index_preferences;
-                self.config = (*self.loaded_config).clone();
-                self.is_dirty = false;
-                if update_display_info {
-                    self.display_info =
-                        monitors::get_display_information(&self.config.display_index_preferences);
+            Message::DiscardChanges => match self.config_type {
+                ConfigType::Komorebi => {
+                    let update_display_info = self.config.display_index_preferences
+                        != self.loaded_config.display_index_preferences;
+                    self.config = (*self.loaded_config).clone();
+                    self.is_dirty = false;
+                    if update_display_info {
+                        self.display_info = monitors::get_display_information(
+                            &self.config.display_index_preferences,
+                        );
+                    }
                 }
-            }
+                ConfigType::Whkd => self.whkd.discard_changes(),
+            },
         }
         Task::none()
     }
@@ -454,10 +472,10 @@ impl Komorice {
         save_buttons = save_buttons.extend([
             horizontal_space().into(),
             button("Save")
-                .on_press_maybe(self.is_dirty.then_some(Message::TrySave))
+                .on_press_maybe(self.is_dirty().then_some(Message::TrySave))
                 .into(),
             button("Discard Changes")
-                .on_press_maybe(self.is_dirty.then_some(Message::DiscardChanges))
+                .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
                 .into(),
         ]);
         let right_col = column![
@@ -468,8 +486,8 @@ impl Komorice {
             save_buttons,
         ];
         let main_content = row![sidebar, vertical_rule(2.0), right_col].padding(10);
-        let modal_content = self.show_save_config_modal.then(|| self.save_warning());
-        let main_modal = widget::modal(main_content, modal_content, Message::ToggleConfigModal);
+        let modal_content = self.show_save_modal.then(|| self.save_warning());
+        let main_modal = widget::modal(main_content, modal_content, Message::ToggleSaveModal);
         let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());
         widget::modal(main_modal, errors_modal_content, Message::CloseErrorsModal)
     }
@@ -518,6 +536,13 @@ impl Komorice {
         self.is_dirty = self.config != *self.loaded_config;
     }
 
+    fn is_dirty(&self) -> bool {
+        match self.config_type {
+            ConfigType::Komorebi => self.is_dirty,
+            ConfigType::Whkd => self.whkd.is_dirty,
+        }
+    }
+
     /// Checks if the current screen allows resetting and if it does, it applies the resetting
     /// function for that screen.
     fn reset_screen(&mut self) {
@@ -547,7 +572,7 @@ impl Komorice {
     fn save_warning(&self) -> container::Container<Message> {
         let save = button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save));
         let cancel = button("Cancel")
-            .on_press(Message::ToggleConfigModal)
+            .on_press(Message::ToggleSaveModal)
             .style(button::secondary);
         let stop_showing = container(
             Element::from(
