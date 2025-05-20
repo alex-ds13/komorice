@@ -1,7 +1,7 @@
 use whkd_core::Whkdrc;
 
 // Define a function to generate a configuration file from a Whkdrc instance
-fn unparse_whkdrc(whkdrc: &Whkdrc) -> String {
+pub fn unparse_whkdrc(whkdrc: &Whkdrc) -> String {
     let mut contents = String::new();
 
     let delimiter = " : ";
