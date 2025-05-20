@@ -3,195 +3,14 @@ use crate::{
     widget::{self, opt_helpers},
 };
 
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
-use async_compat::Compat;
 use iced::{
     widget::{column, markdown, pick_list, row, text},
     Element, Subscription, Task, Theme,
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
-
-static COMMANDS: LazyLock<Vec<&str>> = LazyLock::new(|| {
-    vec![
-        "focus-window",
-        "move-window",
-        "cycle-focus-window",
-        "cycle-move-window",
-        "stack-window",
-        "unstack-window",
-        "cycle-stack",
-        "cycle-stack-index",
-        "focus-stack-window",
-        "stack-all",
-        "unstack-all",
-        "resize-window-edge",
-        "resize-window-axis",
-        "move-container-to-last-workspace",
-        "send-container-to-last-workspace",
-        "move-container-to-monitor-number",
-        "cycle-move-container-to-monitor",
-        "move-container-to-workspace-number",
-        "move-container-to-named-workspace",
-        "cycle-move-container-to-workspace",
-        "send-container-to-monitor-number",
-        "cycle-send-container-to-monitor",
-        "send-container-to-workspace-number",
-        "cycle-send-container-to-workspace",
-        "send-container-to-monitor-workspace-number",
-        "move-container-to-monitor-workspace-number",
-        "send-container-to-named-workspace",
-        "cycle-move-workspace-to-monitor",
-        "move-workspace-to-monitor-number",
-        "swap-workspaces-to-monitor-number",
-        "force-focus",
-        "close",
-        "minimize",
-        "promote",
-        "promote-focus",
-        "promote-window",
-        "eager-focus",
-        "lock-monitor-workspace-container",
-        "unlock-monitor-workspace-container",
-        "toggle-lock",
-        "toggle-float",
-        "toggle-monocle",
-        "toggle-maximize",
-        "toggle-window-container-behaviour",
-        "toggle-float-override",
-        "window-hiding-behaviour",
-        "toggle-cross-monitor-move-behaviour",
-        "cross-monitor-move-behaviour",
-        "unmanaged-window-operation-behaviour",
-        "manage-focused-window",
-        "unmanage-focused-window",
-        "adjust-container-padding",
-        "adjust-workspace-padding",
-        "change-layout",
-        "cycle-layout",
-        "change-layout-custom",
-        "flip-layout",
-        "toggle-workspace-window-container-behaviour",
-        "toggle-workspace-float-override",
-        "monitor-index-preference",
-        "display-index-preference",
-        "ensure-workspaces",
-        "ensure-named-workspaces",
-        "new-workspace",
-        "toggle-tiling",
-        "stop",
-        "stop-ignore-restore",
-        "toggle-pause",
-        "retile",
-        "retile-with-resize-dimensions",
-        "quick-save",
-        "quick-load",
-        "save",
-        "load",
-        "cycle-focus-monitor",
-        "cycle-focus-workspace",
-        "cycle-focus-empty-workspace",
-        "focus-monitor-number",
-        "focus-monitor-at-cursor",
-        "focus-last-workspace",
-        "close-workspace",
-        "focus-workspace-number",
-        "focus-workspace-numbers",
-        "focus-monitor-workspace-number",
-        "focus-named-workspace",
-        "container-padding",
-        "named-workspace-container-padding",
-        "focused-workspace-container-padding",
-        "workspace-padding",
-        "named-workspace-padding",
-        "focused-workspace-padding",
-        "workspace-tiling",
-        "named-workspace-tiling",
-        "workspace-name",
-        "workspace-layout",
-        "named-workspace-layout",
-        "workspace-layout-custom",
-        "named-workspace-layout-custom",
-        "workspace-layout-rule",
-        "named-workspace-layout-rule",
-        "workspace-layout-custom-rule",
-        "named-workspace-layout-custom-rule",
-        "clear-workspace-layout-rules",
-        "clear-named-workspace-layout-rules",
-        "toggle-workspace-layer",
-        "reload-configuration",
-        "replace-configuration",
-        "reload-static-configuration",
-        "watch-configuration",
-        "complete-configuration",
-        "alt-focus-hack",
-        "theme",
-        "animation",
-        "animation-duration",
-        "animation-fps",
-        "animation-style",
-        "border",
-        "border-colour",
-        "border-style",
-        "border-width",
-        "border-offset",
-        "border-implementation",
-        "transparency",
-        "toggle-transparency",
-        "transparency-alpha",
-        "invisible-borders",
-        "stackbar-mode",
-        "stackbar-label",
-        "stackbar-focused-text-colour",
-        "stackbar-unfocused-text-colour",
-        "stackbar-background-colour",
-        "stackbar-height",
-        "stackbar-tab-width",
-        "stackbar-font-size",
-        "stackbar-font-family",
-        "work-area-offset",
-        "monitor-work-area-offset",
-        "toggle-window-based-work-area-offset",
-        "resize-delta",
-        "initial-workspace-rule",
-        "initial-named-workspace-rule",
-        "workspace-rule",
-        "named-workspace-rule",
-        "clear-workspace-rules",
-        "clear-named-workspace-rules",
-        "clear-all-workspace-rules",
-        "enforce-workspace-rules",
-        "ignore-rule",
-        "manage-rule",
-        "identify-object-name-change-application",
-        "identify-tray-application",
-        "identify-layered-application",
-        "identify-border-overflow-application",
-        "state",
-        "global-state",
-        "visible-windows",
-        "monitor-information",
-        "query",
-        "focus-follows-mouse",
-        "toggle-focus-follows-mouse",
-        "mouse-follows-focus",
-        "toggle-mouse-follows-focus",
-        "remove-title-bar",
-        "toggle-title-bars",
-        "add-subscriber-socket",
-        "add-subscriber-socket-with-options",
-        "remove-subscriber-socket",
-        "add-subscriber-pipe",
-        "remove-subscriber-pipe",
-        "application-specific-configuration-schema",
-        "notification-schema",
-        "socket-schema",
-        "static-config-schema",
-        "generate-static-config",
-        "debug-window",
-    ]
-});
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -212,10 +31,6 @@ pub enum Message {
     ChangeBindingKeys(usize, Vec<String>),
     ChangeBindingCommand(usize, String),
 
-    LoadedCommands(Vec<String>),
-    FailedToLoadCommands(String),
-    LoadedCommandDescription(String, String),
-    FailedToLoadCommandsDescription(String),
     KeyPress(Option<String>, String),
     KeyRelease,
     Navigate(NavMessage),
@@ -232,18 +47,26 @@ pub enum Action {
 
 #[derive(Debug, Default)]
 pub struct Whkd {
-    pub loaded_commands: bool,
-    commands: Vec<String>,
-    pub loaded_commands_desc: bool,
-    commands_desc: HashMap<String, Vec<markdown::Item>>,
     pressed_key: String,
     pressed_mod: String,
     pb_mods: Vec<String>,
-    pause_hook_command: String,
-    pause_hook_custom: String,
 }
 
 impl Whkd {
+    pub fn new(whkdrc: &Whkdrc) -> Self {
+        let pb_mods = whkdrc.pause_binding.as_ref().map_or(Vec::new(), |pb| {
+            pb.iter()
+                .cloned()
+                .filter_map(|k| is_mod(&k).then_some(k.to_uppercase()))
+                .collect::<Vec<_>>()
+        });
+        Self {
+            pressed_key: Default::default(),
+            pressed_mod: Default::default(),
+            pb_mods,
+        }
+    }
+
     pub fn update(&mut self, message: Message, whkdrc: &mut Whkdrc) -> (Action, Task<Message>) {
         match message {
             Message::Shell(shell) => whkdrc.shell = shell,
@@ -358,23 +181,6 @@ impl Whkd {
             Message::NavigateForward => {}
             Message::NavigateBack => {}
             Message::Nothing => {}
-            Message::LoadedCommands(commands) => {
-                // println!("{commands:?}");
-                self.commands = commands;
-                self.loaded_commands = true;
-                return (Action::None, self.load_commands_description());
-            }
-            Message::FailedToLoadCommands(error) => {
-                println!("WHKD -> Failed to load commands: {error}");
-            }
-            Message::LoadedCommandDescription(command, description) => {
-                println!("received description for command: {command}");
-                let md = markdown::parse(&description).collect();
-                self.commands_desc.insert(command, md);
-            }
-            Message::FailedToLoadCommandsDescription(error) => {
-                println!("WHKD -> Failed to load commands: {error}");
-            }
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
@@ -382,7 +188,13 @@ impl Whkd {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, whkdrc: &'a Whkdrc, theme: &'a Theme) -> Element<'a, Message> {
+    pub fn view<'a>(
+        &'a self,
+        whkdrc: &'a Whkdrc,
+        commands: &'a [String],
+        commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
+        theme: &'a Theme,
+    ) -> Element<'a, Message> {
         let shell = opt_helpers::choose_with_disable_default(
             "Shell",
             Some("The Shell you want whkd to use. (default: pwsh)"),
@@ -401,12 +213,7 @@ impl Whkd {
             None,
             None,
         );
-        let pause_hook = hook_custom(
-            &whkdrc.pause_hook,
-            &self.commands,
-            &self.commands_desc,
-            theme,
-        );
+        let pause_hook = hook_custom(&whkdrc.pause_hook, commands, commands_desc, theme);
 
         let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
@@ -458,91 +265,10 @@ impl Whkd {
 
         Subscription::batch([press, release, navigation])
     }
+}
 
-    pub fn load_commands(&self) -> Task<Message> {
-        Task::future(Compat::new(async {
-            static APP_USER_AGENT: &str =
-                concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
-
-            println!("Running GET request: {}", APP_USER_AGENT);
-
-            let client = reqwest::Client::builder()
-                .user_agent(APP_USER_AGENT)
-                .build()?;
-            client
-                .get("https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli")
-                .send()
-                .await
-        }))
-        .then(|res| match res {
-            Ok(response) => Task::perform(
-                Compat::new(async {
-                    #[derive(serde::Deserialize)]
-                    struct Command {
-                        name: String,
-                    }
-                    response.json::<Vec<Command>>().await
-                }),
-                |res| match res {
-                    Ok(commands) => Message::LoadedCommands(
-                        commands
-                            .into_iter()
-                            .flat_map(|c| c.name.strip_suffix(".md").map(|v| v.to_string()))
-                            .collect(),
-                    ),
-                    Err(error) => Message::FailedToLoadCommands(error.to_string()),
-                },
-            ),
-            Err(error) => Task::done(Message::FailedToLoadCommands(error.to_string())),
-        })
-    }
-
-    pub fn load_commands_description(&self) -> Task<Message> {
-        Task::batch(self.commands.iter().map(|command| {
-            let command_c = command.clone();
-            let command_c1 = command.clone();
-            Task::future(Compat::new(async move {
-                static APP_USER_AGENT: &str =
-                    concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
-
-                println!(
-                    "Running GET request for command {} description: {}",
-                    &command_c1, APP_USER_AGENT
-                );
-
-                let client = reqwest::Client::builder()
-                    .user_agent(APP_USER_AGENT)
-                    .build()?;
-                client
-                    .get(format!(
-                        "https://raw.githubusercontent.com/lgug2z/komorebi/master/docs/cli/{}.md",
-                        &command_c1,
-                    ))
-                    .send()
-                    .await
-            }))
-            .then(move |res| {
-                let command_c = command_c.clone();
-                match res {
-                    Ok(response) => {
-                        Task::perform(Compat::new(async { response.text().await }), move |res| {
-                            match res {
-                                Ok(description) => {
-                                    Message::LoadedCommandDescription(command_c, description)
-                                }
-                                Err(error) => {
-                                    Message::FailedToLoadCommandsDescription(error.to_string())
-                                }
-                            }
-                        })
-                    }
-                    Err(error) => {
-                        Task::done(Message::FailedToLoadCommandsDescription(error.to_string()))
-                    }
-                }
-            })
-        }))
-    }
+fn is_mod(key: &str) -> bool {
+    MODIFIERS.contains(&key.to_uppercase().as_str())
 }
 
 fn mod_choose(whkdrc: &Whkdrc, pos: usize) -> Option<Element<Message>> {

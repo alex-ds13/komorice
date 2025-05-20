@@ -3346,8 +3346,8 @@ dependencies = [
  "serde_json_lenient",
  "smol",
  "unicode-segmentation",
- "whkd_core",
- "whkd_parser",
+ "whkd-core",
+ "whkd-parser",
  "winres",
 ]
 
@@ -6925,17 +6925,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "whkd_core"
-version = "0.2.7"
-source = "git+https://github.com/alex-ds13/whkd.git?rev=91f21d29cbf40ce5bc3105eb4bd8dd7272439688#91f21d29cbf40ce5bc3105eb4bd8dd7272439688"
+name = "whkd-core"
+version = "0.2.9"
+source = "git+https://github.com/alex-ds13/whkd.git?rev=9aa7f0b730a86564eda9df6cb9744db778e3db67#9aa7f0b730a86564eda9df6cb9744db778e3db67"
 
 [[package]]
-name = "whkd_parser"
-version = "0.2.7"
-source = "git+https://github.com/alex-ds13/whkd.git?rev=91f21d29cbf40ce5bc3105eb4bd8dd7272439688#91f21d29cbf40ce5bc3105eb4bd8dd7272439688"
+name = "whkd-parser"
+version = "0.2.9"
+source = "git+https://github.com/alex-ds13/whkd.git?rev=9aa7f0b730a86564eda9df6cb9744db778e3db67#9aa7f0b730a86564eda9df6cb9744db778e3db67"
 dependencies = [
  "chumsky",
- "whkd_core",
+ "thiserror 2.0.12",
+ "whkd-core",
 ]
 
 [[package]]

@@ -97,9 +97,7 @@ impl Home {
         let fixed_width = Space::new(180, Shrink);
         let edit = match config_type {
             ConfigType::Komorebi => self.has_loaded_config.then_some(edit),
-            ConfigType::Whkd => self.has_loaded_config.then_some(edit),
-            //TODO: change this to:
-            //ConfigType::Whkd => self.has_loaded_whkdrc.then_some(edit),
+            ConfigType::Whkd => self.has_loaded_whkdrc.then_some(edit),
         };
 
         column![

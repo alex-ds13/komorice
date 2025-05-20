@@ -17,7 +17,6 @@ use crate::screen::{
     animation, border, general, home, live_debug, monitors, rules, sidebar, stackbar, theme,
     transparency, ConfigType, Screen,
 };
-use crate::whkd::Whkdrc;
 use crate::widget::{button_with_icon, icons};
 
 use std::collections::HashMap;
@@ -32,7 +31,6 @@ use iced::{
     Center, Element, Fill, Font, Right, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
-use whkd::DEFAULT_WHKDRC;
 
 lazy_static! {
     static ref KOMOREBI_VERSION: &'static str = "master";
@@ -98,7 +96,7 @@ enum Message {
     Theme(theme::Message),
     Transparency(transparency::Message),
     Settings(settings::Message),
-    Whkd(screen::whkd::Message),
+    Whkd(whkd::Message),
 
     // Config related Messages
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
@@ -127,12 +125,11 @@ struct Komorice {
     rules: rules::Rules,
     live_debug: live_debug::LiveDebug,
     settings: settings::Settings,
-    whkd: screen::whkd::Whkd,
+    whkd: whkd::Whkd,
     config: komorebi_client::StaticConfig,
     loaded_config: Arc<komorebi_client::StaticConfig>,
     is_dirty: bool,
     config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
-    whkdrc: Whkdrc,
     errors: Vec<AppError>,
     show_save_config_modal: bool,
     show_errors_modal: bool,
@@ -161,7 +158,6 @@ impl Default for Komorice {
             loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
             is_dirty: Default::default(),
             config_watcher_tx: Default::default(),
-            whkdrc: DEFAULT_WHKDRC.clone(),
             errors: Default::default(),
             show_save_config_modal: Default::default(),
             show_errors_modal: Default::default(),
@@ -187,6 +183,7 @@ impl Komorice {
             Task::batch([
                 settings::load_task().map(Message::Settings),
                 config::load_task(),
+                whkd::load_task().map(Message::Whkd),
             ]),
         )
     }
@@ -293,9 +290,17 @@ impl Komorice {
                 return Task::batch([task.map(Message::Settings), action_task]);
             }
             Message::Whkd(message) => {
-                let (action, task) = self.whkd.update(message, &mut self.whkdrc);
+                let (action, task) = self.whkd.update(message);
                 let action_task = match action {
-                    screen::whkd::Action::None => Task::none(),
+                    whkd::Action::None => Task::none(),
+                    whkd::Action::LoadedWhkdrc => {
+                        self.home.has_loaded_whkdrc = true;
+                        Task::none()
+                    }
+                    whkd::Action::AppError(app_error) => {
+                        self.add_error(app_error);
+                        Task::none()
+                    }
                 };
                 return Task::batch([task.map(Message::Whkd), action_task]);
             }
@@ -431,14 +436,8 @@ impl Komorice {
                 .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => self.settings.view().map(Message::Settings),
-            Screen::Whkd => self
-                .whkd
-                .view(&self.whkdrc, &self.settings.theme)
-                .map(Message::Whkd),
-            Screen::WhkdBinding => self
-                .whkd
-                .view(&self.whkdrc, &self.settings.theme)
-                .map(Message::Whkd),
+            Screen::Whkd => self.whkd.view(&self.settings.theme).map(Message::Whkd),
+            Screen::WhkdBinding => self.whkd.view(&self.settings.theme).map(Message::Whkd),
         };
 
         if matches!(self.main_screen, Screen::Home) {

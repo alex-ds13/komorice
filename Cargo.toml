@@ -19,8 +19,8 @@ serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { package = "serde_json_lenient", version = "0.2" }
 smol = "2.0.2"
 unicode-segmentation = "1.11.0"
-whkd_core = { git = "https://github.com/alex-ds13/whkd.git", rev = "91f21d29cbf40ce5bc3105eb4bd8dd7272439688" }
-whkd_parser = { git = "https://github.com/alex-ds13/whkd.git", rev = "91f21d29cbf40ce5bc3105eb4bd8dd7272439688" }
+whkd-core = { git = "https://github.com/alex-ds13/whkd.git", rev = "9aa7f0b730a86564eda9df6cb9744db778e3db67" }
+whkd-parser = { git = "https://github.com/alex-ds13/whkd.git", rev = "9aa7f0b730a86564eda9df6cb9744db778e3db67" }
 
 [patch.crates-io]
 # iced = { git = "https://github.com/iced-rs/iced.git" }
