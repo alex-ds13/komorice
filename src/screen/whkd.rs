@@ -81,25 +81,33 @@ impl Whkd {
             }
             Message::PBMod(i, mod1) => {
                 if mod1.is_empty() {
-                    if let Some(pause_binding) = &mut whkdrc.pause_binding {
-                        if i < pause_binding.len() {
-                            pause_binding.remove(i);
+                    if i < self.pb_mods.len() {
+                        if let Some(pause_binding) = &mut whkdrc.pause_binding {
+                            if i < pause_binding.len() {
+                                pause_binding.remove(i);
+                            }
                         }
-                    }
-                    if let Some(i) = self.pb_mods.iter().position(|m| m == &mod1) {
                         self.pb_mods.remove(i);
                     }
                 } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
                     if let Some(k) = pause_binding
                         .iter_mut()
-                        .filter(|m| MODIFIERS.contains(&m.as_str()))
+                        .filter(|m| MODIFIERS.contains(&m.to_uppercase().as_str()))
                         .nth(i)
                     {
                         *k = mod1.clone();
-                        self.pb_mods.push(mod1);
+                        if let Some(m) = self.pb_mods.get_mut(i) {
+                            *m = mod1;
+                        } else {
+                            self.pb_mods.push(mod1);
+                        }
                     } else if i <= pause_binding.len() {
                         pause_binding.insert(i, mod1.clone());
-                        self.pb_mods.push(mod1);
+                        if let Some(m) = self.pb_mods.get_mut(i) {
+                            *m = mod1;
+                        } else {
+                            self.pb_mods.push(mod1);
+                        }
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
@@ -107,7 +115,7 @@ impl Whkd {
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![mod1.clone()]);
-                    self.pb_mods.push(mod1);
+                    self.pb_mods = vec![mod1];
                 }
             }
             Message::PBKey(key) => {
@@ -144,6 +152,7 @@ impl Whkd {
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![key]);
+                    self.pb_mods = vec![];
                 }
             }
             Message::PauseBinding(_) => todo!(),
@@ -271,7 +280,7 @@ fn is_mod(key: &str) -> bool {
     MODIFIERS.contains(&key.to_uppercase().as_str())
 }
 
-fn mod_choose(whkdrc: &Whkdrc, pos: usize) -> Option<Element<Message>> {
+fn mod_choose<'a>(pause_binding: &Option<Vec<String>>, pos: usize) -> Option<Element<'a, Message>> {
     let pl = |k: String| -> Element<Message> {
         let mut options = vec![
             "".into(),
@@ -280,25 +289,24 @@ fn mod_choose(whkdrc: &Whkdrc, pos: usize) -> Option<Element<Message>> {
             "ALT".into(),
             "WIN".into(),
         ];
-        options.retain(|v| {
-            !whkdrc
-                .pause_binding
+        options.retain(|v: &String| {
+            !pause_binding
                 .as_ref()
-                .is_some_and(|ks| ks.contains(v))
+                .map(|vv| vv.into_iter().map(|v| v.to_uppercase()))
+                .is_some_and(|mut ks| ks.any(|k| &k == v))
         });
         pick_list(options, Some(k), move |v| Message::PBMod(pos, v)).into()
     };
-    let is_mod = |k| MODIFIERS.contains(&k);
-    if whkdrc.pause_binding.is_none() && pos == 0 {
+    if pause_binding.is_none() && pos == 0 {
         Some(pl(String::new()))
-    } else if whkdrc.pause_binding.is_none() {
+    } else if pause_binding.is_none() {
         None
     } else {
-        whkdrc.pause_binding.as_ref().and_then(|pb| {
+        pause_binding.as_ref().and_then(|pb| {
             if pb.is_empty() && pos == 0 {
                 Some(pl(String::new()))
             } else {
-                let filtered = pb.iter().filter(|k| is_mod(k.as_str())).collect::<Vec<_>>();
+                let filtered = pb.iter().filter(|k| is_mod(k)).collect::<Vec<_>>();
                 if let Some(k) = filtered.get(pos) {
                     Some(pl((*k).clone()))
                 } else {
@@ -314,7 +322,7 @@ fn keys<'a>(whkdrc: &'a Whkdrc, pb_mods: &'a [String]) -> Element<'a, Message> {
         "",
         whkdrc.pause_binding.as_ref().map_or("", |pb| {
             pb.iter()
-                .filter(|k| !pb_mods.contains(k))
+                .filter(|k| !pb_mods.contains(&k.to_uppercase()))
                 .next_back()
                 .map_or("", |s| s.as_str())
         }),
@@ -322,14 +330,29 @@ fn keys<'a>(whkdrc: &'a Whkdrc, pb_mods: &'a [String]) -> Element<'a, Message> {
         None,
     )
     .width(75);
-    row![]
-        .push_maybe(mod_choose(whkdrc, 3))
-        .push_maybe(mod_choose(whkdrc, 2))
-        .push_maybe(mod_choose(whkdrc, 1))
-        .push_maybe(mod_choose(whkdrc, 0))
-        .push(key)
-        .spacing(5)
-        .into()
+    let upper_case_pb = whkdrc
+        .pause_binding
+        .as_ref()
+        .map(|pb| pb.into_iter().map(|k| k.to_uppercase()).collect::<Vec<_>>());
+    column![
+        row![]
+            .push_maybe(mod_choose(&upper_case_pb, 3))
+            .push_maybe(mod_choose(&upper_case_pb, 2))
+            .push_maybe(mod_choose(&upper_case_pb, 1))
+            .push_maybe(mod_choose(&upper_case_pb, 0))
+            .push(key)
+            .spacing(5),
+        pb_mods
+            .iter()
+            .fold(row!["Mods:"].spacing(5), |r, m| { r.push(text(m)) }),
+        whkdrc
+            .pause_binding
+            .as_ref()
+            .map_or(row!["PB: [None]"], |pb| pb
+                .iter()
+                .fold(row!["PB:"].spacing(5), |r, m| { r.push(text(m)) })),
+    ]
+    .into()
 }
 
 fn hook_custom<'a>(
