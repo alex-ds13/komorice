@@ -49,24 +49,9 @@ pub enum Action {
 pub struct Whkd {
     pressed_key: String,
     pressed_mod: String,
-    pb_mods: Vec<String>,
 }
 
 impl Whkd {
-    pub fn new(whkdrc: &Whkdrc) -> Self {
-        let pb_mods = whkdrc.pause_binding.as_ref().map_or(Vec::new(), |pb| {
-            pb.iter()
-                .cloned()
-                .filter_map(|k| is_mod(&k).then_some(k.to_uppercase()))
-                .collect::<Vec<_>>()
-        });
-        Self {
-            pressed_key: Default::default(),
-            pressed_mod: Default::default(),
-            pb_mods,
-        }
-    }
-
     pub fn update(&mut self, message: Message, whkdrc: &mut Whkdrc) -> (Action, Task<Message>) {
         match message {
             Message::Shell(shell) => whkdrc.shell = shell,
@@ -80,34 +65,20 @@ impl Whkd {
                 // self.pressed_mod = String::new();
             }
             Message::PBMod(i, mod1) => {
+                let sb = split_binding(&whkdrc.pause_binding);
                 if mod1.is_empty() {
-                    if i < self.pb_mods.len() {
+                    if i < sb.modifiers.len() {
                         if let Some(pause_binding) = &mut whkdrc.pause_binding {
                             if i < pause_binding.len() {
                                 pause_binding.remove(i);
                             }
                         }
-                        self.pb_mods.remove(i);
                     }
                 } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
-                    if let Some(k) = pause_binding
-                        .iter_mut()
-                        .filter(|m| MODIFIERS.contains(&m.to_uppercase().as_str()))
-                        .nth(i)
-                    {
+                    if let Some(k) = pause_binding.iter_mut().filter(|m| is_mod(m)).nth(i) {
                         *k = mod1.clone();
-                        if let Some(m) = self.pb_mods.get_mut(i) {
-                            *m = mod1;
-                        } else {
-                            self.pb_mods.push(mod1);
-                        }
                     } else if i <= pause_binding.len() {
                         pause_binding.insert(i, mod1.clone());
-                        if let Some(m) = self.pb_mods.get_mut(i) {
-                            *m = mod1;
-                        } else {
-                            self.pb_mods.push(mod1);
-                        }
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
@@ -115,44 +86,32 @@ impl Whkd {
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![mod1.clone()]);
-                    self.pb_mods = vec![mod1];
                 }
             }
             Message::PBKey(key) => {
+                let keys_count = split_binding(&whkdrc.pause_binding).key.len();
                 if key.is_empty() {
-                    if let Some(pause_binding) = &mut whkdrc.pause_binding {
-                        let keys = pause_binding
-                            .iter_mut()
-                            .filter(|k| !self.pb_mods.contains(k));
-                        let count = keys.count();
-                        if count == 1 {
-                            pause_binding.pop();
-                        } else if count >= 2 {
-                            //TODO: show error to user
-                            println!("Failed to remove key {key} from pause_binding since key count is {count}, should be <=1");
-                        }
+                    if keys_count == 1 {
+                        whkdrc.pause_binding.as_mut().and_then(|pb| pb.pop());
+                    } else if keys_count >= 2 {
+                        //TODO: show error to user
+                        println!("Failed to remove key {key} from pause_binding since key count is {}, should be <=1", keys_count);
                     }
-                } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
-                    let count = pause_binding
-                        .iter()
-                        .filter(|k| !self.pb_mods.contains(k))
-                        .count();
-                    let mut keys = pause_binding
-                        .iter_mut()
-                        .filter(|k| !self.pb_mods.contains(k));
-                    if count <= 1 {
-                        if let Some(k) = keys.next_back() {
+                } else if let Some(pause_binding) = whkdrc.pause_binding.as_mut() {
+                    if keys_count == 1 {
+                        if let Some(k) = pause_binding.last_mut() {
                             *k = key;
                         } else {
                             pause_binding.push(key);
                         }
+                    } else if keys_count == 0 {
+                        pause_binding.push(key);
                     } else {
                         //TODO: show error to user
-                        println!("Failed to add key {key} to pause_binding since key count is {count}, should be <=1");
+                        println!("Failed to add key {key} to pause_binding since key count is {}, should be <=1", keys_count);
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![key]);
-                    self.pb_mods = vec![];
                 }
             }
             Message::PauseBinding(_) => todo!(),
@@ -217,7 +176,7 @@ impl Whkd {
         let pause_binding = opt_helpers::opt_custom_el_disable_default(
             "Pause Binding",
             Some("todo!"),
-            keys(whkdrc, self.pb_mods.as_slice()),
+            keys(&whkdrc.pause_binding),
             false,
             None,
             None,
@@ -280,7 +239,7 @@ fn is_mod(key: &str) -> bool {
     MODIFIERS.contains(&key.to_uppercase().as_str())
 }
 
-fn mod_choose<'a>(pause_binding: &Option<Vec<String>>, pos: usize) -> Option<Element<'a, Message>> {
+fn mod_choose<'a>(binding_mods: &[String], pos: usize) -> Option<Element<'a, Message>> {
     let pl = |k: String| -> Element<Message> {
         let mut options = vec![
             "".into(),
@@ -289,68 +248,45 @@ fn mod_choose<'a>(pause_binding: &Option<Vec<String>>, pos: usize) -> Option<Ele
             "ALT".into(),
             "WIN".into(),
         ];
-        options.retain(|v: &String| {
-            !pause_binding
-                .as_ref()
-                .map(|vv| vv.into_iter().map(|v| v.to_uppercase()))
-                .is_some_and(|mut ks| ks.any(|k| &k == v))
+        options.retain(|v| {
+            !binding_mods
+                .iter()
+                .map(|m| m.to_uppercase())
+                .any(|m| &m == v)
         });
         pick_list(options, Some(k), move |v| Message::PBMod(pos, v)).into()
     };
-    if pause_binding.is_none() && pos == 0 {
-        Some(pl(String::new()))
-    } else if pause_binding.is_none() {
-        None
+    if let Some(k) = binding_mods.get(pos) {
+        Some(pl((*k).clone()))
     } else {
-        pause_binding.as_ref().and_then(|pb| {
-            if pb.is_empty() && pos == 0 {
-                Some(pl(String::new()))
-            } else {
-                let filtered = pb.iter().filter(|k| is_mod(k)).collect::<Vec<_>>();
-                if let Some(k) = filtered.get(pos) {
-                    Some(pl((*k).clone()))
-                } else {
-                    (pos == filtered.len()).then_some(pl(String::new()))
-                }
-            }
-        })
+        // Only show an empty picklist for the first position in case there are no modifiers being
+        // used or show an empty picklist for the next position (modifiers.len()), otherwise do not
+        // show any picklist at all.
+        ((pos == 0 && binding_mods.is_empty()) || pos == binding_mods.len())
+            .then_some(pl(String::new()))
     }
 }
 
-fn keys<'a>(whkdrc: &'a Whkdrc, pb_mods: &'a [String]) -> Element<'a, Message> {
+fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
+    let sb = split_binding(binding);
     let key = widget::input(
         "",
-        whkdrc.pause_binding.as_ref().map_or("", |pb| {
-            pb.iter()
-                .filter(|k| !pb_mods.contains(&k.to_uppercase()))
-                .next_back()
-                .map_or("", |s| s.as_str())
-        }),
+        sb.key.iter().next_back().map_or("", |s| s.as_str()),
         Message::PBKey,
         None,
     )
     .width(75);
-    let upper_case_pb = whkdrc
-        .pause_binding
-        .as_ref()
-        .map(|pb| pb.into_iter().map(|k| k.to_uppercase()).collect::<Vec<_>>());
     column![
         row![]
-            .push_maybe(mod_choose(&upper_case_pb, 3))
-            .push_maybe(mod_choose(&upper_case_pb, 2))
-            .push_maybe(mod_choose(&upper_case_pb, 1))
-            .push_maybe(mod_choose(&upper_case_pb, 0))
+            .push_maybe(mod_choose(sb.modifiers, 3))
+            .push_maybe(mod_choose(sb.modifiers, 2))
+            .push_maybe(mod_choose(sb.modifiers, 1))
+            .push_maybe(mod_choose(sb.modifiers, 0))
             .push(key)
             .spacing(5),
-        pb_mods
+        binding.as_ref().map_or(row!["PB: [None]"], |pb| pb
             .iter()
-            .fold(row!["Mods:"].spacing(5), |r, m| { r.push(text(m)) }),
-        whkdrc
-            .pause_binding
-            .as_ref()
-            .map_or(row!["PB: [None]"], |pb| pb
-                .iter()
-                .fold(row!["PB:"].spacing(5), |r, m| { r.push(text(m)) })),
+            .fold(row!["PB:"].spacing(5), |r, m| { r.push(text(m)) })),
     ]
     .into()
 }
@@ -435,6 +371,41 @@ fn split_pause_hook<'a>(
         }
     }
     (pause_hook_command, pause_hook_custom)
+}
+
+struct SplitBinding<'a> {
+    modifiers: &'a [String],
+    key: &'a [String],
+}
+impl<'a> From<(&'a [String], &'a [String])> for SplitBinding<'a> {
+    fn from(value: (&'a [String], &'a [String])) -> Self {
+        Self {
+            modifiers: value.0,
+            key: value.1,
+        }
+    }
+}
+impl<'a> From<(&'a [String; 0], &'a [String; 0])> for SplitBinding<'a> {
+    fn from(value: (&'a [String; 0], &'a [String; 0])) -> Self {
+        Self {
+            modifiers: value.0,
+            key: value.1,
+        }
+    }
+}
+
+fn split_binding(binding: &Option<Vec<String>>) -> SplitBinding<'_> {
+    if let Some(split_at) = binding.as_ref().and_then(|pb| {
+        pb.iter()
+            .enumerate()
+            .find_map(|(i, k)| (!is_mod(k)).then_some(i))
+    }) {
+        binding.as_ref().unwrap().split_at(split_at).into()
+    } else {
+        binding
+            .as_ref()
+            .map_or((&[], &[]).into(), |pb| pb.split_at(pb.len()).into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

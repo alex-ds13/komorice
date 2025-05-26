@@ -94,7 +94,6 @@ impl Whkd {
                     self.whkdrc = whkdrc.clone();
                     // self.home.has_loaded_whkdrc = true;
                     self.loaded_whkdrc = Arc::new(whkdrc);
-                    self.whkd = screen::whkd::Whkd::new(&self.whkdrc);
                     //TODO: show message on app to load external changes
                     return (Action::LoadedWhkdrc, Task::none());
                 }
