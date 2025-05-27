@@ -175,7 +175,7 @@ impl Whkd {
         );
         let pause_binding = opt_helpers::opt_custom_el_disable_default(
             "Pause Binding",
-            Some("todo!"),
+            Some("Can be any hotkey combo to toggle all other hotkeys on/off. (default: None)"),
             keys(&whkdrc.pause_binding),
             false,
             None,
@@ -301,7 +301,7 @@ fn hook_custom<'a>(
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
     opt_helpers::expandable_custom(
         "Pause Hook",
-        Some("A command that should run on pause keybind trigger"),
+        Some("A command that should run on pause keybind trigger.  (default: None)"),
         move |_, _| {
             let pick = pick_list(commands, Some(hook_command.to_string()), move |v| {
                 let hook = Some(if hook_custom.is_empty() {
