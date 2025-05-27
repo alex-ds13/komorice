@@ -342,6 +342,9 @@ impl Komorice {
                         Task::none()
                     }
                     sidebar::Action::UpdateMainScreen(screen) => {
+                        if matches!(self.config_type, ConfigType::Whkd) {
+                            self.whkd.screen = screen.clone();
+                        }
                         self.main_screen = screen;
                         self.reset_screen();
                         Task::none()
@@ -454,8 +457,9 @@ impl Komorice {
                 .map(Message::Rules),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
             Screen::Settings => self.settings.view().map(Message::Settings),
-            Screen::Whkd => self.whkd.view(&self.settings.theme).map(Message::Whkd),
-            Screen::WhkdBinding => self.whkd.view(&self.settings.theme).map(Message::Whkd),
+            Screen::Whkd | Screen::WhkdBinding => {
+                self.whkd.view(&self.settings.theme).map(Message::Whkd)
+            }
         };
 
         if matches!(self.main_screen, Screen::Home) {

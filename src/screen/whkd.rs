@@ -1,3 +1,7 @@
+pub mod bindings;
+
+pub use bindings::Bindings;
+
 use crate::{
     whkd::{HotkeyBinding, Shell, Whkdrc, DEFAULT_WHKDRC},
     widget::{self, opt_helpers},
@@ -49,6 +53,7 @@ pub enum Action {
 pub struct Whkd {
     pressed_key: String,
     pressed_mod: String,
+    pub bindings: Bindings,
 }
 
 impl Whkd {

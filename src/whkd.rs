@@ -45,6 +45,7 @@ pub enum Message {
 
     // Messages related to screens
     Whkd(screen::whkd::Message),
+    Bindings(screen::whkd::bindings::Message),
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +123,17 @@ impl Whkd {
                     Task::batch([task, action_task]).map(Message::Whkd),
                 );
             }
+            Message::Bindings(message) => {
+                let (action, task) = self.whkd.bindings.update(message, &mut self.whkdrc);
+                let action_task = match action {
+                    screen::whkd::bindings::Action::None => Task::none(),
+                };
+                self.check_changes();
+                return (
+                    Action::None,
+                    Task::batch([task, action_task]).map(Message::Bindings),
+                );
+            }
             Message::LoadedCommands(commands) => {
                 // println!("{commands:?}");
                 self.commands = commands;
@@ -144,9 +156,18 @@ impl Whkd {
     }
 
     pub fn view<'a>(&'a self, theme: &'a Theme) -> Element<'a, Message> {
-        self.whkd
-            .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
-            .map(Message::Whkd)
+        match self.screen {
+            Screen::Whkd => self
+                .whkd
+                .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
+                .map(Message::Whkd),
+            Screen::WhkdBinding => self
+                .whkd
+                .bindings
+                .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
+                .map(Message::Bindings),
+            _ => iced::widget::horizontal_space().into(),
+        }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
