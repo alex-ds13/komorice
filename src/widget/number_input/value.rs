@@ -1,3 +1,4 @@
+use iced_core::text::IntoFragment;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// The value of a [`NumberInput`].
@@ -11,8 +12,8 @@ pub struct Value {
 
 impl Value {
     /// Creates a new [`Value`] from a string slice.
-    pub fn new(string: &str) -> Self {
-        let graphemes = UnicodeSegmentation::graphemes(string, true)
+    pub fn new<'a>(string: impl IntoFragment<'a>) -> Self {
+        let graphemes = UnicodeSegmentation::graphemes(string.into_fragment().as_ref(), true)
             .map(String::from)
             .collect();
 

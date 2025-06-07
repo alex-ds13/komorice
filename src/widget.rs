@@ -7,6 +7,7 @@ pub mod monitors_viewer;
 pub mod number_input;
 pub mod opt_button;
 pub mod opt_helpers;
+pub mod text_input;
 
 pub use helpers::*;
 pub use modal::modal;
