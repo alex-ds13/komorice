@@ -1,6 +1,8 @@
 #![allow(dead_code)]
+use crate::widget::text_input::TextInput;
 use iced::widget::{
-    button, container, row, rule, tooltip, vertical_rule, Button, Row, Rule, Text, TextInput,
+    button, container, row, rule, text::IntoFragment, tooltip, vertical_rule, Button, Row, Rule,
+    Text,
 };
 use iced::{Center, Element, Theme};
 
@@ -10,7 +12,7 @@ pub fn label<'a, Message>(text: impl Into<Text<'a>>) -> Row<'a, Message> {
 
 pub fn input<'a, Message: Clone>(
     placeholder: &'a str,
-    value: &'a str,
+    value: impl IntoFragment<'a>,
     on_input: impl Fn(String) -> Message + 'a,
     on_submit: Option<Message>,
 ) -> TextInput<'a, Message> {

@@ -1,82 +1,85 @@
-// This widget is a modification of the original `TextInput` widget from [`iced`]
-//
-// [`iced`]: https://github.com/iced-rs/iced
-//
-// Copyright 2019 Héctor Ramón, Iced contributors
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy of
-// this software and associated documentation files (the "Software"), to deal in
-// the Software without restriction, including without limitation the rights to
-// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-// the Software, and to permit persons to whom the Software is furnished to do so,
-// subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//! Text inputs display fields that can be filled with text.
+//!
+//! # Example
+//! ```no_run
+//! # mod iced { pub mod widget { pub use iced_widget::*; } pub use iced_widget::Renderer; pub use iced_widget::core::*; }
+//! # pub type Element<'a, Message> = iced_widget::core::Element<'a, Message, iced_widget::Theme, iced_widget::Renderer>;
+//! #
+//! use iced::widget::text_input;
+//!
+//! struct State {
+//!    content: String,
+//! }
+//!
+//! #[derive(Debug, Clone)]
+//! enum Message {
+//!     ContentChanged(String)
+//! }
+//!
+//! fn view(state: &State) -> Element<'_, Message> {
+//!     text_input("Type something here...", &state.content)
+//!         .on_input(Message::ContentChanged)
+//!         .into()
+//! }
+//!
+//! fn update(state: &mut State, message: Message) {
+//!     match message {
+//!         Message::ContentChanged(content) => {
+//!             state.content = content;
+//!         }
+//!     }
+//! }
+//! ```
 
-pub(super) mod cursor;
-pub(super) mod editor;
-pub(super) mod value;
+use super::number_input::cursor::{self, Cursor};
+use super::number_input::editor::Editor;
+use super::number_input::value::Value;
 
-use std::fmt::Display;
-use std::str::FromStr;
+use iced_core::text::IntoFragment;
+use iced_core as core;
 
-use cursor::Cursor;
-use editor::Editor;
-use value::Value;
-
-use iced::advanced::clipboard::{self, Clipboard};
-use iced::advanced::layout::{self, Limits};
-use iced::advanced::mouse::{self, click};
-use iced::advanced::renderer;
-use iced::advanced::text::paragraph::{self, Paragraph as _};
-use iced::advanced::text::{self, Text};
-use iced::advanced::widget;
-use iced::advanced::widget::operation::{self, Operation};
-use iced::advanced::widget::tree::{self, Tree};
-use iced::advanced::{Layout, Shell, Widget};
-use iced::alignment;
-use iced::keyboard;
-use iced::keyboard::key;
-use iced::time::{Duration, Instant};
-use iced::touch;
-use iced::widget::{button, Button};
-use iced::window;
-use iced::{
-    border::{self, Border},
-    Alignment, Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
-    Task, Theme, Vector,
+use core::alignment;
+use core::clipboard::{self, Clipboard};
+use core::input_method;
+use core::keyboard;
+use core::keyboard::key;
+use core::layout;
+use core::mouse::{self, click};
+use core::renderer;
+use core::text::paragraph::{self, Paragraph as _};
+use core::text::{self, Text};
+use core::time::{Duration, Instant};
+use core::touch;
+use core::widget;
+use core::widget::operation::{self, Operation};
+use core::widget::tree::{self, Tree};
+use core::window;
+use core::{
+    Alignment, Background, Border, Color, Element, Event, InputMethod, Layout, Length, Padding,
+    Pixels, Point, Rectangle, Shell, Size, Theme, Vector, Widget,
 };
-use iced_core::input_method::{self, InputMethod};
-use num_traits::{Bounded, Num, NumAssignOps};
+use iced::task::Task;
 
-/// A field that can be filled with numbers.
+/// A field that can be filled with text.
 ///
 /// # Example
 /// ```no_run
 /// # mod iced { pub mod widget { pub use iced_widget::*; } pub use iced_widget::Renderer; pub use iced_widget::core::*; }
 /// # pub type Element<'a, Message> = iced_widget::core::Element<'a, Message, iced_widget::Theme, iced_widget::Renderer>;
 /// #
-/// use iced::widget::number_input;
+/// use iced::widget::text_input;
 ///
 /// struct State {
-///    content: i32,
+///    content: String,
 /// }
 ///
 /// #[derive(Debug, Clone)]
 /// enum Message {
-///     ContentChanged(i32)
+///     ContentChanged(String)
 /// }
 ///
 /// fn view(state: &State) -> Element<'_, Message> {
-///     number_input("Type some number here...", &state.content)
+///     text_input("Type something here...", &state.content)
 ///         .on_input(Message::ContentChanged)
 ///         .into()
 /// }
@@ -90,17 +93,14 @@ use num_traits::{Bounded, Num, NumAssignOps};
 /// }
 /// ```
 #[allow(missing_debug_implementations)]
-pub struct NumberInput<'a, T, Message, Theme = iced::Theme, Renderer = iced::Renderer>
+pub struct TextInput<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where
-    Theme: Catalog + button::Catalog + iced::widget::text::Catalog,
+    Theme: Catalog,
     Renderer: text::Renderer,
 {
     id: Option<Id>,
     placeholder: String,
     value: Value,
-    _number_value: T,
-    max: T,
-    min: T,
     is_secure: bool,
     font: Option<Renderer::Font>,
     width: Length,
@@ -108,155 +108,105 @@ where
     size: Option<Pixels>,
     line_height: text::LineHeight,
     alignment: alignment::Horizontal,
-    on_input: Option<Box<dyn Fn(T) -> Message + 'a>>,
-    on_paste: Option<Box<dyn Fn(T) -> Message + 'a>>,
+    on_input: Option<Box<dyn Fn(String) -> Message + 'a>>,
+    on_paste: Option<Box<dyn Fn(String) -> Message + 'a>>,
     on_submit: Option<Message>,
     icon: Option<Icon<Renderer::Font>>,
-    class: <Theme as Catalog>::Class<'a>,
+    class: Theme::Class<'a>,
     last_status: Option<Status>,
-    increment_button: Button<'a, ButtonMessage, Theme, Renderer>,
-    decrement_button: Button<'a, ButtonMessage, Theme, Renderer>,
-    buttons_width: Pixels,
 }
 
-/// The default [`Padding`] of a [`NumberInput`].
+/// The default [`Padding`] of a [`TextInput`].
 pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
 
-/// The default [`Pixels`] width of a [`NumberInput`] increment/decrement buttons.
-pub const DEFAULT_BUTTON_WIDTH: Pixels = Pixels(16.0);
-
-impl<'a, T, Message, Theme, Renderer> NumberInput<'a, T, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> TextInput<'a, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
-    Renderer: text::Renderer + 'a,
-    T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
+    Theme: Catalog,
+    Renderer: text::Renderer,
 {
-    /// Creates a new [`NumberInput`] with the given placeholder and
+    /// Creates a new [`TextInput`] with the given placeholder and
     /// its current value.
-    pub fn new(placeholder: &str, value: T) -> Self {
-        let v_str = value.to_string();
-        let _number_value = value;
-        let value = Value::new(&v_str);
-        let text_size = Pixels(16.0);
-        let line_height = text::LineHeight::default();
-        let height = line_height.to_absolute(text_size) + DEFAULT_PADDING.vertical();
-        let increment_button: Button<ButtonMessage, Theme, Renderer> =
-            button(iced::widget::text("▲").size(8.0).center())
-                .width(DEFAULT_BUTTON_WIDTH)
-                .height(height)
-                .class(<Theme as Catalog>::default_increment_button())
-                .padding(0);
-        let decrement_button: Button<ButtonMessage, Theme, Renderer> =
-            button(iced::widget::text("▼").size(8.0).center())
-                .width(DEFAULT_BUTTON_WIDTH)
-                .height(height)
-                .class(<Theme as Catalog>::default_decrement_button())
-                .padding(0);
-
-        NumberInput {
+    pub fn new(placeholder: &str, value: impl IntoFragment<'a>) -> Self {
+        TextInput {
             id: None,
             placeholder: String::from(placeholder),
-            value,
-            _number_value,
-            max: T::max_value(),
-            min: T::min_value(),
+            value: Value::new(value),
             is_secure: false,
             font: None,
-            width: Length::Fixed(125.0),
+            width: Length::Fill,
             padding: DEFAULT_PADDING,
             size: None,
-            line_height,
+            line_height: text::LineHeight::default(),
             alignment: alignment::Horizontal::Left,
             on_input: None,
             on_paste: None,
             on_submit: None,
             icon: None,
-            class: <Theme as Catalog>::default(),
+            class: Theme::default(),
             last_status: None,
-            increment_button,
-            decrement_button,
-            buttons_width: DEFAULT_BUTTON_WIDTH,
         }
     }
 
-    /// Sets the [`Id`] of the [`NumberInput`].
+    /// Sets the [`Id`] of the [`TextInput`].
     pub fn id(mut self, id: impl Into<Id>) -> Self {
         self.id = Some(id.into());
         self
     }
 
-    /// Converts the [`NumberInput`] into a secure password input.
+    /// Converts the [`TextInput`] into a secure password input.
     pub fn secure(mut self, is_secure: bool) -> Self {
         self.is_secure = is_secure;
         self
     }
 
-    /// Sets the [`NumberInput`] max bound.
-    pub fn max(mut self, max: T) -> Self {
-        self.max = max;
-        self
-    }
-
-    /// Sets the [`NumberInput`] min bound.
-    pub fn min(mut self, min: T) -> Self {
-        self.min = min;
-        self
-    }
-
-    /// Sets the message that should be produced when some numbers are typed into
-    /// the [`NumberInput`].
+    /// Sets the message that should be produced when some text is typed into
+    /// the [`TextInput`].
     ///
-    /// If this method is not called, the [`NumberInput`] will be disabled.
-    pub fn on_input(mut self, on_input: impl Fn(T) -> Message + 'a) -> Self {
+    /// If this method is not called, the [`TextInput`] will be disabled.
+    pub fn on_input(mut self, on_input: impl Fn(String) -> Message + 'a) -> Self {
         self.on_input = Some(Box::new(on_input));
-        self.increment_button = self.increment_button.on_press(ButtonMessage::Increment);
-        self.decrement_button = self.decrement_button.on_press(ButtonMessage::Decrement);
         self
     }
 
-    /// Sets the message that should be produced when some numbers are typed into
-    /// the [`NumberInput`], if `Some`.
+    /// Sets the message that should be produced when some text is typed into
+    /// the [`TextInput`], if `Some`.
     ///
-    /// If `None`, the [`NumberInput`] will be disabled.
-    pub fn on_input_maybe(mut self, on_input: Option<impl Fn(T) -> Message + 'a>) -> Self {
+    /// If `None`, the [`TextInput`] will be disabled.
+    pub fn on_input_maybe(mut self, on_input: Option<impl Fn(String) -> Message + 'a>) -> Self {
         self.on_input = on_input.map(|f| Box::new(f) as _);
-        if self.on_input.is_some() {
-            self.increment_button = self.increment_button.on_press(ButtonMessage::Increment);
-            self.decrement_button = self.decrement_button.on_press(ButtonMessage::Decrement);
-        }
         self
     }
 
-    /// Sets the message that should be produced when the [`NumberInput`] is
+    /// Sets the message that should be produced when the [`TextInput`] is
     /// focused and the enter key is pressed.
     pub fn on_submit(mut self, message: Message) -> Self {
         self.on_submit = Some(message);
         self
     }
 
-    /// Sets the message that should be produced when the [`NumberInput`] is
+    /// Sets the message that should be produced when the [`TextInput`] is
     /// focused and the enter key is pressed, if `Some`.
     pub fn on_submit_maybe(mut self, on_submit: Option<Message>) -> Self {
         self.on_submit = on_submit;
         self
     }
 
-    /// Sets the message that should be produced when some numbers are pasted into
-    /// the [`NumberInput`].
-    pub fn on_paste(mut self, on_paste: impl Fn(T) -> Message + 'a) -> Self {
+    /// Sets the message that should be produced when some text is pasted into
+    /// the [`TextInput`].
+    pub fn on_paste(mut self, on_paste: impl Fn(String) -> Message + 'a) -> Self {
         self.on_paste = Some(Box::new(on_paste));
         self
     }
 
-    /// Sets the message that should be produced when some numbers are pasted into
-    /// the [`NumberInput`], if `Some`.
-    pub fn on_paste_maybe(mut self, on_paste: Option<impl Fn(T) -> Message + 'a>) -> Self {
+    /// Sets the message that should be produced when some text is pasted into
+    /// the [`TextInput`], if `Some`.
+    pub fn on_paste_maybe(mut self, on_paste: Option<impl Fn(String) -> Message + 'a>) -> Self {
         self.on_paste = on_paste.map(|f| Box::new(f) as _);
         self
     }
 
-    /// Sets the [`Font`] of the [`NumberInput`].
+    /// Sets the [`Font`] of the [`TextInput`].
     ///
     /// [`Font`]: text::Renderer::Font
     pub fn font(mut self, font: Renderer::Font) -> Self {
@@ -264,118 +214,60 @@ where
         self
     }
 
-    /// Sets the [`Icon`] of the [`NumberInput`].
+    /// Sets the [`Icon`] of the [`TextInput`].
     pub fn icon(mut self, icon: Icon<Renderer::Font>) -> Self {
         self.icon = Some(icon);
         self
     }
 
-    /// Sets the width of the [`NumberInput`].
+    /// Sets the width of the [`TextInput`].
     pub fn width(mut self, width: impl Into<Length>) -> Self {
         self.width = width.into();
         self
     }
 
-    /// Sets the [`Padding`] of the [`NumberInput`].
+    /// Sets the [`Padding`] of the [`TextInput`].
     pub fn padding<P: Into<Padding>>(mut self, padding: P) -> Self {
         self.padding = padding.into();
         self
     }
 
-    /// Sets the [`Pixels`] width of the [`NumberInput`] increment/decrement buttons.
-    pub fn buttons_width<P: Into<Pixels>>(mut self, width: P) -> Self {
-        self.buttons_width = width.into();
-        self.increment_button = self.increment_button.width(self.buttons_width);
-        self.decrement_button = self.decrement_button.width(self.buttons_width);
-        self
-    }
-
-    /// Sets the text size of the [`NumberInput`].
+    /// Sets the text size of the [`TextInput`].
     pub fn size(mut self, size: impl Into<Pixels>) -> Self {
         self.size = Some(size.into());
         self
     }
 
-    /// Sets the [`text::LineHeight`] of the [`NumberInput`].
+    /// Sets the [`text::LineHeight`] of the [`TextInput`].
     pub fn line_height(mut self, line_height: impl Into<text::LineHeight>) -> Self {
         self.line_height = line_height.into();
         self
     }
 
-    /// Sets the horizontal alignment of the [`NumberInput`].
+    /// Sets the horizontal alignment of the [`TextInput`].
     pub fn align_x(mut self, alignment: impl Into<alignment::Horizontal>) -> Self {
         self.alignment = alignment.into();
         self
     }
 
-    /// Sets the style of the [`NumberInput`].
+    /// Sets the style of the [`TextInput`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
     where
-        <Theme as Catalog>::Class<'a>: From<StyleFn<'a, Theme>>,
+        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
     {
         self.class = (Box::new(style) as StyleFn<'a, Theme>).into();
         self
     }
 
-    /// Sets the style class of the [`NumberInput`].
+    /// Sets the style class of the [`TextInput`].
     #[must_use]
-    pub fn class(mut self, class: impl Into<<Theme as Catalog>::Class<'a>>) -> Self {
+    pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
         self
     }
 
-    /// Sets the style for the increment button of the [`NumberInput`].
-    #[must_use]
-    pub fn style_increment(
-        mut self,
-        style: impl Fn(&Theme, button::Status) -> button::Style + 'a,
-    ) -> Self
-    where
-        <Theme as button::Catalog>::Class<'a>: From<button::StyleFn<'a, Theme>>,
-    {
-        self.increment_button = self
-            .increment_button
-            .class(Box::new(style) as button::StyleFn<'a, Theme>);
-        self
-    }
-
-    /// Sets the style class for the increment button of the [`NumberInput`].
-    #[must_use]
-    pub fn class_increment(
-        mut self,
-        class: impl Into<<Theme as button::Catalog>::Class<'a>>,
-    ) -> Self {
-        self.increment_button = self.increment_button.class(class);
-        self
-    }
-
-    /// Sets the style for the increment button of the [`NumberInput`].
-    #[must_use]
-    pub fn style_decrement(
-        mut self,
-        style: impl Fn(&Theme, button::Status) -> button::Style + 'a,
-    ) -> Self
-    where
-        <Theme as button::Catalog>::Class<'a>: From<button::StyleFn<'a, Theme>>,
-    {
-        self.decrement_button = self
-            .decrement_button
-            .class(Box::new(style) as button::StyleFn<'a, Theme>);
-        self
-    }
-
-    /// Sets the style class for the decrement button of the [`NumberInput`].
-    #[must_use]
-    pub fn class_decrement(
-        mut self,
-        class: impl Into<<Theme as button::Catalog>::Class<'a>>,
-    ) -> Self {
-        self.decrement_button = self.decrement_button.class(class);
-        self
-    }
-
-    /// Lays out the [`NumberInput`], overriding its [`Value`] if provided.
+    /// Lays out the [`TextInput`], overriding its [`Value`] if provided.
     ///
     /// [`Renderer`]: text::Renderer
     pub fn layout(
@@ -393,10 +285,7 @@ where
         let padding = self.padding.fit(Size::ZERO, limits.max());
         let height = self.line_height.to_absolute(text_size);
 
-        let limits = limits
-            .width(self.width)
-            .shrink(padding)
-            .shrink(Size::new(self.buttons_width.into(), 0.0));
+        let limits = limits.width(self.width).shrink(padding);
         let text_bounds = limits.resolve(self.width, height, Size::ZERO);
 
         let placeholder_text = Text {
@@ -411,31 +300,15 @@ where
             wrapping: text::Wrapping::default(),
         };
 
-        state.placeholder.update(placeholder_text);
+        let _ = state.placeholder.update(placeholder_text);
 
         let secure_value = self.is_secure.then(|| value.secure());
         let value = secure_value.as_ref().unwrap_or(value);
 
-        state.value.update(Text {
+        let _ = state.value.update(Text {
             content: &value.to_string(),
             ..placeholder_text
         });
-
-        let button_padding = 1.0;
-        let button_limits = Limits::new(
-            Size::ZERO,
-            Size::new(
-                f32::from(self.buttons_width) - 2.0 * button_padding,
-                (f32::from(height) + padding.vertical()) / 2.0 - button_padding,
-            ),
-        );
-
-        let increment_node =
-            self.increment_button
-                .layout(&mut tree.children[0], renderer, &button_limits);
-        let decrement_node =
-            self.decrement_button
-                .layout(&mut tree.children[1], renderer, &button_limits);
 
         if let Some(icon) = &self.icon {
             let mut content = [0; 4];
@@ -452,55 +325,20 @@ where
                 wrapping: text::Wrapping::default(),
             };
 
-            state.icon.update(icon_text);
+            let _ = state.icon.update(icon_text);
 
             let icon_width = state.icon.min_width();
 
-            let (text_position, icon_position, increment_position, decrement_position) =
-                match icon.side {
-                    Side::Left => (
-                        Point::new(padding.left + icon_width + icon.spacing, padding.top),
-                        Point::new(padding.left, padding.top),
-                        Point::new(
-                            padding.left
-                                + icon_width
-                                + icon.spacing
-                                + text_bounds.width
-                                + padding.right
-                                + button_padding,
-                            button_padding,
-                        ),
-                        Point::new(
-                            padding.left
-                                + icon_width
-                                + icon.spacing
-                                + text_bounds.width
-                                + padding.right
-                                + button_padding,
-                            button_limits.max().height + button_padding,
-                        ),
-                    ),
-                    Side::Right => (
-                        Point::new(padding.left, padding.top),
-                        Point::new(padding.left + text_bounds.width - icon_width, padding.top),
-                        Point::new(
-                            padding.left
-                                + text_bounds.width
-                                + icon_width
-                                + padding.right
-                                + button_padding,
-                            button_padding,
-                        ),
-                        Point::new(
-                            padding.left
-                                + text_bounds.width
-                                + icon_width
-                                + padding.right
-                                + button_padding,
-                            button_limits.max().height + button_padding,
-                        ),
-                    ),
-                };
+            let (text_position, icon_position) = match icon.side {
+                Side::Left => (
+                    Point::new(padding.left + icon_width + icon.spacing, padding.top),
+                    Point::new(padding.left, padding.top),
+                ),
+                Side::Right => (
+                    Point::new(padding.left, padding.top),
+                    Point::new(padding.left + text_bounds.width - icon_width, padding.top),
+                ),
+            };
 
             let text_node =
                 layout::Node::new(text_bounds - Size::new(icon_width + icon.spacing, 0.0))
@@ -509,42 +347,21 @@ where
             let icon_node =
                 layout::Node::new(Size::new(icon_width, text_bounds.height)).move_to(icon_position);
 
-            let increment_node = increment_node.move_to(increment_position);
-            let decrement_node = decrement_node.move_to(decrement_position);
-
-            layout::Node::with_children(
-                text_bounds
-                    .expand(padding)
-                    .expand(Size::new(self.buttons_width.into(), 0.0)),
-                vec![text_node, icon_node, increment_node, decrement_node],
-            )
+            layout::Node::with_children(text_bounds.expand(padding), vec![text_node, icon_node])
         } else {
-            let text_node =
+            let text =
                 layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top));
-            let increment_node = increment_node.move_to(Point::new(
-                text_bounds.width + padding.horizontal() + button_padding,
-                button_padding,
-            ));
-            let decrement_node = decrement_node.move_to(Point::new(
-                text_bounds.width + padding.horizontal() + button_padding,
-                button_limits.max().height + button_padding,
-            ));
 
-            layout::Node::with_children(
-                text_bounds
-                    .expand(padding)
-                    .expand(Size::new(self.buttons_width.into(), 0.0)),
-                vec![text_node, increment_node, decrement_node],
-            )
+            layout::Node::with_children(text_bounds.expand(padding), vec![text])
         }
     }
 
-    fn input_method<'c>(
+    fn input_method<'b>(
         &self,
-        state: &'c State<Renderer::Paragraph>,
+        state: &'b State<Renderer::Paragraph>,
         layout: Layout<'_>,
         value: &Value,
-    ) -> InputMethod<&'c str> {
+    ) -> InputMethod<&'b str> {
         let Some(Focus {
             is_window_focused: true,
             ..
@@ -583,19 +400,17 @@ where
         }
     }
 
-    /// Draws the [`NumberInput`] with the given [`Renderer`], overriding its
+    /// Draws the [`TextInput`] with the given [`Renderer`], overriding its
     /// [`Value`] if provided.
     ///
     /// [`Renderer`]: text::Renderer
-    #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &self,
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Theme,
-        renderer_style: &renderer::Style,
         layout: Layout<'_>,
-        cursor: mouse::Cursor,
+        _cursor: mouse::Cursor,
         value: Option<&Value>,
         viewport: &Rectangle,
     ) {
@@ -611,11 +426,7 @@ where
         let mut children_layout = layout.children();
         let text_bounds = children_layout.next().unwrap().bounds();
 
-        let style = <Theme as Catalog>::style(
-            theme,
-            &self.class,
-            self.last_status.unwrap_or(Status::Disabled),
-        );
+        let style = theme.style(&self.class, self.last_status.unwrap_or(Status::Disabled));
 
         renderer.fill_quad(
             renderer::Quad {
@@ -642,28 +453,6 @@ where
                 *viewport,
             );
         }
-
-        let increment_layout = children_layout.next().unwrap();
-        self.increment_button.draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            renderer_style,
-            increment_layout,
-            cursor,
-            viewport,
-        );
-
-        let decrement_layout = children_layout.next().unwrap();
-        self.decrement_button.draw(
-            &tree.children[1],
-            renderer,
-            theme,
-            renderer_style,
-            decrement_layout,
-            cursor,
-            viewport,
-        );
 
         let text = value.to_string();
 
@@ -769,11 +558,8 @@ where
 
             renderer.fill_paragraph(
                 paragraph,
-                text_bounds.anchor(
-                    paragraph.min_bounds(),
-                    Alignment::Start,
-                    Alignment::Center,
-                ) + Vector::new(alignment_offset - offset, 0.0),
+                text_bounds.anchor(paragraph.min_bounds(), Alignment::Start, Alignment::Center)
+                    + Vector::new(alignment_offset - offset, 0.0),
                 if text.is_empty() {
                     style.placeholder
                 } else {
@@ -791,13 +577,12 @@ where
     }
 }
 
-impl<'a, T, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for NumberInput<'a, T, Message, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for TextInput<'_, Message, Theme, Renderer>
 where
     Message: Clone,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
-    Renderer: text::Renderer + 'a,
-    T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
+    Theme: Catalog,
+    Renderer: text::Renderer,
 {
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<State<Renderer::Paragraph>>()
@@ -805,13 +590,6 @@ where
 
     fn state(&self) -> tree::State {
         tree::State::new(State::<Renderer::Paragraph>::new())
-    }
-
-    fn children(&self) -> Vec<Tree> {
-        vec![
-            Tree::new(&self.increment_button as &dyn Widget<_, _, _>),
-            Tree::new(&self.decrement_button as &dyn Widget<_, _, _>),
-        ]
     }
 
     fn diff(&self, tree: &mut Tree) {
@@ -862,97 +640,8 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
-        viewport: &Rectangle,
+        _viewport: &Rectangle,
     ) {
-        let (increment_layout, decrement_layout) = if self.icon.is_some() {
-            (
-                layout.children().nth(2).unwrap(),
-                layout.children().nth(3).unwrap(),
-            )
-        } else {
-            (
-                layout.children().nth(1).unwrap(),
-                layout.children().nth(2).unwrap(),
-            )
-        };
-        let mut buttons_messages = Vec::<ButtonMessage>::new();
-        let mut buttons_shell = Shell::new(&mut buttons_messages);
-
-        // Reconcile buttons shell with main shell:
-        if shell.is_event_captured() {
-            buttons_shell.capture_event();
-        }
-        buttons_shell.request_redraw_at(shell.redraw_request());
-        buttons_shell.request_input_method(shell.input_method());
-
-        self.increment_button.update(
-            &mut tree.children[0],
-            event,
-            increment_layout,
-            cursor,
-            renderer,
-            clipboard,
-            &mut buttons_shell,
-            viewport,
-        );
-        self.decrement_button.update(
-            &mut tree.children[1],
-            event,
-            decrement_layout,
-            cursor,
-            renderer,
-            clipboard,
-            &mut buttons_shell,
-            viewport,
-        );
-
-        // Reconcile main shell with buttons shell
-        shell.request_redraw_at(buttons_shell.redraw_request());
-        shell.request_input_method(buttons_shell.input_method());
-        if buttons_shell.is_event_captured() {
-            shell.capture_event();
-        }
-
-        if !buttons_messages.is_empty() {
-            if let Some(on_input) = &self.on_input {
-                for message in buttons_messages {
-                    match message {
-                        ButtonMessage::Increment => {
-                            if let Ok(mut parsed) = self.value.to_string().parse() {
-                                if parsed < self.max {
-                                    parsed += T::one();
-                                    if parsed > self.max {
-                                        parsed = self.max.clone();
-                                    }
-                                    let message = (on_input)(parsed);
-                                    shell.publish(message);
-                                }
-                            }
-                        }
-                        ButtonMessage::Decrement => {
-                            if let Ok(mut parsed) = self.value.to_string().parse() {
-                                if parsed > self.min {
-                                    parsed -= T::one();
-                                    if parsed < self.min {
-                                        parsed = self.min.clone();
-                                    }
-                                    let message = (on_input)(parsed);
-                                    shell.publish(message);
-                                }
-                            }
-                        }
-                    }
-                    shell.request_redraw();
-                    shell.capture_event();
-                }
-            }
-        }
-
-        if shell.is_event_captured() {
-            // if the buttons handled the event we can simply return
-            return;
-        }
-
         let update_cache = |state, value| {
             replace_paragraph(
                 renderer,
@@ -965,15 +654,13 @@ where
             );
         };
 
-        let state = state::<Renderer>(tree);
         match &event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
+                let state = state::<Renderer>(tree);
                 let cursor_before = state.cursor;
 
                 let click_position = cursor.position_over(layout.bounds());
-
-                let was_previously_focused = state.is_focused();
 
                 state.is_focused = if click_position.is_some() {
                     let now = Instant::now();
@@ -987,117 +674,92 @@ where
                     None
                 };
 
-                if was_previously_focused {
-                    if let Some(cursor_position) = click_position {
-                        let text_layout = layout.children().next().unwrap();
+                if let Some(cursor_position) = click_position {
+                    let text_layout = layout.children().next().unwrap();
 
-                        let target = {
-                            let text_bounds = text_layout.bounds();
+                    let target = {
+                        let text_bounds = text_layout.bounds();
 
-                            let alignment_offset = alignment_offset(
-                                text_bounds.width,
-                                state.value.raw().min_width(),
-                                self.alignment,
-                            );
-
-                            cursor_position.x - text_bounds.x - alignment_offset
-                        };
-
-                        let click = mouse::Click::new(
-                            cursor_position,
-                            mouse::Button::Left,
-                            state.last_click,
+                        let alignment_offset = alignment_offset(
+                            text_bounds.width,
+                            state.value.raw().min_width(),
+                            self.alignment,
                         );
 
-                        match click.kind() {
-                            click::Kind::Single => {
-                                let position = if target > 0.0 {
-                                    let value = if self.is_secure {
-                                        self.value.secure()
-                                    } else {
-                                        self.value.clone()
-                                    };
+                        cursor_position.x - text_bounds.x - alignment_offset
+                    };
 
-                                    find_cursor_position(
-                                        text_layout.bounds(),
-                                        &value,
-                                        state,
-                                        target,
-                                    )
+                    let click =
+                        mouse::Click::new(cursor_position, mouse::Button::Left, state.last_click);
+
+                    match click.kind() {
+                        click::Kind::Single => {
+                            let position = if target > 0.0 {
+                                let value = if self.is_secure {
+                                    self.value.secure()
                                 } else {
-                                    None
-                                }
+                                    self.value.clone()
+                                };
+
+                                find_cursor_position(text_layout.bounds(), &value, state, target)
+                            } else {
+                                None
+                            }
+                            .unwrap_or(0);
+
+                            if state.keyboard_modifiers.shift() {
+                                state
+                                    .cursor
+                                    .select_range(state.cursor.start(&self.value), position);
+                            } else {
+                                state.cursor.move_to(position);
+                            }
+                            state.is_dragging = true;
+                        }
+                        click::Kind::Double => {
+                            if self.is_secure {
+                                state.cursor.select_all(&self.value);
+                            } else {
+                                let position = find_cursor_position(
+                                    text_layout.bounds(),
+                                    &self.value,
+                                    state,
+                                    target,
+                                )
                                 .unwrap_or(0);
 
-                                if state.keyboard_modifiers.shift() {
-                                    state
-                                        .cursor
-                                        .select_range(state.cursor.start(&self.value), position);
-                                } else {
-                                    state.cursor.move_to(position);
-                                }
-                                state.is_dragging = true;
+                                state.cursor.select_range(
+                                    self.value.previous_start_of_word(position),
+                                    self.value.next_end_of_word(position),
+                                );
                             }
-                            click::Kind::Double => {
-                                if self.is_secure {
-                                    state.cursor.select_all(&self.value);
-                                } else {
-                                    let position = find_cursor_position(
-                                        text_layout.bounds(),
-                                        &self.value,
-                                        state,
-                                        target,
-                                    )
-                                    .unwrap_or(0);
 
-                                    state.cursor.select_range(
-                                        self.value.previous_start_of_word(position),
-                                        self.value.next_end_of_word(position),
-                                    );
-                                }
-
-                                state.is_dragging = false;
-                            }
-                            click::Kind::Triple => {
-                                state.cursor.select_all(&self.value);
-                                state.is_dragging = false;
-                            }
+                            state.is_dragging = false;
                         }
-
-                        state.last_click = Some(click);
-
-                        if cursor_before != state.cursor {
-                            shell.request_redraw();
-                        }
-
-                        shell.capture_event();
-                    } else {
-                        // Widget was unfocused, lets check if the current value is valid, if it
-                        // isn't we send the default value
-                        if let Some(on_input) = &self.on_input {
-                            if self.value.to_string().parse::<T>().is_err() {
-                                let message = on_input(T::default());
-                                shell.publish(message);
-                                state.is_empty = false;
-                                state.is_empty_neg = false;
-                                shell.request_redraw();
-                                shell.capture_event();
-                            }
+                        click::Kind::Triple => {
+                            state.cursor.select_all(&self.value);
+                            state.is_dragging = false;
                         }
                     }
-                } else if state.is_focused() {
-                    state.cursor.select_all(&self.value);
-                    shell.request_redraw();
+
+                    state.last_click = Some(click);
+
+                    if cursor_before != state.cursor {
+                        shell.request_redraw();
+                    }
+
                     shell.capture_event();
                 }
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerLifted { .. })
             | Event::Touch(touch::Event::FingerLost { .. }) => {
-                state.is_dragging = false;
+                state::<Renderer>(tree).is_dragging = false;
             }
             Event::Mouse(mouse::Event::CursorMoved { position })
             | Event::Touch(touch::Event::FingerMoved { position, .. }) => {
+                let state = state::<Renderer>(tree);
+
                 if state.is_dragging {
                     let text_layout = layout.children().next().unwrap();
 
@@ -1141,6 +803,8 @@ where
                 }
             }
             Event::Keyboard(keyboard::Event::KeyPressed { key, text, .. }) => {
+                let state = state::<Renderer>(tree);
+
                 if let Some(focus) = &mut state.is_focused {
                     let modifiers = state.keyboard_modifiers;
 
@@ -1175,24 +839,8 @@ where
                             let mut editor = Editor::new(&mut self.value, &mut state.cursor);
                             editor.delete();
 
-                            if let Ok(mut parsed) = editor.contents().parse() {
-                                if parsed > self.max {
-                                    parsed = self.max.clone();
-                                } else if parsed < self.min {
-                                    parsed = self.min.clone();
-                                }
-                                let message = (on_input)(parsed);
-                                shell.publish(message);
-                            } else {
-                                if self.value.is_empty() {
-                                    state.is_empty = true;
-                                    state.is_empty_neg = false;
-                                } else if self.value.to_string() == *"-" {
-                                    state.is_empty = false;
-                                    state.is_empty_neg = true;
-                                }
-                                shell.request_redraw();
-                            }
+                            let message = (on_input)(editor.contents());
+                            shell.publish(message);
                             shell.capture_event();
 
                             focus.updated_at = Instant::now();
@@ -1217,43 +865,24 @@ where
                                         .filter(|c| !c.is_control())
                                         .collect();
 
-                                    if content.parse::<T>().is_ok() {
-                                        Value::new(&content)
-                                    } else {
-                                        Value::new("")
-                                    }
+                                    Value::new(&content)
                                 }
                             };
 
                             let mut editor = Editor::new(&mut self.value, &mut state.cursor);
-                            if !content.is_empty() {
-                                editor.paste(content.clone());
-                            }
+                            editor.paste(content.clone());
 
-                            if let Ok(mut parsed) = editor.contents().parse() {
-                                if parsed > self.max {
-                                    parsed = self.max.clone();
-                                } else if parsed < self.min {
-                                    parsed = self.min.clone();
-                                }
-                                let message = if let Some(paste) = &self.on_paste {
-                                    (paste)(parsed)
-                                } else {
-                                    (on_input)(parsed)
-                                };
-                                shell.publish(message);
-                                shell.capture_event();
-
-                                state.is_empty = false;
-                                state.is_empty_neg = false;
-                                state.is_pasting = Some(content);
-                                focus.updated_at = Instant::now();
-                                update_cache(state, &self.value);
+                            let message = if let Some(paste) = &self.on_paste {
+                                (paste)(editor.contents())
                             } else {
-                                for _ in 0..content.len() {
-                                    editor.backspace();
-                                }
-                            }
+                                (on_input)(editor.contents())
+                            };
+                            shell.publish(message);
+                            shell.capture_event();
+
+                            state.is_pasting = Some(content);
+                            focus.updated_at = Instant::now();
+                            update_cache(state, &self.value);
                             return;
                         }
                         keyboard::Key::Character("a") if state.keyboard_modifiers.command() => {
@@ -1283,27 +912,10 @@ where
                         if let Some(c) = text.chars().next().filter(|c| !c.is_control()) {
                             let mut editor = Editor::new(&mut self.value, &mut state.cursor);
 
-                            if c.is_ascii_digit() || c == '-' || c == '.' || c == ',' {
-                                editor.insert(c);
-                            }
+                            editor.insert(c);
 
-                            if let Ok(mut parsed) = editor.contents().parse() {
-                                if parsed > self.max {
-                                    parsed = self.max.clone();
-                                } else if parsed < self.min {
-                                    parsed = self.min.clone();
-                                }
-                                let message = (on_input)(parsed);
-                                shell.publish(message);
-                                state.is_empty = false;
-                                state.is_empty_neg = false;
-                            } else if c == '-' && &editor.contents() == "-" {
-                                state.is_empty = false;
-                                state.is_empty_neg = true;
-                                shell.request_redraw();
-                            } else {
-                                editor.backspace();
-                            }
+                            let message = (on_input)(editor.contents());
+                            shell.publish(message);
                             shell.capture_event();
 
                             focus.updated_at = Instant::now();
@@ -1324,8 +936,6 @@ where
                                 return;
                             };
 
-                            let cursor_before = state.cursor;
-
                             if modifiers.jump() && state.cursor.selection(&self.value).is_none() {
                                 if self.is_secure {
                                     let cursor_pos = state.cursor.end(&self.value);
@@ -1338,28 +948,8 @@ where
                             let mut editor = Editor::new(&mut self.value, &mut state.cursor);
                             editor.backspace();
 
-                            if let Ok(mut parsed) = editor.contents().parse() {
-                                if parsed > self.max {
-                                    parsed = self.max.clone();
-                                } else if parsed < self.min {
-                                    parsed = self.min.clone();
-                                }
-                                let message = (on_input)(parsed);
-                                shell.publish(message);
-
-                                if cursor_before != state.cursor {
-                                    shell.request_redraw();
-                                }
-                            } else {
-                                if self.value.is_empty() {
-                                    state.is_empty = true;
-                                    state.is_empty_neg = false;
-                                } else if self.value.to_string() == *"-" {
-                                    state.is_empty = false;
-                                    state.is_empty_neg = true;
-                                }
-                                shell.request_redraw();
-                            }
+                            let message = (on_input)(editor.contents());
+                            shell.publish(message);
                             shell.capture_event();
 
                             focus.updated_at = Instant::now();
@@ -1382,24 +972,8 @@ where
                             let mut editor = Editor::new(&mut self.value, &mut state.cursor);
                             editor.delete();
 
-                            if let Ok(mut parsed) = editor.contents().parse() {
-                                if parsed > self.max {
-                                    parsed = self.max.clone();
-                                } else if parsed < self.min {
-                                    parsed = self.min.clone();
-                                }
-                                let message = (on_input)(parsed);
-                                shell.publish(message);
-                            } else {
-                                if self.value.is_empty() {
-                                    state.is_empty = true;
-                                    state.is_empty_neg = false;
-                                } else if self.value.to_string() == *"-" {
-                                    state.is_empty = false;
-                                    state.is_empty_neg = true;
-                                }
-                                shell.request_redraw();
-                            }
+                            let message = (on_input)(editor.contents());
+                            shell.publish(message);
                             shell.capture_event();
 
                             focus.updated_at = Instant::now();
@@ -1540,18 +1114,6 @@ where
 
                             state.keyboard_modifiers = keyboard::Modifiers::default();
 
-                            // Widget was unfocused, lets check if the current value is valid, if it
-                            // isn't we send the default value
-                            if let Some(on_input) = &self.on_input {
-                                if self.value.to_string().parse::<T>().is_err() {
-                                    let message = on_input(T::default());
-                                    shell.publish(message);
-                                    state.is_empty = false;
-                                    state.is_empty_neg = false;
-                                    shell.request_redraw();
-                                }
-                            }
-
                             shell.capture_event();
                         }
                         _ => {}
@@ -1559,6 +1121,8 @@ where
                 }
             }
             Event::Keyboard(keyboard::Event::KeyReleased { key, .. }) => {
+                let state = state::<Renderer>(tree);
+
                 if state.is_focused.is_some() {
                     if let keyboard::Key::Character("v") = key.as_ref() {
                         state.is_pasting = None;
@@ -1570,16 +1134,22 @@ where
                 state.is_pasting = None;
             }
             Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
+                let state = state::<Renderer>(tree);
+
                 state.keyboard_modifiers = *modifiers;
             }
             Event::InputMethod(event) => match event {
                 input_method::Event::Opened | input_method::Event::Closed => {
+                    let state = state::<Renderer>(tree);
+
                     state.preedit = matches!(event, input_method::Event::Opened)
                         .then(input_method::Preedit::new);
 
                     shell.request_redraw();
                 }
                 input_method::Event::Preedit(content, selection) => {
+                    let state = state::<Renderer>(tree);
+
                     if state.is_focused.is_some() {
                         state.preedit = Some(input_method::Preedit {
                             content: content.to_owned(),
@@ -1591,55 +1161,37 @@ where
                     }
                 }
                 input_method::Event::Commit(text) => {
+                    let state = state::<Renderer>(tree);
+
                     if let Some(focus) = &mut state.is_focused {
                         let Some(on_input) = &self.on_input else {
                             return;
                         };
 
                         let mut editor = Editor::new(&mut self.value, &mut state.cursor);
-                        if text.parse::<T>().is_ok() {
-                            editor.paste(Value::new(text));
-                        }
+                        editor.paste(Value::new(text));
 
                         focus.updated_at = Instant::now();
                         state.is_pasting = None;
 
-                        if let Ok(mut parsed) = editor.contents().parse() {
-                            if parsed > self.max {
-                                parsed = self.max.clone();
-                            } else if parsed < self.min {
-                                parsed = self.min.clone();
-                            }
-                            let message = (on_input)(parsed);
-                            shell.publish(message);
-                            shell.capture_event();
-                            state.is_empty = false;
-                            state.is_empty_neg = false;
+                        let message = (on_input)(editor.contents());
+                        shell.publish(message);
+                        shell.capture_event();
 
-                            update_cache(state, &self.value);
-                        } else {
-                            for _ in 0..text.len() {
-                                editor.backspace();
-                            }
-                            if self.value.is_empty() {
-                                state.is_empty = true;
-                                state.is_empty_neg = false;
-                            } else if self.value.to_string() == *"-" {
-                                state.is_empty = false;
-                                state.is_empty_neg = true;
-                            }
-                            shell.request_redraw();
-                            update_cache(state, &self.value);
-                        }
+                        update_cache(state, &self.value);
                     }
                 }
             },
             Event::Window(window::Event::Unfocused) => {
+                let state = state::<Renderer>(tree);
+
                 if let Some(focus) = &mut state.is_focused {
                     focus.is_window_focused = false;
                 }
             }
             Event::Window(window::Event::Focused) => {
+                let state = state::<Renderer>(tree);
+
                 if let Some(focus) = &mut state.is_focused {
                     focus.is_window_focused = true;
                     focus.updated_at = Instant::now();
@@ -1648,6 +1200,8 @@ where
                 }
             }
             Event::Window(window::Event::RedrawRequested(now)) => {
+                let state = state::<Renderer>(tree);
+
                 if let Some(focus) = &mut state.is_focused {
                     if focus.is_window_focused {
                         if matches!(state.cursor.state(&self.value), cursor::State::Index(_)) {
@@ -1669,6 +1223,7 @@ where
             _ => {}
         }
 
+        let state = state::<Renderer>(tree);
         let is_disabled = self.on_input.is_none();
 
         let status = if is_disabled {
@@ -1691,23 +1246,6 @@ where
         {
             shell.request_redraw();
         }
-
-        if state.is_empty && !self.value.is_empty() {
-            self.value = Value::new("");
-            shell.request_redraw();
-        } else if state.is_empty_neg && self.value.to_string() != *"-" {
-            self.value = Value::new("-");
-            replace_paragraph(
-                renderer,
-                state,
-                layout,
-                &self.value,
-                self.font,
-                self.size,
-                self.line_height,
-            );
-            shell.request_redraw();
-        }
     }
 
     fn draw(
@@ -1715,12 +1253,12 @@ where
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Theme,
-        style: &renderer::Style,
+        _style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        self.draw(tree, renderer, theme, style, layout, cursor, None, viewport);
+        self.draw(tree, renderer, theme, layout, cursor, None, viewport);
     }
 
     fn mouse_interaction(
@@ -1735,24 +1273,7 @@ where
             if self.on_input.is_none() {
                 mouse::Interaction::Idle
             } else {
-                let (increment_layout, decrement_layout) = if self.icon.is_some() {
-                    (
-                        layout.children().nth(2).unwrap(),
-                        layout.children().nth(3).unwrap(),
-                    )
-                } else {
-                    (
-                        layout.children().nth(1).unwrap(),
-                        layout.children().nth(2).unwrap(),
-                    )
-                };
-                if cursor.is_over(increment_layout.bounds())
-                    || cursor.is_over(decrement_layout.bounds())
-                {
-                    mouse::Interaction::Pointer
-                } else {
-                    mouse::Interaction::Text
-                }
+                mouse::Interaction::Text
             }
         } else {
             mouse::Interaction::default()
@@ -1760,18 +1281,17 @@ where
     }
 }
 
-impl<'a, T, Message, Theme, Renderer> From<NumberInput<'a, T, Message, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<TextInput<'a, Message, Theme, Renderer>>
     for Element<'a, Message, Theme, Renderer>
 where
     Message: Clone + 'a,
-    Theme: Catalog + button::Catalog + widget::text::Catalog + 'a,
+    Theme: Catalog + 'a,
     Renderer: text::Renderer + 'a,
-    T: Num + NumAssignOps + PartialOrd + Display + FromStr + Clone + Default + Bounded + 'a,
 {
     fn from(
-        number_input: NumberInput<'a, T, Message, Theme, Renderer>,
+        text_input: TextInput<'a, Message, Theme, Renderer>,
     ) -> Element<'a, Message, Theme, Renderer> {
-        Element::new(number_input)
+        Element::new(text_input)
     }
 }
 
@@ -1784,22 +1304,22 @@ pub struct Icon<Font> {
     pub code_point: char,
     /// The font size of the content.
     pub size: Option<Pixels>,
-    /// The spacing between the [`Icon`] and the numbers in a [`NumberInput`].
+    /// The spacing between the [`Icon`] and the text in a [`TextInput`].
     pub spacing: f32,
-    /// The side of a [`NumberInput`] where to display the [`Icon`].
+    /// The side of a [`TextInput`] where to display the [`Icon`].
     pub side: Side,
 }
 
-/// The side of a [`NumberInput`].
+/// The side of a [`TextInput`].
 #[derive(Debug, Clone)]
 pub enum Side {
-    /// The left side of a [`NumberInput`].
+    /// The left side of a [`TextInput`].
     Left,
-    /// The right side of a [`NumberInput`].
+    /// The right side of a [`TextInput`].
     Right,
 }
 
-/// The identifier of a [`NumberInput`].
+/// The identifier of a [`TextInput`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Id(widget::Id);
 
@@ -1835,55 +1355,55 @@ impl From<String> for Id {
     }
 }
 
-/// Produces a [`Task`] that returns whether the [`NumberInput`] with the given [`Id`] is focused or not.
+/// Produces a [`Task`] that returns whether the [`TextInput`] with the given [`Id`] is focused or not.
 pub fn is_focused(id: impl Into<Id>) -> Task<bool> {
-    widget::operate(operation::focusable::is_focused(id.into().0))
+    iced::advanced::widget::operate(operation::focusable::is_focused(id.into().0))
 }
 
-/// Produces a [`Task`] that focuses the [`NumberInput`] with the given [`Id`].
+/// Produces a [`Task`] that focuses the [`TextInput`] with the given [`Id`].
 pub fn focus<T>(id: impl Into<Id>) -> Task<T>
 where
     T: Send + 'static,
 {
-    widget::operate(operation::focusable::focus(id.into().0))
+    iced::advanced::widget::operate(operation::focusable::focus(id.into().0))
 }
 
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
+/// Produces a [`Task`] that moves the cursor of the [`TextInput`] with the given [`Id`] to the
 /// end.
 pub fn move_cursor_to_end<T>(id: impl Into<Id>) -> Task<T>
 where
     T: Send + 'static,
 {
-    widget::operate(operation::text_input::move_cursor_to_end(id.into().0))
+    iced::advanced::widget::operate(operation::text_input::move_cursor_to_end(id.into().0))
 }
 
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
+/// Produces a [`Task`] that moves the cursor of the [`TextInput`] with the given [`Id`] to the
 /// front.
 pub fn move_cursor_to_front<T>(id: impl Into<Id>) -> Task<T>
 where
     T: Send + 'static,
 {
-    widget::operate(operation::text_input::move_cursor_to_front(id.into().0))
+    iced::advanced::widget::operate(operation::text_input::move_cursor_to_front(id.into().0))
 }
 
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
+/// Produces a [`Task`] that moves the cursor of the [`TextInput`] with the given [`Id`] to the
 /// provided position.
 pub fn move_cursor_to<T>(id: impl Into<Id>, position: usize) -> Task<T>
 where
     T: Send + 'static,
 {
-    widget::operate(operation::text_input::move_cursor_to(id.into().0, position))
+    iced::advanced::widget::operate(operation::text_input::move_cursor_to(id.into().0, position))
 }
 
-/// Produces a [`Task`] that selects all the content of the [`NumberInput`] with the given [`Id`].
+/// Produces a [`Task`] that selects all the content of the [`TextInput`] with the given [`Id`].
 pub fn select_all<T>(id: impl Into<Id>) -> Task<T>
 where
     T: Send + 'static,
 {
-    widget::operate(operation::text_input::select_all(id.into().0))
+    iced::advanced::widget::operate(operation::text_input::select_all(id.into().0))
 }
 
-/// The state of a [`NumberInput`].
+/// The state of a [`TextInput`].
 #[derive(Debug, Default, Clone)]
 pub struct State<P: text::Paragraph> {
     value: paragraph::Plain<P>,
@@ -1892,8 +1412,6 @@ pub struct State<P: text::Paragraph> {
     is_focused: Option<Focus>,
     is_dragging: bool,
     is_pasting: Option<Value>,
-    is_empty: bool,
-    is_empty_neg: bool,
     preedit: Option<input_method::Preedit>,
     last_click: Option<mouse::Click>,
     cursor: Cursor,
@@ -1913,22 +1431,22 @@ struct Focus {
 }
 
 impl<P: text::Paragraph> State<P> {
-    /// Creates a new [`State`], representing an unfocused [`NumberInput`].
+    /// Creates a new [`State`], representing an unfocused [`TextInput`].
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Returns whether the [`NumberInput`] is currently focused or not.
+    /// Returns whether the [`TextInput`] is currently focused or not.
     pub fn is_focused(&self) -> bool {
         self.is_focused.is_some()
     }
 
-    /// Returns the [`Cursor`] of the [`NumberInput`].
+    /// Returns the [`Cursor`] of the [`TextInput`].
     pub fn cursor(&self) -> Cursor {
         self.cursor
     }
 
-    /// Focuses the [`NumberInput`].
+    /// Focuses the [`TextInput`].
     pub fn focus(&mut self) {
         let now = Instant::now();
 
@@ -1941,27 +1459,27 @@ impl<P: text::Paragraph> State<P> {
         self.move_cursor_to_end();
     }
 
-    /// Unfocuses the [`NumberInput`].
+    /// Unfocuses the [`TextInput`].
     pub fn unfocus(&mut self) {
         self.is_focused = None;
     }
 
-    /// Moves the [`Cursor`] of the [`NumberInput`] to the front of the input value.
+    /// Moves the [`Cursor`] of the [`TextInput`] to the front of the input text.
     pub fn move_cursor_to_front(&mut self) {
         self.cursor.move_to(0);
     }
 
-    /// Moves the [`Cursor`] of the [`NumberInput`] to the end of the input value.
+    /// Moves the [`Cursor`] of the [`TextInput`] to the end of the input text.
     pub fn move_cursor_to_end(&mut self) {
         self.cursor.move_to(usize::MAX);
     }
 
-    /// Moves the [`Cursor`] of the [`NumberInput`] to an arbitrary location.
+    /// Moves the [`Cursor`] of the [`TextInput`] to an arbitrary location.
     pub fn move_cursor_to(&mut self, position: usize) {
         self.cursor.move_to(position);
     }
 
-    /// Selects all the content of the [`NumberInput`].
+    /// Selects all the content of the [`TextInput`].
     pub fn select_all(&mut self) {
         self.cursor.select_range(0, usize::MAX);
     }
@@ -2031,8 +1549,8 @@ fn measure_cursor_and_scroll_offset(
     (grapheme_position.x, offset)
 }
 
-/// Computes the position of the cursor at the given X coordinate of
-/// a [`NumberInput`].
+/// Computes the position of the text cursor at the given X coordinate of
+/// a [`TextInput`].
 fn find_cursor_position<P: text::Paragraph>(
     text_bounds: Rectangle,
     value: &Value,
@@ -2089,69 +1607,52 @@ fn replace_paragraph<Renderer>(
 
 const CURSOR_BLINK_INTERVAL_MILLIS: u128 = 500;
 
-/// The possible status of a [`NumberInput`].
+/// The possible status of a [`TextInput`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
-    /// The [`NumberInput`] can be interacted with.
+    /// The [`TextInput`] can be interacted with.
     Active,
-    /// The [`NumberInput`] is being hovered.
+    /// The [`TextInput`] is being hovered.
     Hovered,
-    /// The [`NumberInput`] is focused.
+    /// The [`TextInput`] is focused.
     Focused {
-        /// Whether the [`NumberInput`] is hovered, while focused.
+        /// Whether the [`TextInput`] is hovered, while focused.
         is_hovered: bool,
     },
-    /// The [`NumberInput`] cannot be interacted with.
+    /// The [`TextInput`] cannot be interacted with.
     Disabled,
 }
 
-/// The appearance of a number input.
+/// The appearance of a text input.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
-    /// The [`Background`] of the number input.
+    /// The [`Background`] of the text input.
     pub background: Background,
-    /// The [`Border`] of the number input.
+    /// The [`Border`] of the text input.
     pub border: Border,
-    /// The [`Color`] of the icon of the number input.
+    /// The [`Color`] of the icon of the text input.
     pub icon: Color,
-    /// The [`Color`] of the placeholder of the number input.
+    /// The [`Color`] of the placeholder of the text input.
     pub placeholder: Color,
-    /// The [`Color`] of the value of the number input.
+    /// The [`Color`] of the value of the text input.
     pub value: Color,
-    /// The [`Color`] of the selection of the number input.
+    /// The [`Color`] of the selection of the text input.
     pub selection: Color,
 }
 
-/// The theme catalog of a [`NumberInput`].
-pub trait Catalog: Sized + button::Catalog {
+/// The theme catalog of a [`TextInput`].
+pub trait Catalog: Sized {
     /// The item class of the [`Catalog`].
     type Class<'a>;
 
     /// The default class produced by the [`Catalog`].
-    fn default<'a>() -> <Self as Catalog>::Class<'a>;
-
-    /// The default class for the increment buttons of the [`NumberInput`].
-    fn default_increment_button<'a>() -> <Self as button::Catalog>::Class<'a> {
-        <Self as button::Catalog>::default()
-    }
-
-    /// The default class for the decrement buttons of the [`NumberInput`].
-    fn default_decrement_button<'a>() -> <Self as button::Catalog>::Class<'a> {
-        <Self as button::Catalog>::default()
-    }
+    fn default<'a>() -> Self::Class<'a>;
 
     /// The [`Style`] of a class with the given status.
-    fn style(&self, class: &<Self as Catalog>::Class<'_>, status: Status) -> Style;
-
-    /// The button [`button::Style`] of a button class with the given button status.
-    fn style_button(
-        &self,
-        class: &<Self as button::Catalog>::Class<'_>,
-        status: button::Status,
-    ) -> button::Style;
+    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
 }
 
-/// A styling function for a [`NumberInput`].
+/// A styling function for a [`TextInput`].
 ///
 /// This is just a boxed closure: `Fn(&Theme, Status) -> Style`.
 pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
@@ -2159,32 +1660,16 @@ pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
 impl Catalog for Theme {
     type Class<'a> = StyleFn<'a, Self>;
 
-    fn default<'a>() -> <Self as Catalog>::Class<'a> {
+    fn default<'a>() -> Self::Class<'a> {
         Box::new(default)
     }
 
-    fn default_increment_button<'a>() -> <Self as button::Catalog>::Class<'a> {
-        Box::new(top_button) as button::StyleFn<'_, Theme>
-    }
-
-    fn default_decrement_button<'a>() -> <Self as button::Catalog>::Class<'a> {
-        Box::new(bottom_button) as button::StyleFn<'_, Theme>
-    }
-
-    fn style(&self, class: &<Self as Catalog>::Class<'_>, status: Status) -> Style {
-        class(self, status)
-    }
-
-    fn style_button(
-        &self,
-        class: &<Self as button::Catalog>::Class<'_>,
-        status: button::Status,
-    ) -> button::Style {
+    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style {
         class(self, status)
     }
 }
 
-/// The default style of a [`NumberInput`].
+/// The default style of a [`TextInput`].
 pub fn default(theme: &Theme, status: Status) -> Style {
     let palette = theme.extended_palette();
 
@@ -2225,24 +1710,6 @@ pub fn default(theme: &Theme, status: Status) -> Style {
     }
 }
 
-/// The default style for the top button of a [`NumberInput`].
-pub fn top_button(theme: &Theme, status: button::Status) -> button::Style {
-    let base = button::secondary(theme, status);
-    button::Style {
-        border: border::rounded(border::top(2)),
-        ..base
-    }
-}
-
-/// The default style for the bottom button of a [`NumberInput`].
-pub fn bottom_button(theme: &Theme, status: button::Status) -> button::Style {
-    let base = button::secondary(theme, status);
-    button::Style {
-        border: border::rounded(border::bottom(2)),
-        ..base
-    }
-}
-
 fn alignment_offset(
     text_bounds_width: f32,
     text_min_width: f32,
@@ -2257,10 +1724,4 @@ fn alignment_offset(
             alignment::Horizontal::Right => text_bounds_width - text_min_width,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-enum ButtonMessage {
-    Increment,
-    Decrement,
 }
