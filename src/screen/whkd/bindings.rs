@@ -1,16 +1,22 @@
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, opt_helpers},
+    widget::{self, icons, opt_helpers},
 };
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use iced::{
-    widget::{column, container, markdown, pick_list, row, text},
+    padding,
+    widget::{
+        button, column, container, horizontal_space, hover, markdown, pick_list, right, row,
+        scrollable, text,
+    },
     Element, Subscription, Task, Theme,
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
+
+const SEPARATOR: &str = " + ";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -24,6 +30,8 @@ pub enum Message {
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
     ChangeBindingCommand(usize, String),
+    EditBinding(usize),
+    FinishEditBinding(usize),
 
     KeyPress(Option<String>, String),
     KeyRelease,
@@ -41,6 +49,7 @@ pub struct Bindings {
     pressed_key: String,
     pressed_mod: String,
     new_binding: HotkeyBinding,
+    editing: HashSet<usize>,
 }
 
 impl Default for Bindings {
@@ -53,6 +62,7 @@ impl Default for Bindings {
                 command: String::new(),
                 process_name: None,
             },
+            editing: Default::default(),
         }
     }
 }
@@ -71,29 +81,30 @@ impl Bindings {
             }
             Message::ChangeBindingMod(idx, (pos, mod1)) => {
                 if let Some(binding) = whkdrc.bindings.get_mut(idx) {
-                    let sb = split_binding(&binding);
+                    let sb = split_binding(binding);
                     if mod1.is_empty() {
                         if pos < sb.modifiers.len() {
-                            if pos < binding.keys.len() {
-                                binding.keys.remove(pos);
-                            }
+                            binding.keys.remove(pos);
                         }
+                    } else if let Some(k) = binding.keys.iter_mut().filter(|m| is_mod(m)).nth(pos) {
+                        *k = mod1.clone();
+                    } else if pos <= binding.keys.len() {
+                        binding.keys.insert(pos, mod1.clone());
                     } else {
-                        if let Some(k) = binding.keys.iter_mut().filter(|m| is_mod(m)).nth(pos) {
-                            *k = mod1.clone();
-                        } else if pos <= binding.keys.len() {
-                            binding.keys.insert(pos, mod1.clone());
-                        } else {
-                            //TODO: show error to user in case `i` is higher than len(), this shouldn't
-                            //happen though
-                            println!("Failed to add mod {mod1} to binding with index {pos} since len is {}", binding.keys.len());
-                        }
+                        //TODO: show error to user in case `i` is higher than len(), this shouldn't
+                        //happen though
+                        println!(
+                            "Failed to add mod {mod1} to binding with index {pos} since len is {}",
+                            binding.keys.len()
+                        );
                     }
                 }
             }
             Message::ChangeBindingKey(idx, key) => {
                 if let Some(binding) = whkdrc.bindings.get_mut(idx) {
-                    let keys_count = split_binding(&binding).key.len();
+                    let sb = split_binding(binding);
+                    let keys_count = sb.keys.len();
+                    let mods_count = sb.modifiers.len();
                     if key.is_empty() {
                         if keys_count == 1 {
                             binding.keys.pop();
@@ -102,8 +113,16 @@ impl Bindings {
                             println!("Failed to remove key {key} from binding since key count is {}, should be <=1", keys_count);
                         }
                     } else {
+                        println!("Adding/Updating a key");
                         if keys_count == 1 {
-                            if let Some(k) = binding.keys.last_mut() {
+                            let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
+                            if kk.len() > 1 {
+                                binding.keys.truncate(mods_count);
+                                kk.into_iter().for_each(|k| {
+                                    println!("Adding key {k}...");
+                                    binding.keys.push(k);
+                                });
+                            } else if let Some(k) = binding.keys.last_mut() {
                                 *k = key;
                             } else {
                                 binding.keys.push(key);
@@ -112,7 +131,12 @@ impl Bindings {
                             binding.keys.push(key);
                         } else {
                             //TODO: show error to user
-                            println!("Failed to add key {key} to binding since key count is {}, should be <=1", keys_count);
+                            // println!("Failed to add key {key} to binding since key count is {}, should be <=1", keys_count);
+                            binding.keys.truncate(binding.keys.len() - keys_count);
+                            key.split(SEPARATOR).map(String::from).for_each(|k| {
+                                println!("Adding key {k}...");
+                                binding.keys.push(k);
+                            });
                         }
                     }
                 }
@@ -133,6 +157,12 @@ impl Bindings {
             Message::ChangeNewBindingMod(_, _) => todo!(),
             Message::ChangeNewBindingKey(_) => todo!(),
             Message::ChangeNewBindingCommand(_) => todo!(),
+            Message::EditBinding(idx) => {
+                self.editing.insert(idx);
+            }
+            Message::FinishEditBinding(idx) => {
+                self.editing.remove(&idx);
+            }
         }
         (Action::None, Task::none())
     }
@@ -144,63 +174,97 @@ impl Bindings {
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
     ) -> Element<'a, Message> {
-        let col = column![].spacing(10);
+        let col = column![];
         let bindings = whkdrc
             .bindings
             .iter()
             .enumerate()
             .fold(col, |col, (idx, binding)| {
-                // let keybind = opt_helpers::opt_custom_el_disable_default(
-                //     "Binding",
-                //     Some("todo!"),
-                //     keys(idx, binding),
-                //     false,
-                //     None,
-                //     None,
-                // );
-                // let command = command_edit(idx, &binding.command, commands, commands_desc, theme);
+                if self.editing.contains(&idx) {
+                    let keybind = opt_helpers::opt_custom_el_disable_default(
+                        "Keybind",
+                        Some("A key combination to trigger the command below."),
+                        keys(idx, binding),
+                        false,
+                        None,
+                        None,
+                    );
+                    let command =
+                        command_edit(idx, &binding.command, commands, commands_desc, theme);
 
-                // let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
+                    let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
-                // key_pressed = key_pressed.push_maybe(
-                //     (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty())
-                //         .then_some(text(" + ")),
-                // );
-                // key_pressed = key_pressed.push(text!("{}", self.pressed_key));
-                let keys_count = binding.keys.len();
-                let keybind = row![].push(
-                    container(binding.keys.iter().enumerate().fold(
-                        row![].spacing(5),
-                        |r, (i, m)| {
-                            if i == keys_count - 1 {
-                                r.push(text(m))
-                            } else {
-                                r.push(text(m)).push(" + ")
-                            }
-                        },
-                    ))
-                    .padding(2)
-                    .style(container::dark),
-                );
-                let command =
-                    container(text(&binding.command).wrapping(text::Wrapping::WordOrGlyph))
-                        .max_width(300);
+                    key_pressed = key_pressed.push_maybe(
+                        (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty())
+                            .then_some(text(SEPARATOR)),
+                    );
+                    key_pressed = key_pressed.push(text!("{}", self.pressed_key));
 
-                let b = iced::widget::hover(
-                    row![keybind, text(" -> "), command]
-                        .height(30)
-                        .align_y(iced::Center)
-                        .padding(iced::padding::right(60)),
-                    iced::widget::right(
-                        iced::widget::button(crate::icons::edit())
-                            .on_press(Message::Nothing)
-                            .style(iced::widget::button::secondary),
+                    col.push(
+                        container(
+                            container(
+                                column![
+                                    keybind,
+                                    command,
+                                    key_pressed,
+                                    row![
+                                        horizontal_space(),
+                                        button(icons::check())
+                                            .on_press(Message::FinishEditBinding(idx)),
+                                        button(icons::copy())
+                                            .on_press(Message::Nothing)
+                                            .style(button::secondary),
+                                    ]
+                                    .spacing(10),
+                                ]
+                                .spacing(10),
+                            )
+                            .padding(10)
+                            .style(|t| container::Style {
+                                background: None,
+                                ..container::bordered_box(t)
+                            }),
+                        )
+                        .padding(padding::top(5).bottom(5)),
                     )
-                    .padding(iced::padding::right(5))
-                    .align_y(iced::Center),
-                );
+                } else {
+                    let keys_count = binding.keys.len();
+                    let keybind = row![].push(
+                        container(binding.keys.iter().enumerate().fold(
+                            row![].spacing(5),
+                            |r, (i, m)| {
+                                if i == keys_count - 1 {
+                                    r.push(text(m))
+                                } else {
+                                    r.push(text(m)).push(SEPARATOR)
+                                }
+                            },
+                        ))
+                        .padding(padding::all(2).left(4).right(4))
+                        .style(container::dark),
+                    );
+                    let command = scrollable(text(&binding.command).wrapping(text::Wrapping::None))
+                        .direction(scrollable::Direction::Horizontal(
+                            scrollable::Scrollbar::new().width(5.0).scroller_width(5.0),
+                        ))
+                        .spacing(2.0);
 
-                col.push(b)
+                    let b = hover(
+                        row![keybind, text(" -> "), command]
+                            .height(30)
+                            .align_y(iced::Center)
+                            .padding(padding::right(60).top(2.5).bottom(2.5)),
+                        right(
+                            button(icons::edit())
+                                .on_press(Message::EditBinding(idx))
+                                .style(button::secondary),
+                        )
+                        .padding(padding::right(5))
+                        .align_y(iced::Center),
+                    );
+
+                    col.push(b)
+                }
             })
             .into();
 
@@ -232,7 +296,7 @@ impl Bindings {
                 .iter_names()
                 .fold(String::new(), |mut s, (n, _m)| {
                     if !s.is_empty() {
-                        s.push_str(" + ");
+                        s.push_str(SEPARATOR);
                     }
                     s.push_str(n);
                     s
@@ -282,9 +346,10 @@ fn mod_choose<'a>(idx: usize, binding_mods: &[String], pos: usize) -> Option<Ele
 
 fn keys(idx: usize, binding: &HotkeyBinding) -> Element<'_, Message> {
     let sb = split_binding(binding);
+    let joined_key = sb.keys.join(SEPARATOR);
     let key = widget::input(
         "",
-        sb.key.iter().next_back().map_or("", |s| s.as_str()),
+        joined_key,
         move |v| Message::ChangeBindingKey(idx, v),
         None,
     )
@@ -313,48 +378,87 @@ fn command_edit<'a>(
     theme: &'a Theme,
 ) -> Element<'a, Message> {
     let (main_cmd, rest) = split_command(command, commands);
-    let c = Some(command.clone());
-    opt_helpers::expandable_custom(
-        "Pause Hook",
-        Some("A command that should run on pause keybind trigger.  (default: None)"),
-        move |_, _| {
-            let pick = pick_list(commands, Some(main_cmd.to_string()), move |v| {
-                let cmd = if rest.is_empty() {
-                    format!("komorebic {v}")
+    iced::widget::Stack::new()
+        .push(opt_helpers::expandable_custom(
+            "Command",
+            Some("A command that should run when the keybind above is triggered."),
+            move |hovered, _expanded| {
+                let pick = pick_list(commands, Some(main_cmd.to_string()), move |v| {
+                    let cmd = if rest.is_empty() {
+                        format!("komorebic {v}")
+                    } else {
+                        format!("komorebic {v} {rest}")
+                    };
+                    Message::ChangeBindingCommand(idx, cmd)
+                });
+                let custom = widget::input(
+                    "",
+                    command,
+                    move |v| Message::ChangeBindingCommand(idx, v),
+                    None,
+                );
+                // .width(550);
+                column![
+                    row!["Komorebic commands:", pick]
+                        .push_maybe(
+                            commands_desc
+                                .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+                                .map(|_| {
+                                    container(icons::info()).style(move |t| {
+                                        if hovered {
+                                            container::Style {
+                                                text_color: Some(*crate::widget::BLUE),
+                                                ..container::transparent(t)
+                                            }
+                                        } else {
+                                            container::transparent(t)
+                                        }
+                                    })
+                                }),
+                        )
+                        .spacing(5),
+                    "Command:",
+                    custom,
+                    text(command),
+                ]
+                .width(iced::Shrink)
+                .padding(padding::bottom(10))
+                .spacing(10)
+            },
+            move || {
+                if let Some(items) =
+                    commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+                {
+                    vec![markdown(items, theme).map(Message::UrlClicked)]
                 } else {
-                    format!("komorebic {v} {rest}")
-                };
-                Message::ChangeBindingCommand(idx, cmd)
-            });
-            let c = c.as_ref().map_or("", String::as_str);
-            let custom =
-                widget::input("", c, |v| Message::ChangeBindingCommand(idx, v), None).width(550);
-            column![
-                row!["Komorebic commands:", pick].spacing(5),
-                "Command:",
-                // custom,
-                text(command.clone()),
-            ]
-            .width(iced::Shrink)
-            .spacing(10)
-        },
-        move || {
-            if let Some(items) =
-                commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-            {
-                vec![markdown(items, theme).map(Message::UrlClicked)]
-            } else {
-                vec![]
-            }
-        },
-        false,
-        true,
-        Message::ChangeBindingCommand(idx, String::new()),
-        None,
-    )
+                    vec![]
+                }
+            },
+            false,
+            false,
+            Message::ChangeBindingCommand(idx, String::new()),
+            None,
+        ))
+        .push_maybe(
+            commands_desc
+                .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+                .map(|_| {
+                    container(
+                        row![
+                            icons::info().size(12),
+                            text(" Command Documentation ").size(10),
+                            icons::down_chevron().size(12),
+                        ]
+                        .align_y(iced::Center),
+                    )
+                    .center_x(iced::Fill)
+                    .padding(padding::top(145))
+                }),
+        )
+        .into()
 }
 
-fn split_command<'a>(command: &'a String, commands: &'a [String]) -> (&'a str, &'a str) {
+fn split_command<'a>(command: &'a str, commands: &'a [String]) -> (&'a str, &'a str) {
     let mut final_command = "";
     let final_custom;
     if let Some((cmd, custom)) = commands.iter().find_map(|c| {
@@ -373,13 +477,13 @@ fn split_command<'a>(command: &'a String, commands: &'a [String]) -> (&'a str, &
 
 struct SplitBinding<'a> {
     modifiers: &'a [String],
-    key: &'a [String],
+    keys: &'a [String],
 }
 impl<'a> From<(&'a [String], &'a [String])> for SplitBinding<'a> {
     fn from(value: (&'a [String], &'a [String])) -> Self {
         Self {
             modifiers: value.0,
-            key: value.1,
+            keys: value.1,
         }
     }
 }
@@ -387,7 +491,7 @@ impl<'a> From<(&'a [String; 0], &'a [String; 0])> for SplitBinding<'a> {
     fn from(value: (&'a [String; 0], &'a [String; 0])) -> Self {
         Self {
             modifiers: value.0,
-            key: value.1,
+            keys: value.1,
         }
     }
 }
