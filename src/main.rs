@@ -47,7 +47,7 @@ lazy_static! {
         f
     };
     static ref NONE_STR: Arc<str> = Arc::from("[None]");
-    static ref SCREENS_TO_RESET: [Screen; 3] =
+    static ref SCREENS_BACK_TO_START: [Screen; 3] =
         [Screen::Rules, Screen::Transparency, Screen::LiveDebug];
 }
 
@@ -346,7 +346,7 @@ impl Komorice {
                             self.whkd.screen = screen.clone();
                         }
                         self.main_screen = screen;
-                        self.reset_screen();
+                        self.screen_to_start();
                         Task::none()
                     }
                 };
@@ -547,10 +547,10 @@ impl Komorice {
         }
     }
 
-    /// Checks if the current screen allows resetting and if it does, it applies the resetting
-    /// function for that screen.
-    fn reset_screen(&mut self) {
-        if SCREENS_TO_RESET.contains(&self.main_screen) {
+    /// Checks if the current screen allows going back to its first starting screen and if it does,
+    /// it applies the `to_start_screen` function to that screen.
+    fn screen_to_start(&mut self) {
+        if SCREENS_BACK_TO_START.contains(&self.main_screen) {
             match self.main_screen {
                 Screen::Home => {
                     unreachable!("should never try to reset home screen!")
@@ -563,7 +563,7 @@ impl Komorice {
                 Screen::Animations => self.animation = animation::Animation,
                 Screen::Theme => self.theme_screen = theme::Theme::default(),
                 Screen::Rules => self.rules = rules::Rules::default(),
-                Screen::LiveDebug => self.live_debug.reset_screen(),
+                Screen::LiveDebug => self.live_debug.to_start_screen(),
                 Screen::Settings => {
                     unreachable!("should never try to reset settings screen!")
                 }

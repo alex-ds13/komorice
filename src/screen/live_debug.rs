@@ -233,7 +233,7 @@ impl LiveDebug {
             .into()
     }
 
-    pub fn reset_screen(&mut self) {
+    pub fn to_start_screen(&mut self) {
         self.screen = Screen::Main;
     }
 }
