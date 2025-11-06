@@ -6,12 +6,11 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use iced::{
-    padding,
+    Element, Subscription, Task, Theme, padding,
     widget::{
         button, column, container, horizontal_space, hover, markdown, pick_list, right, row,
         scrollable, text,
     },
-    Element, Subscription, Task, Theme,
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
@@ -110,7 +109,10 @@ impl Bindings {
                             binding.keys.pop();
                         } else if keys_count >= 2 {
                             //TODO: show error to user
-                            println!("Failed to remove key {key} from binding since key count is {}, should be <=1", keys_count);
+                            println!(
+                                "Failed to remove key {key} from binding since key count is {}, should be <=1",
+                                keys_count
+                            );
                         }
                     } else {
                         println!("Adding/Updating a key");

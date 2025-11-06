@@ -1,16 +1,15 @@
 use crate::{
+    BOLD_FONT,
     apperror::{AppError, AppErrorKind},
     monitors::DisplayInfo,
     widget::{monitors_viewer, opt_helpers},
-    BOLD_FONT,
 };
 
 use std::{collections::HashMap, sync::Arc};
 
 use iced::{
-    padding,
+    Center, Element, Fill, Task, padding,
     widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text},
-    Center, Element, Fill, Task,
 };
 
 #[derive(Clone, Debug)]
@@ -112,7 +111,7 @@ impl LiveDebug {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         match self.screen {
             Screen::Main => self.main_view(),
             Screen::Monitors => self.monitors_view(),
@@ -120,7 +119,7 @@ impl LiveDebug {
         }
     }
 
-    fn main_view(&self) -> Element<Message> {
+    fn main_view(&self) -> Element<'_, Message> {
         let monitors =
             opt_helpers::opt_button("Monitors", None, Message::ChangeScreen(Screen::Monitors));
         let notifications = opt_helpers::opt_button(
@@ -140,7 +139,7 @@ impl LiveDebug {
         .into()
     }
 
-    fn monitors_view(&self) -> Element<Message> {
+    fn monitors_view(&self) -> Element<'_, Message> {
         let title = row![
             button(text("Live Debug").size(20).font(*BOLD_FONT))
                 .padding(0)
@@ -208,7 +207,7 @@ impl LiveDebug {
             .into()
     }
 
-    fn notifications_view(&self) -> Element<Message> {
+    fn notifications_view(&self) -> Element<'_, Message> {
         let title = row![
             button(text("Live Debug").size(20).font(*BOLD_FONT))
                 .padding(0)
@@ -233,7 +232,7 @@ impl LiveDebug {
             .into()
     }
 
-    pub fn to_start_screen(&mut self) {
+    pub fn goto_start_screen(&mut self) {
         self.screen = Screen::Main;
     }
 }

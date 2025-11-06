@@ -1,7 +1,7 @@
 use crate::config::{DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME};
 use crate::widget::opt_helpers;
 
-use iced::{widget::combo_box, Element, Task};
+use iced::{Element, Task, widget::combo_box};
 use komorebi_client::{KomorebiTheme, StaticConfig};
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -413,8 +413,8 @@ impl Theme {
                 }
             }
             Message::ChangeCatppuccinThemeName(name) => {
-                if let Some(name) = name {
-                    if let Some(KomorebiTheme::Catppuccin {
+                if let Some(name) = name
+                    && let Some(KomorebiTheme::Catppuccin {
                         name: _,
                         single_border,
                         stack_border,
@@ -427,21 +427,20 @@ impl Theme {
                         stackbar_background,
                         bar_accent,
                     }) = config.theme
-                    {
-                        config.theme = Some(KomorebiTheme::Catppuccin {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        });
-                    }
+                {
+                    config.theme = Some(KomorebiTheme::Catppuccin {
+                        name,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
                 }
             }
             Message::ChangeCatppuccinThemeSingleBorder(single_border) => {
@@ -745,8 +744,8 @@ impl Theme {
                 }
             }
             Message::ChangeBase16ThemeName(name) => {
-                if let Some(name) = name {
-                    if let Some(KomorebiTheme::Base16 {
+                if let Some(name) = name
+                    && let Some(KomorebiTheme::Base16 {
                         name: _,
                         single_border,
                         stack_border,
@@ -759,21 +758,20 @@ impl Theme {
                         stackbar_background,
                         bar_accent,
                     }) = config.theme
-                    {
-                        config.theme = Some(KomorebiTheme::Base16 {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        });
-                    }
+                {
+                    config.theme = Some(KomorebiTheme::Base16 {
+                        name,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
                 }
             }
             Message::ChangeBase16ThemeSingleBorder(single_border) => {
@@ -1149,7 +1147,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Single Border",
-                            Some("Border colour when the container contains a single window (default: Blue)"),
+                            Some(
+                                "Border colour when the container contains a single window (default: Blue)",
+                            ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
                             single_border.or(d_single_border),
@@ -1160,7 +1160,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stack Border",
-                            Some("Border colour when the container contains multiple windows (default: Green)"),
+                            Some(
+                                "Border colour when the container contains multiple windows (default: Green)",
+                            ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
                             stack_border.or(d_stack_border),
@@ -1171,7 +1173,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Monocle Border",
-                            Some("Border colour when the container is in monocle mode (default: Pink)"),
+                            Some(
+                                "Border colour when the container is in monocle mode (default: Pink)",
+                            ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
                             monocle_border.or(d_monocle_border),
@@ -1204,7 +1208,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Locked Border",
-                            Some("Border colour when the container is unfocused and locked (default: Red)"),
+                            Some(
+                                "Border colour when the container is unfocused and locked (default: Red)",
+                            ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
                             unfocused_locked_border.or(d_unfocused_locked_border),
@@ -1325,7 +1331,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Single Border",
-                            Some("Border colour when the container contains a single window (default: Base0D)"),
+                            Some(
+                                "Border colour when the container contains a single window (default: Base0D)",
+                            ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
                             single_border.or(d_single_border),
@@ -1336,7 +1344,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stack Border",
-                            Some("Border colour when the container contains multiple windows (default: Base0B)"),
+                            Some(
+                                "Border colour when the container contains multiple windows (default: Base0B)",
+                            ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
                             stack_border.or(d_stack_border),
@@ -1347,7 +1357,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Monocle Border",
-                            Some("Border colour when the container is in monocle mode (default: Base0F)"),
+                            Some(
+                                "Border colour when the container is in monocle mode (default: Base0F)",
+                            ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
                             monocle_border.or(d_monocle_border),
@@ -1380,7 +1392,9 @@ impl Theme {
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Locked Border",
-                            Some("Border colour when the container is unfocused and locked (default: Base08)"),
+                            Some(
+                                "Border colour when the container is unfocused and locked (default: Base08)",
+                            ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
                             unfocused_locked_border.or(d_unfocused_locked_border),

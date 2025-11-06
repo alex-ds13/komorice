@@ -14,8 +14,8 @@ mod widget;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    animation, border, general, home, live_debug, monitors, rules, sidebar, stackbar, theme,
-    transparency, ConfigType, Screen,
+    ConfigType, Screen, animation, border, general, home, live_debug, monitors, rules, sidebar,
+    stackbar, theme, transparency,
 };
 use crate::widget::{button_with_icon, icons};
 
@@ -23,12 +23,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use iced::{
-    padding,
+    Center, Element, Fill, Font, Right, Subscription, Task, Theme, padding,
     widget::{
         button, checkbox, column, container, horizontal_rule, horizontal_space, rich_text, row,
         scrollable, span, text, vertical_rule,
     },
-    Center, Element, Fill, Font, Right, Subscription, Task, Theme,
 };
 use lazy_static::lazy_static;
 
@@ -420,7 +419,7 @@ impl Komorice {
         Task::none()
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let main_screen: Element<Message> = match self.main_screen {
             Screen::Home => self.home.view().map(Message::Home),
             Screen::General => self.general.view(&self.config).map(Message::General),
@@ -563,7 +562,7 @@ impl Komorice {
                 Screen::Animations => self.animation = animation::Animation,
                 Screen::Theme => self.theme_screen = theme::Theme::default(),
                 Screen::Rules => self.rules = rules::Rules::default(),
-                Screen::LiveDebug => self.live_debug.to_start_screen(),
+                Screen::LiveDebug => self.live_debug.goto_start_screen(),
                 Screen::Settings => {
                     unreachable!("should never try to reset settings screen!")
                 }
@@ -573,7 +572,7 @@ impl Komorice {
         }
     }
 
-    fn save_warning(&self) -> container::Container<Message> {
+    fn save_warning(&self) -> container::Container<'_, Message> {
         let save = button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save));
         let cancel = button("Cancel")
             .on_press(Message::ToggleSaveModal)
@@ -618,17 +617,19 @@ impl Komorice {
         self.errors.push(apperror);
     }
 
-    fn errors_modal(&self) -> container::Container<Message> {
-        let mut errors_column = column![row![
-            text("Errors").size(30.0),
-            horizontal_space(),
-            button(text("❌").font(*EMOJI_FONT))
-                .on_press(Message::CloseErrorsModal)
-                .style(button::text),
+    fn errors_modal(&self) -> container::Container<'_, Message> {
+        let mut errors_column = column![
+            row![
+                text("Errors").size(30.0),
+                horizontal_space(),
+                button(text("❌").font(*EMOJI_FONT))
+                    .on_press(Message::CloseErrorsModal)
+                    .style(button::text),
+            ]
+            .spacing(10)
+            .padding([10, 0])
+            .align_y(Center),
         ]
-        .spacing(10)
-        .padding([10, 0])
-        .align_y(Center),]
         .spacing(10);
 
         let initial_col = column![].spacing(10).padding(padding::all(5.0).right(20.0));

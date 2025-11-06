@@ -1,9 +1,9 @@
-use crate::widget::{self, icons};
 use crate::Message;
+use crate::widget::{self, icons};
 
 use iced::{
-    widget::{column, container, row, text, Text},
     Border, Center, Color, Element, Fill,
+    widget::{Text, column, container, row, text},
 };
 
 #[derive(Debug, Clone)]
@@ -21,10 +21,12 @@ pub enum AppErrorKind {
 }
 
 impl AppError {
-    pub fn view(&self) -> Element<Message> {
-        column![row![self.kind.view(), text(&self.title).size(18)]
-            .spacing(10)
-            .align_y(Center)]
+    pub fn view(&self) -> Element<'_, Message> {
+        column![
+            row![self.kind.view(), text(&self.title).size(18)]
+                .spacing(10)
+                .align_y(Center)
+        ]
         .push_maybe(self.description.as_ref().map(|d| {
             container(text(d))
                 .width(Fill)
@@ -59,7 +61,7 @@ impl AppErrorKind {
         }
     }
 
-    fn icon(&self) -> Text {
+    fn icon(&self) -> Text<'_> {
         match self {
             AppErrorKind::Info => icons::info(),
             AppErrorKind::Warning => icons::warning(),
@@ -67,7 +69,7 @@ impl AppErrorKind {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         container(self.icon().size(20).color(Color {
             a: 0.9,
             ..Color::BLACK

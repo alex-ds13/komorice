@@ -9,9 +9,8 @@ use crate::{
 use std::path::PathBuf;
 
 use iced::{
-    padding,
+    Element, Task, padding,
     widget::{button, column, horizontal_rule, pick_list, row, text},
-    Element, Task,
 };
 use komorebi_client::{
     AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour,
@@ -587,24 +586,26 @@ fn get_aspect_ratio_description(
 ) -> Option<&'static str> {
     if let Some(selected) = selected {
         match selected {
-            crate::komo_interop::aspect_ratio::AspectRatio::Standard => {
-                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
-                Selected: 'Standard (4:3)' -> Use a 4:3 ratio when toggling windows to floating")
-            }
-            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen => {
-                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
-                Selected: 'Widescreen (16:9)' -> Use a 16:9 ratio when toggling windows to floating")
-            }
-            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide => {
-                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
-                Selected: 'Ultrawide (21:9)' -> Use a 21:9 ratio when toggling windows to floating")
-            }
-            crate::komo_interop::aspect_ratio::AspectRatio::Custom(_, _) => {
-                Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
-                Selected: 'Custom' -> Use a custom ratio when toggling windows to floating")
-            }
+            crate::komo_interop::aspect_ratio::AspectRatio::Standard => Some(
+                "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Standard (4:3)' -> Use a 4:3 ratio when toggling windows to floating",
+            ),
+            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen => Some(
+                "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Widescreen (16:9)' -> Use a 16:9 ratio when toggling windows to floating",
+            ),
+            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide => Some(
+                "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Ultrawide (21:9)' -> Use a 21:9 ratio when toggling windows to floating",
+            ),
+            crate::komo_interop::aspect_ratio::AspectRatio::Custom(_, _) => Some(
+                "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
+                Selected: 'Custom' -> Use a custom ratio when toggling windows to floating",
+            ),
         }
     } else {
-        Some("Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))")
+        Some(
+            "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))",
+        )
     }
 }

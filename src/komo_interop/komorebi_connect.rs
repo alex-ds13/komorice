@@ -5,14 +5,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use iced::{
-    futures::{channel::mpsc, SinkExt},
     Subscription,
+    futures::{SinkExt, channel::mpsc},
 };
 use komorebi_client::{SocketMessage, SubscribeOptions};
 
 pub fn connect() -> Subscription<Message> {
-    struct Worker;
-
     Subscription::run(|| {
         iced::stream::channel(10, |mut output: mpsc::Sender<Message>| async move {
             let subscriber_name = "komorice";

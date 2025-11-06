@@ -1,9 +1,8 @@
 #![allow(deprecated)]
 use crate::widget::opt_helpers::{label_with_description, opt_box};
 use iced::{
-    padding,
-    widget::{mouse_area, row, text, Component},
-    Center, Element,
+    Center, Element, padding,
+    widget::{Component, mouse_area, row, text},
 };
 
 pub struct OptButton<'a, Message, F, I>
@@ -99,8 +98,10 @@ where
     }
 
     fn view(&self, state: &Self::State) -> Element<'_, Self::Event> {
-        let main = row![label_with_description(text(&self.name), self.description)
-            .map(InternalMessage::Message),]
+        let main = row![
+            label_with_description(text(&self.name), self.description)
+                .map(InternalMessage::Message),
+        ]
         .push_maybe(
             self.element
                 .as_ref()

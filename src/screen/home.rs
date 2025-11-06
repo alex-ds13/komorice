@@ -3,8 +3,8 @@ use super::ConfigType;
 use crate::EMOJI_FONT;
 
 use iced::{
-    widget::{button, center, column, container, image, row, text, Space},
     Center, Element, Fill, Shrink, Task,
+    widget::{Space, button, center, column, container, image, row, text},
 };
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl Home {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let image = center(image("assets/komorice.png").width(256).height(256));
         let title = container(
             row![
@@ -93,7 +93,7 @@ impl Home {
         edit: Message,
         load: Message,
         new_file: Message,
-    ) -> Element<Message> {
+    ) -> Element<'_, Message> {
         let fixed_width = Space::new(180, Shrink);
         let edit = match config_type {
             ConfigType::Komorebi => self.has_loaded_config.then_some(edit),

@@ -2,16 +2,16 @@ use super::rule;
 
 use crate::config::DEFAULT_WORKSPACE_CONFIG;
 use crate::komo_interop::layout::{
-    Layout, LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE,
+    LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE, Layout,
 };
 use crate::utils::{DisplayOption, DisplayOptionCustom};
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers::to_description_text as td;
-use crate::widget::{icons, opt_helpers, ICONS};
+use crate::widget::{ICONS, icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
 
-use iced::widget::{button, column, container, horizontal_rule, pick_list, row, text, Space};
+use iced::widget::{Space, button, column, container, horizontal_rule, pick_list, row, text};
 use iced::{Center, Element, Fill, Shrink, Subscription, Task};
 use komorebi_client::{
     Axis, DefaultLayout, FloatingLayerBehaviour, MatchingRule, WindowContainerBehaviour,
@@ -121,12 +121,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                     self.layout_rules = value;
                 }
                 ConfigChange::LayoutRuleLimit((previous_limit, new_limit)) => {
-                    if let Some(layout_rules) = &mut self.layout_rules {
-                        if !layout_rules.contains_key(&new_limit) {
-                            if let Some(layout) = layout_rules.remove(&previous_limit) {
-                                layout_rules.insert(new_limit, layout);
-                            }
-                        }
+                    if let Some(layout_rules) = self.layout_rules.as_mut()
+                        && !layout_rules.contains_key(&new_limit)
+                        && let Some(layout) = layout_rules.remove(&previous_limit)
+                    {
+                        layout_rules.insert(new_limit, layout);
                     }
                 }
                 ConfigChange::LayoutRuleLayout((limit, new_layout)) => {
@@ -143,12 +142,11 @@ impl WorkspaceScreen for WorkspaceConfig {
                     self.window_container_behaviour_rules = value;
                 }
                 ConfigChange::BehaviourRuleLimit((previous_limit, new_limit)) => {
-                    if let Some(behaviour_rules) = &mut self.window_container_behaviour_rules {
-                        if !behaviour_rules.contains_key(&new_limit) {
-                            if let Some(layout) = behaviour_rules.remove(&previous_limit) {
-                                behaviour_rules.insert(new_limit, layout);
-                            }
-                        }
+                    if let Some(behaviour_rules) = self.window_container_behaviour_rules.as_mut()
+                        && !behaviour_rules.contains_key(&new_limit)
+                        && let Some(layout) = behaviour_rules.remove(&previous_limit)
+                    {
+                        behaviour_rules.insert(new_limit, layout);
                     }
                 }
                 ConfigChange::BehaviourRuleBehaviour((limit, new_behaviour)) => {
@@ -357,7 +355,9 @@ impl Workspace {
         );
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
-            Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: global)"),
+            Some(
+                "Enable or disable float override, which makes it so every new window opens in floating mode (default: global)",
+            ),
             ws_config.float_override,
             DEFAULT_WORKSPACE_CONFIG.float_override,
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
@@ -365,7 +365,7 @@ impl Workspace {
                 disable: ws_config.float_override.is_none(),
                 label: Some("Global"),
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
-            })
+            }),
         );
         let floating_layer_behaviour = opt_helpers::choose_with_disable_default(
             "Floating Layer Behaviour",
@@ -551,19 +551,17 @@ fn layout_rule<'a>(
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus().style(|t| text::Style {
+        button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewLayoutRule)
-        .style(button::text);
-        add_button
+        .style(button::text)
     } else {
-        let remove_button = button(icons::delete().style(|t| text::Style {
+        button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveLayoutRule(limit))
-        .style(button::text);
-        remove_button
+        .style(button::text)
     };
     row![
         text("If windows open >="),
@@ -654,19 +652,17 @@ fn behaviour_rule<'a>(
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus().style(|t| text::Style {
+        button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewBehaviourRule)
-        .style(button::text);
-        add_button
+        .style(button::text)
     } else {
-        let remove_button = button(icons::delete().style(|t| text::Style {
+        button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveBehaviourRule(limit))
-        .style(button::text);
-        remove_button
+        .style(button::text)
     };
     row![
         text("If windows open >="),

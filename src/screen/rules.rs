@@ -1,11 +1,10 @@
 use super::rule::{self, Rule};
 
-use crate::{widget::opt_helpers, BOLD_FONT, ITALIC_FONT};
+use crate::{BOLD_FONT, ITALIC_FONT, widget::opt_helpers};
 
 use iced::{
-    padding,
-    widget::{button, column, container, horizontal_rule, row, scrollable, text, Column},
-    Center, Element, Fill, Subscription, Task,
+    Center, Element, Fill, Subscription, Task, padding,
+    widget::{Column, button, column, container, horizontal_rule, row, scrollable, text},
 };
 use komorebi_client::{MatchingRule, StaticConfig};
 

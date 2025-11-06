@@ -377,7 +377,7 @@ impl Border {
     }
 }
 
-fn border_config_from_static(config: &StaticConfig) -> BorderConfig {
+fn border_config_from_static(config: &StaticConfig) -> BorderConfig<'_> {
     BorderConfig {
         border: config.border.as_ref(),
         border_colours: config.border_colours.as_ref(),
@@ -388,7 +388,7 @@ fn border_config_from_static(config: &StaticConfig) -> BorderConfig {
     }
 }
 
-fn border_config_from_static_mut(config: &mut StaticConfig) -> BorderConfigMut {
+fn border_config_from_static_mut(config: &mut StaticConfig) -> BorderConfigMut<'_> {
     BorderConfigMut {
         border: &mut config.border,
         border_colours: &mut config.border_colours,
