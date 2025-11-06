@@ -1,7 +1,7 @@
 use crate::{
+    KOMOREBI_VERSION, Message,
     apperror::{AppError, AppErrorKind},
     screen::monitors::DisplayInfo,
-    Message, KOMOREBI_VERSION,
 };
 
 use std::sync::Arc;
@@ -9,8 +9,8 @@ use std::time::Duration;
 use std::{collections::HashMap, path::PathBuf};
 
 use iced::{
-    futures::{channel::mpsc, SinkExt},
     Subscription, Task,
+    futures::{SinkExt, channel::mpsc},
 };
 use komorebi_client::{
     AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
@@ -23,9 +23,8 @@ use komorebi_client::{
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
 use notify_debouncer_mini::{
-    new_debouncer,
+    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer, new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
-    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 use smol::channel::{self, Receiver};
 
@@ -217,11 +216,7 @@ pub fn sanitize_value<T: Clone + PartialEq>(
     getter: impl Fn(&StaticConfig) -> &Option<T>,
 ) -> Option<T> {
     let default_value = getter(&DEFAULT_CONFIG);
-    if value == *default_value {
-        None
-    } else {
-        value
-    }
+    if value == *default_value { None } else { value }
 }
 
 /// Merge the `DEFAULT_CONFIG` values on `config`. For each value that is `None` on `config`

@@ -24,26 +24,27 @@
 use std::collections::HashMap;
 
 use iced::{
+    Alignment, Background, Border, Color, Element, Event, Length, Padding, Pixels, Point,
+    Rectangle, Renderer, Shadow, Size, Theme, Vector,
     advanced::{
+        Clipboard, Layout, Overlay, Renderer as _, Shell, Text, Widget,
         graphics::geometry::Renderer as _,
         layout::{Limits, Node},
         overlay, renderer,
         text::Renderer as _,
         widget::tree::{self, Tag, Tree},
-        Clipboard, Layout, Overlay, Renderer as _, Shell, Text, Widget,
     },
     alignment::{Horizontal, Vertical},
     event, keyboard,
     mouse::{self, Cursor},
     touch,
     widget::{
+        Button, Column, Row, TextInput,
         canvas::{self, LineCap, Path, Stroke},
         container, row, text,
         text::Wrapping,
-        text_input, Button, Column, Row, TextInput,
+        text_input,
     },
-    Alignment, Background, Border, Color, Element, Event, Length, Padding, Pixels, Point,
-    Rectangle, Renderer, Shadow, Size, Theme, Vector,
 };
 
 /// An input element for picking colors.

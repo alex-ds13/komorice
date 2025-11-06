@@ -3,20 +3,20 @@ use crate::screen::monitors::DisplayInfo;
 use std::collections::HashMap;
 
 use iced::{
+    Border, Element, Event,
+    Length::Shrink,
+    Padding, Point, Shadow,
     advanced::{
+        Clipboard, Shell, Widget,
         graphics::core::touch,
         layout::{self, Layout, Limits, Node},
         mouse,
         renderer::Quad,
         widget::tree::Tree,
-        Clipboard, Shell, Widget,
     },
     border::Radius,
-    Border, Element, Event,
-    Length::Shrink,
-    Padding, Point, Shadow,
 };
-use iced::{alignment, Length, Rectangle, Size};
+use iced::{Length, Rectangle, Size, alignment};
 
 pub struct Monitors<'a, Message> {
     monitors: &'a HashMap<usize, DisplayInfo>,
@@ -150,15 +150,15 @@ where
                         // })
                     },
                 ); //,
-                   // println!("{:#?}", &n);
-                   // println!("CHECKING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
-                   // if r.x + 2.0 * Self::DEFAULT_PADDING < 0.0 {
-                   //     origin_point.x += n.bounds().width;
-                   // }
-                   // if r.y + 2.0 * Self::DEFAULT_PADDING < 0.0 {
-                   //     // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
-                   //     origin_point.y += n.bounds().height;
-                   // }
+                // println!("{:#?}", &n);
+                // println!("CHECKING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
+                // if r.x + 2.0 * Self::DEFAULT_PADDING < 0.0 {
+                //     origin_point.x += n.bounds().width;
+                // }
+                // if r.y + 2.0 * Self::DEFAULT_PADDING < 0.0 {
+                //     // println!("GROWING ORIGIN: r.y -> {}, origin.y -> {}, bounds.y -> {}", r.y, origin_point.y, n.bounds().height);
+                //     origin_point.y += n.bounds().height;
+                // }
 
                 let x_offset = if r.x == top_left.x {
                     0.0
@@ -330,11 +330,9 @@ where
                     let bounds = child_layout.bounds();
                     let mouse_over = cursor.is_over(bounds);
 
-                    if mouse_over {
-                        if let Some(on_pressed) = &self.on_selected {
-                            shell.publish((on_pressed)(*idx));
-                            shell.capture_event();
-                        }
+                    if mouse_over && let Some(on_pressed) = &self.on_selected {
+                        shell.publish((on_pressed)(*idx));
+                        shell.capture_event();
                     }
                 }
             }

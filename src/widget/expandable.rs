@@ -1,12 +1,11 @@
 #![allow(deprecated)]
 use crate::widget::opt_helpers::{
-    disable_checkbox, label_element_with_description, opt_box, opt_box_style_bottom,
-    opt_box_style_top, reset_button, DisableArgs,
+    DisableArgs, disable_checkbox, label_element_with_description, opt_box, opt_box_style_bottom,
+    opt_box_style_top, reset_button,
 };
 use iced::{
-    padding,
-    widget::{column, horizontal_rule, mouse_area, row, text, Column, Component},
-    Center, Element,
+    Center, Element, padding,
+    widget::{Column, Component, column, horizontal_rule, mouse_area, row, text},
 };
 
 pub struct Expandable<'a, Message, F, E, I>
@@ -238,11 +237,7 @@ where
         //         .interaction(iced::mouse::Interaction::NotAllowed)
         // };
 
-        let element = if self
-            .bottom_elements
-            .as_ref()
-            .is_some_and(|_| state.is_expanded || self.force_expand)
-        {
+        if self.bottom_elements.as_ref().is_some() && (state.is_expanded || self.force_expand) {
             let children = (self.bottom_elements.as_ref().unwrap())()
                 .into_iter()
                 .map(|e| e.map(InternalMessage::Message))
@@ -270,8 +265,7 @@ where
                 .into()
         } else {
             column![area(opt_box(main))].into()
-        };
-        element
+        }
     }
 }
 

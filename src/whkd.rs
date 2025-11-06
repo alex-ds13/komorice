@@ -9,14 +9,13 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use async_compat::Compat;
 use iced::{
-    futures::{channel::mpsc, SinkExt},
-    widget::markdown,
     Element, Subscription, Task, Theme,
+    futures::{SinkExt, channel::mpsc},
+    widget::markdown,
 };
 use notify_debouncer_mini::{
-    new_debouncer,
+    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer, new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
-    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 use smol::channel::{self, Receiver, Sender};
 pub use whkd_core::{HotkeyBinding, Shell, Whkdrc};
@@ -330,6 +329,7 @@ pub fn worker() -> Subscription<Message> {
 
                         let path = config_path();
                         if matches!(std::fs::exists(&path), Ok(false) | Err(_)) {
+                            // If the path doesn't exist, we save the default version to create it
                             if let Err(apperror) = save(DEFAULT_WHKDRC.clone()).await {
                                 match output.send(Message::AppError(apperror)).await {
                                     Ok(_) => {}

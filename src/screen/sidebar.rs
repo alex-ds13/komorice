@@ -3,11 +3,10 @@ use super::{ConfigType, Screen};
 use crate::SCREENS_BACK_TO_START;
 
 use iced::{
-    padding,
-    widget::{button, column, container, horizontal_rule, scrollable, Container, Space},
     Element,
     Length::{Fill, Shrink},
-    Task,
+    Task, padding,
+    widget::{Container, Space, button, column, container, horizontal_rule, scrollable},
 };
 
 #[derive(Clone, Debug)]
@@ -66,7 +65,7 @@ impl Sidebar {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self, config_type: &ConfigType) -> Element<Message> {
+    pub fn view(&self, config_type: &ConfigType) -> Element<'_, Message> {
         let home = container(
             button(Screen::Home)
                 .on_press(Message::SetHomeScreen)
@@ -103,7 +102,7 @@ impl Sidebar {
         }
     }
 
-    fn get_screens(&self, config_type: &ConfigType) -> Vec<Element<Message>> {
+    fn get_screens(&self, config_type: &ConfigType) -> Vec<Element<'_, Message>> {
         match config_type {
             ConfigType::Komorebi => [
                 Screen::General,
@@ -128,7 +127,7 @@ impl Sidebar {
     }
 }
 
-fn screen_button(screen: Screen, selected: &Screen) -> Container<Message> {
+fn screen_button(screen: Screen, selected: &Screen) -> Container<'_, Message> {
     let is_selected = &screen == selected;
     container(
         button(&screen)

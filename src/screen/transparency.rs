@@ -1,12 +1,11 @@
 use super::rule::{self, Rule};
 
 use crate::config::DEFAULT_CONFIG;
-use crate::{widget::opt_helpers, BOLD_FONT};
+use crate::{BOLD_FONT, widget::opt_helpers};
 
 use iced::{
-    padding,
+    Element, Fill, Subscription, Task, padding,
     widget::{button, column, container, horizontal_rule, row, text},
-    Element, Fill, Subscription, Task,
 };
 use komorebi_client::{MatchingRule, StaticConfig};
 
@@ -125,9 +124,13 @@ impl Transparency {
                 ),
                 opt_helpers::number_with_disable_default_option(
                     "Transparency Alpha",
-                    Some("Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
-                        Value must be greater or equal to 0.0"),
-                    config.transparency_alpha.or(DEFAULT_CONFIG.transparency_alpha),
+                    Some(
+                        "Alpha value for unfocused window transparency [[0-255]] (default: 200)\n\n\
+                        Value must be greater or equal to 0.0",
+                    ),
+                    config
+                        .transparency_alpha
+                        .or(DEFAULT_CONFIG.transparency_alpha),
                     DEFAULT_CONFIG.transparency_alpha,
                     |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
                     None,

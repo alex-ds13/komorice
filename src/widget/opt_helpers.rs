@@ -1,22 +1,22 @@
 #![allow(dead_code)]
 use super::{
-    color_picker::{color_picker, HexString},
+    ICONS,
+    color_picker::{HexString, color_picker},
     expandable::Expandable,
-    icons, number_input, opt_button as opt_button_internal, ICONS,
+    icons, number_input, opt_button as opt_button_internal,
 };
 
-use crate::{widget, BOLD_FONT, EMOJI_FONT};
+use crate::{BOLD_FONT, EMOJI_FONT, widget};
 
 use std::fmt::Display;
 use std::str::FromStr;
 
 use iced::{
-    border, padding,
+    Background, Center, Color, Element, Fill, border, padding,
     widget::{
-        button, checkbox, column, combo_box, container, horizontal_rule, mouse_area, pick_list,
-        row, scrollable, text, toggler, Button, Column, Container, Row, Text,
+        Button, Column, Container, Row, Text, button, checkbox, column, combo_box, container,
+        horizontal_rule, mouse_area, pick_list, row, scrollable, text, toggler,
     },
-    Background, Center, Color, Element, Fill,
 };
 use num_traits::{Bounded, Num, NumAssignOps};
 
@@ -128,7 +128,7 @@ pub fn to_description_text(t: Text) -> Text {
     .wrapping(text::Wrapping::WordOrGlyph)
 }
 
-pub fn description_text(s: &str) -> Text {
+pub fn description_text(s: &str) -> Text<'_> {
     to_description_text(text(s))
 }
 
@@ -334,7 +334,7 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
                 .height(Fill)
         };
 
-        let element = row![
+        row![
             align_buttons(add_buttons),
             delete_button,
             align_buttons(move_buttons),
@@ -342,9 +342,7 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
         ]
         .spacing(10)
         .height(iced::Shrink)
-        .align_y(Center);
-
-        element
+        .align_y(Center)
     };
 
     opt_custom_button(name, description, on_press.clone(), element)
@@ -879,21 +877,17 @@ where
     };
     let on_default = (on_selected)(default_value.as_ref().map(|df| df.borrow()).cloned());
     let selected_description: Element<'a, Message> = (|| {
-        if !options_descriptions.is_empty() {
-            if let Some(ref selected) = selected {
-                if let Some(i) = (options.borrow() as &[T])
-                    .iter()
-                    .position(|v| v == selected.borrow())
-                {
-                    if let Some((_, d)) = options_descriptions
-                        .into_iter()
-                        .enumerate()
-                        .find(|(idx, _)| i == *idx)
-                    {
-                        return d;
-                    }
-                }
-            }
+        if !options_descriptions.is_empty()
+            && let Some(ref selected) = selected
+            && let Some(i) = (options.borrow() as &[T])
+                .iter()
+                .position(|v| v == selected.borrow())
+            && let Some((_, d)) = options_descriptions
+                .into_iter()
+                .enumerate()
+                .find(|(idx, _)| i == *idx)
+        {
+            return d;
         }
         iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
     })();
@@ -944,21 +938,17 @@ where
     };
     let on_default = (on_selected)(default_value.as_ref().map(|df| df.borrow()).cloned());
     let selected_description: Element<'a, Message> = (|| {
-        if !options_descriptions.is_empty() {
-            if let Some(ref selected) = selected {
-                if let Some(i) = (options.borrow() as &[T])
-                    .iter()
-                    .position(|v| v == selected.borrow())
-                {
-                    if let Some((_, d)) = options_descriptions
-                        .into_iter()
-                        .enumerate()
-                        .find(|(idx, _)| i == *idx)
-                    {
-                        return d;
-                    }
-                }
-            }
+        if !options_descriptions.is_empty()
+            && let Some(ref selected) = selected
+            && let Some(i) = (options.borrow() as &[T])
+                .iter()
+                .position(|v| v == selected.borrow())
+            && let Some((_, d)) = options_descriptions
+                .into_iter()
+                .enumerate()
+                .find(|(idx, _)| i == *idx)
+        {
+            return d;
         }
         iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
     })();
@@ -1023,18 +1013,15 @@ where
     };
     let on_default = (on_selected)(default_value.clone());
     let selected_description: Element<'a, Message> = (|| {
-        if !options_descriptions.is_empty() {
-            if let Some(ref selected) = selected {
-                if let Some(i) = options.options().iter().position(|v| v == selected) {
-                    if let Some((_, d)) = options_descriptions
-                        .into_iter()
-                        .enumerate()
-                        .find(|(idx, _)| i == *idx)
-                    {
-                        return d;
-                    }
-                }
-            }
+        if !options_descriptions.is_empty()
+            && let Some(ref selected) = selected
+            && let Some(i) = options.options().iter().position(|v| v == selected)
+            && let Some((_, d)) = options_descriptions
+                .into_iter()
+                .enumerate()
+                .find(|(idx, _)| i == *idx)
+        {
+            return d;
         }
         iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
     })();

@@ -4,20 +4,19 @@ use super::{
 };
 
 use crate::{
+    BOLD_FONT,
     config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     widget::{icons, monitors_viewer, opt_helpers},
-    BOLD_FONT,
 };
 
 use std::collections::{BTreeMap, HashMap};
 
 use iced::{
-    padding,
+    Center, Element, Fill, Shrink, Subscription, Task, padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, horizontal_space, row, scrollable,
-        text, Space,
+        Space, button, checkbox, column, container, horizontal_rule, horizontal_space, row,
+        scrollable, text,
     },
-    Center, Element, Fill, Shrink, Subscription, Task,
 };
 use komorebi_client::{MonitorConfig, Rect};
 
@@ -245,11 +244,11 @@ impl Monitors {
                 }
             }
             Message::ChangeIndexPreferenceIndex(idx, new_idx) => {
-                if let Some(dip) = display_index_preferences {
-                    if let Some(preference) = dip.remove(&idx) {
-                        dip.insert(new_idx, preference);
-                        *display_info = get_display_information(display_index_preferences);
-                    }
+                if let Some(dip) = display_index_preferences
+                    && let Some(preference) = dip.remove(&idx)
+                {
+                    dip.insert(new_idx, preference);
+                    *display_info = get_display_information(display_index_preferences);
                 }
             }
             Message::ChangeIndexPreferenceId(idx, new_id) => {
@@ -273,10 +272,12 @@ impl Monitors {
         display_index_preferences: &'a Option<HashMap<usize, String>>,
     ) -> Element<'a, Message> {
         let mut main_title = if let Some(idx) = self.monitor_to_config {
-            row![button(text("Monitors > ").size(20).font(*BOLD_FONT))
-                .on_press(Message::ConfigMonitor(idx))
-                .padding(0)
-                .style(button::text)]
+            row![
+                button(text("Monitors > ").size(20).font(*BOLD_FONT))
+                    .on_press(Message::ConfigMonitor(idx))
+                    .padding(0)
+                    .style(button::text)
+            ]
         } else {
             row![text("Monitors:").size(20).font(*BOLD_FONT)]
         };
@@ -455,19 +456,17 @@ fn index_preference<'a>(
         .max_width(200)
         .width(Fill);
     let final_button = if is_add {
-        let add_button = button(icons::plus().style(|t| text::Style {
+        button(icons::plus().style(|t| text::Style {
             color: t.palette().primary.into(),
         }))
         .on_press(Message::AddNewIndexPreference)
-        .style(button::text);
-        add_button
+        .style(button::text)
     } else {
-        let remove_button = button(icons::delete().style(|t| text::Style {
+        button(icons::delete().style(|t| text::Style {
             color: t.palette().danger.into(),
         }))
         .on_press(Message::RemoveIndexPreference(index))
-        .style(button::text);
-        remove_button
+        .style(button::text)
     };
     row![
         text("Use config index "),
@@ -532,7 +531,7 @@ pub fn get_display_information(
     let mut configs_used = Vec::new();
 
     let devices_count = devices.len();
-    let res = devices
+    devices
         .into_iter()
         .flat_map(|display| {
             let preferred_config_idx = display_index_preferences.as_ref().and_then(|dpi| {
@@ -557,6 +556,5 @@ pub fn get_display_information(
                 None
             }
         })
-        .collect();
-    res
+        .collect()
 }

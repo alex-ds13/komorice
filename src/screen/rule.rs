@@ -3,9 +3,8 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 use std::collections::HashSet;
 
 use iced::{
-    padding,
-    widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
-    Center, Element, Fill, Right, Shrink, Subscription, Task, Top,
+    Center, Element, Fill, Right, Shrink, Subscription, Task, Top, padding,
+    widget::{Row, Space, button, column, container, pick_list, row, text, text_input},
 };
 use komorebi_client::{ApplicationIdentifier, IdWithIdentifier, MatchingRule, MatchingStrategy};
 use lazy_static::lazy_static;
@@ -214,18 +213,18 @@ impl Rule {
                 }
             }
             Message::RemoveRule(idx) => {
-                if let Some(rules) = rules {
-                    if rules.get(idx).is_some() {
-                        rules.remove(idx);
-                        self.rules_editing.remove(&idx);
-                    }
+                if let Some(rules) = rules
+                    && rules.get(idx).is_some()
+                {
+                    rules.remove(idx);
                 }
+                self.rules_editing.remove(&idx);
             }
             Message::CopyRule(idx) => {
-                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx)) {
-                    if let Ok(rule_str) = serde_json::to_string_pretty(&rule) {
-                        let _ = clipboard_win::set_clipboard_string(&rule_str);
-                    }
+                if let Some(rule) = rules.as_mut().and_then(|rls| rls.get_mut(idx))
+                    && let Ok(rule_str) = serde_json::to_string_pretty(&rule)
+                {
+                    let _ = clipboard_win::set_clipboard_string(&rule_str);
                 }
             }
             Message::CopyNewRule => {
@@ -240,12 +239,12 @@ impl Rule {
                 }
             }
             Message::PasteRule => {
-                if let Ok(content) = clipboard_win::get_clipboard_string() {
-                    if let Ok(rule) = serde_json::from_str::<MatchingRule>(&content) {
-                        match rule {
-                            MatchingRule::Simple(rule) => self.new_rule = vec![rule],
-                            MatchingRule::Composite(rls) => self.new_rule = rls,
-                        }
+                if let Ok(content) = clipboard_win::get_clipboard_string()
+                    && let Ok(rule) = serde_json::from_str::<MatchingRule>(&content)
+                {
+                    match rule {
+                        MatchingRule::Simple(rule) => self.new_rule = vec![rule],
+                        MatchingRule::Composite(rls) => self.new_rule = rls,
                     }
                 }
             }
@@ -394,48 +393,52 @@ impl Rule {
                 .width(Shrink)
                 .padding(padding::right(90))
                 .into(),
-                column![row![]
+                column![
+                    row![]
+                        .push_maybe(
+                            self.rules_editing.contains(&idx).then_some(
+                                button(icons::check())
+                                    .on_press(Message::ToggleRuleEdit(idx, false))
+                                    .style(button::primary),
+                            )
+                        )
+                        .push_maybe(
+                            self.rules_editing.contains(&idx).then_some(
+                                button(icons::delete())
+                                    .on_press(Message::RemoveRule(idx))
+                                    .style(button::danger),
+                            )
+                        )
+                        .spacing(10)
+                        .align_y(Center)
+                        .width(80)
+                        .height(Fill)
+                ]
+                .width(Fill)
+                .align_x(Right)
+                .into(),
+            ]),
+            column![
+                row![]
                     .push_maybe(
-                        self.rules_editing.contains(&idx).then_some(
-                            button(icons::check())
-                                .on_press(Message::ToggleRuleEdit(idx, false))
-                                .style(button::primary),
+                        (!self.rules_editing.contains(&idx)).then_some(
+                            button(icons::edit())
+                                .on_press(Message::ToggleRuleEdit(idx, true))
+                                .style(button::secondary),
                         )
                     )
                     .push_maybe(
-                        self.rules_editing.contains(&idx).then_some(
-                            button(icons::delete())
-                                .on_press(Message::RemoveRule(idx))
-                                .style(button::danger),
+                        (!self.rules_editing.contains(&idx)).then_some(
+                            button(icons::copy())
+                                .on_press(Message::CopyRule(idx))
+                                .style(button::secondary),
                         )
                     )
                     .spacing(10)
                     .align_y(Center)
                     .width(80)
-                    .height(Fill)]
-                .width(Fill)
-                .align_x(Right)
-                .into(),
-            ]),
-            column![row![]
-                .push_maybe(
-                    (!self.rules_editing.contains(&idx)).then_some(
-                        button(icons::edit())
-                            .on_press(Message::ToggleRuleEdit(idx, true))
-                            .style(button::secondary),
-                    )
-                )
-                .push_maybe(
-                    (!self.rules_editing.contains(&idx)).then_some(
-                        button(icons::copy())
-                            .on_press(Message::CopyRule(idx))
-                            .style(button::secondary),
-                    )
-                )
-                .spacing(10)
-                .align_y(Center)
-                .width(80)
-                .height(Fill)]
+                    .height(Fill)
+            ]
             .width(Fill)
             .align_x(Right),
         )

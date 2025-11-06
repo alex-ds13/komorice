@@ -35,8 +35,8 @@ use super::number_input::cursor::{self, Cursor};
 use super::number_input::editor::Editor;
 use super::number_input::value::Value;
 
-use iced_core::text::IntoFragment;
 use iced_core as core;
+use iced_core::text::IntoFragment;
 
 use core::alignment;
 use core::clipboard::{self, Clipboard};
@@ -400,6 +400,7 @@ where
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Draws the [`TextInput`] with the given [`Renderer`], overriding its
     /// [`Value`] if provided.
     ///
@@ -469,8 +470,7 @@ where
                     let is_cursor_visible = !is_disabled
                         && ((focus.now - focus.updated_at).as_millis()
                             / CURSOR_BLINK_INTERVAL_MILLIS)
-                            % 2
-                            == 0;
+                            .is_multiple_of(2);
 
                     let cursor = if is_cursor_visible {
                         Some((
@@ -1123,12 +1123,12 @@ where
             Event::Keyboard(keyboard::Event::KeyReleased { key, .. }) => {
                 let state = state::<Renderer>(tree);
 
-                if state.is_focused.is_some() {
-                    if let keyboard::Key::Character("v") = key.as_ref() {
-                        state.is_pasting = None;
+                if state.is_focused.is_some()
+                    && let keyboard::Key::Character("v") = key.as_ref()
+                {
+                    state.is_pasting = None;
 
-                        shell.capture_event();
-                    }
+                    shell.capture_event();
                 }
 
                 state.is_pasting = None;
@@ -1202,22 +1202,21 @@ where
             Event::Window(window::Event::RedrawRequested(now)) => {
                 let state = state::<Renderer>(tree);
 
-                if let Some(focus) = &mut state.is_focused {
-                    if focus.is_window_focused {
-                        if matches!(state.cursor.state(&self.value), cursor::State::Index(_)) {
-                            focus.now = *now;
+                if let Some(focus) = &mut state.is_focused
+                    && focus.is_window_focused
+                {
+                    if matches!(state.cursor.state(&self.value), cursor::State::Index(_)) {
+                        focus.now = *now;
 
-                            let millis_until_redraw = CURSOR_BLINK_INTERVAL_MILLIS
-                                - (*now - focus.updated_at).as_millis()
-                                    % CURSOR_BLINK_INTERVAL_MILLIS;
+                        let millis_until_redraw = CURSOR_BLINK_INTERVAL_MILLIS
+                            - (*now - focus.updated_at).as_millis() % CURSOR_BLINK_INTERVAL_MILLIS;
 
-                            shell.request_redraw_at(
-                                *now + Duration::from_millis(millis_until_redraw as u64),
-                            );
-                        }
-
-                        shell.request_input_method(&self.input_method(state, layout, &self.value));
+                        shell.request_redraw_at(
+                            *now + Duration::from_millis(millis_until_redraw as u64),
+                        );
                     }
+
+                    shell.request_input_method(&self.input_method(state, layout, &self.value));
                 }
             }
             _ => {}

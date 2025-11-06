@@ -47,12 +47,12 @@ use iced::keyboard;
 use iced::keyboard::key;
 use iced::time::{Duration, Instant};
 use iced::touch;
-use iced::widget::{button, Button};
+use iced::widget::{Button, button};
 use iced::window;
 use iced::{
-    border::{self, Border},
     Alignment, Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
     Task, Theme, Vector,
+    border::{self, Border},
 };
 use iced_core::input_method::{self, InputMethod};
 use num_traits::{Bounded, Num, NumAssignOps};
@@ -680,8 +680,7 @@ where
                     let is_cursor_visible = !is_disabled
                         && ((focus.now - focus.updated_at).as_millis()
                             / CURSOR_BLINK_INTERVAL_MILLIS)
-                            % 2
-                            == 0;
+                            .is_multiple_of(2);
 
                     let cursor = if is_cursor_visible {
                         Some((
@@ -769,11 +768,8 @@ where
 
             renderer.fill_paragraph(
                 paragraph,
-                text_bounds.anchor(
-                    paragraph.min_bounds(),
-                    Alignment::Start,
-                    Alignment::Center,
-                ) + Vector::new(alignment_offset - offset, 0.0),
+                text_bounds.anchor(paragraph.min_bounds(), Alignment::Start, Alignment::Center)
+                    + Vector::new(alignment_offset - offset, 0.0),
                 if text.is_empty() {
                     style.placeholder
                 } else {
@@ -913,38 +909,38 @@ where
             shell.capture_event();
         }
 
-        if !buttons_messages.is_empty() {
-            if let Some(on_input) = &self.on_input {
-                for message in buttons_messages {
-                    match message {
-                        ButtonMessage::Increment => {
-                            if let Ok(mut parsed) = self.value.to_string().parse() {
-                                if parsed < self.max {
-                                    parsed += T::one();
-                                    if parsed > self.max {
-                                        parsed = self.max.clone();
-                                    }
-                                    let message = (on_input)(parsed);
-                                    shell.publish(message);
-                                }
+        if !buttons_messages.is_empty()
+            && let Some(on_input) = &self.on_input
+        {
+            for message in buttons_messages {
+                match message {
+                    ButtonMessage::Increment => {
+                        if let Ok(mut parsed) = self.value.to_string().parse()
+                            && parsed < self.max
+                        {
+                            parsed += T::one();
+                            if parsed > self.max {
+                                parsed = self.max.clone();
                             }
-                        }
-                        ButtonMessage::Decrement => {
-                            if let Ok(mut parsed) = self.value.to_string().parse() {
-                                if parsed > self.min {
-                                    parsed -= T::one();
-                                    if parsed < self.min {
-                                        parsed = self.min.clone();
-                                    }
-                                    let message = (on_input)(parsed);
-                                    shell.publish(message);
-                                }
-                            }
+                            let message = (on_input)(parsed);
+                            shell.publish(message);
                         }
                     }
-                    shell.request_redraw();
-                    shell.capture_event();
+                    ButtonMessage::Decrement => {
+                        if let Ok(mut parsed) = self.value.to_string().parse()
+                            && parsed > self.min
+                        {
+                            parsed -= T::one();
+                            if parsed < self.min {
+                                parsed = self.min.clone();
+                            }
+                            let message = (on_input)(parsed);
+                            shell.publish(message);
+                        }
+                    }
                 }
+                shell.request_redraw();
+                shell.capture_event();
             }
         }
 
@@ -1074,15 +1070,15 @@ where
                     } else {
                         // Widget was unfocused, lets check if the current value is valid, if it
                         // isn't we send the default value
-                        if let Some(on_input) = &self.on_input {
-                            if self.value.to_string().parse::<T>().is_err() {
-                                let message = on_input(T::default());
-                                shell.publish(message);
-                                state.is_empty = false;
-                                state.is_empty_neg = false;
-                                shell.request_redraw();
-                                shell.capture_event();
-                            }
+                        if let Some(on_input) = &self.on_input
+                            && self.value.to_string().parse::<T>().is_err()
+                        {
+                            let message = on_input(T::default());
+                            shell.publish(message);
+                            state.is_empty = false;
+                            state.is_empty_neg = false;
+                            shell.request_redraw();
+                            shell.capture_event();
                         }
                     }
                 } else if state.is_focused() {
@@ -1542,14 +1538,14 @@ where
 
                             // Widget was unfocused, lets check if the current value is valid, if it
                             // isn't we send the default value
-                            if let Some(on_input) = &self.on_input {
-                                if self.value.to_string().parse::<T>().is_err() {
-                                    let message = on_input(T::default());
-                                    shell.publish(message);
-                                    state.is_empty = false;
-                                    state.is_empty_neg = false;
-                                    shell.request_redraw();
-                                }
+                            if let Some(on_input) = &self.on_input
+                                && self.value.to_string().parse::<T>().is_err()
+                            {
+                                let message = on_input(T::default());
+                                shell.publish(message);
+                                state.is_empty = false;
+                                state.is_empty_neg = false;
+                                shell.request_redraw();
                             }
 
                             shell.capture_event();
@@ -1559,12 +1555,12 @@ where
                 }
             }
             Event::Keyboard(keyboard::Event::KeyReleased { key, .. }) => {
-                if state.is_focused.is_some() {
-                    if let keyboard::Key::Character("v") = key.as_ref() {
-                        state.is_pasting = None;
+                if state.is_focused.is_some()
+                    && let keyboard::Key::Character("v") = key.as_ref()
+                {
+                    state.is_pasting = None;
 
-                        shell.capture_event();
-                    }
+                    shell.capture_event();
                 }
 
                 state.is_pasting = None;
@@ -1648,22 +1644,21 @@ where
                 }
             }
             Event::Window(window::Event::RedrawRequested(now)) => {
-                if let Some(focus) = &mut state.is_focused {
-                    if focus.is_window_focused {
-                        if matches!(state.cursor.state(&self.value), cursor::State::Index(_)) {
-                            focus.now = *now;
+                if let Some(focus) = &mut state.is_focused
+                    && focus.is_window_focused
+                {
+                    if matches!(state.cursor.state(&self.value), cursor::State::Index(_)) {
+                        focus.now = *now;
 
-                            let millis_until_redraw = CURSOR_BLINK_INTERVAL_MILLIS
-                                - (*now - focus.updated_at).as_millis()
-                                    % CURSOR_BLINK_INTERVAL_MILLIS;
+                        let millis_until_redraw = CURSOR_BLINK_INTERVAL_MILLIS
+                            - (*now - focus.updated_at).as_millis() % CURSOR_BLINK_INTERVAL_MILLIS;
 
-                            shell.request_redraw_at(
-                                *now + Duration::from_millis(millis_until_redraw as u64),
-                            );
-                        }
-
-                        shell.request_input_method(&self.input_method(state, layout, &self.value));
+                        shell.request_redraw_at(
+                            *now + Duration::from_millis(millis_until_redraw as u64),
+                        );
                     }
+
+                    shell.request_input_method(&self.input_method(state, layout, &self.value));
                 }
             }
             _ => {}

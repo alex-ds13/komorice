@@ -1,22 +1,20 @@
+use crate::BOLD_FONT;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::widget::opt_helpers;
-use crate::BOLD_FONT;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use iced::futures::{channel::mpsc, SinkExt};
+use iced::futures::{SinkExt, channel::mpsc};
 use iced::{
-    padding,
+    Element, Fill, Subscription, Task, padding,
     theme::{Custom, Theme},
     widget::{column, horizontal_rule, text},
-    Element, Fill, Subscription, Task,
 };
 use notify_debouncer_mini::{
-    new_debouncer,
+    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer, new_debouncer,
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
-    DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer,
 };
 use serde::{Deserialize, Serialize};
 use smol::channel::{self, Receiver};
@@ -97,7 +95,7 @@ impl Settings {
         (Action::None, Task::none())
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let title = text("Settings:").size(20).font(*BOLD_FONT);
         let theme = opt_helpers::choose(
             "Theme:",
@@ -111,7 +109,7 @@ impl Settings {
             Some(
                 "By default Komorice tries to be as simple as possible for new users by showing \
                 only the simpler options that should be required to use and configure komorebi. If some option you \
-                want to configure isn't showing, enable this setting."
+                want to configure isn't showing, enable this setting.",
             ),
             self.show_advanced,
             Message::ChangedShowAdvanced,
@@ -189,6 +187,7 @@ pub fn worker() -> Subscription<Message> {
 
                         let path = config_path();
                         if matches!(std::fs::exists(&path), Ok(false) | Err(_)) {
+                            // If the path doesn't exist, we save the default version to create it
                             if let Err(apperror) = save(Settings::default()).await {
                                 match output.send(Message::AppError(apperror)).await {
                                     Ok(_) => {}

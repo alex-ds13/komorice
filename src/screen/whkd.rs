@@ -3,15 +3,15 @@ pub mod bindings;
 pub use bindings::Bindings;
 
 use crate::{
-    whkd::{HotkeyBinding, Shell, Whkdrc, DEFAULT_WHKDRC},
+    whkd::{DEFAULT_WHKDRC, HotkeyBinding, Shell, Whkdrc},
     widget::{self, opt_helpers},
 };
 
 use std::collections::HashMap;
 
 use iced::{
-    widget::{column, markdown, pick_list, row, text},
     Element, Subscription, Task, Theme,
+    widget::{column, markdown, pick_list, row, text},
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
@@ -72,12 +72,11 @@ impl Whkd {
             Message::PBMod(i, mod1) => {
                 let sb = split_binding(&whkdrc.pause_binding);
                 if mod1.is_empty() {
-                    if i < sb.modifiers.len() {
-                        if let Some(pause_binding) = &mut whkdrc.pause_binding {
-                            if i < pause_binding.len() {
-                                pause_binding.remove(i);
-                            }
-                        }
+                    if i < sb.modifiers.len()
+                        && let Some(pause_binding) = &mut whkdrc.pause_binding
+                        && i < pause_binding.len()
+                    {
+                        pause_binding.remove(i);
                     }
                 } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
                     if let Some(k) = pause_binding.iter_mut().filter(|m| is_mod(m)).nth(i) {
@@ -87,7 +86,10 @@ impl Whkd {
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
-                        println!("Failed to add mod {mod1} to pause_binding with index {i} since len is {}", pause_binding.len());
+                        println!(
+                            "Failed to add mod {mod1} to pause_binding with index {i} since len is {}",
+                            pause_binding.len()
+                        );
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![mod1.clone()]);
@@ -100,7 +102,10 @@ impl Whkd {
                         whkdrc.pause_binding.as_mut().and_then(|pb| pb.pop());
                     } else if keys_count >= 2 {
                         //TODO: show error to user
-                        println!("Failed to remove key {key} from pause_binding since key count is {}, should be <=1", keys_count);
+                        println!(
+                            "Failed to remove key {key} from pause_binding since key count is {}, should be <=1",
+                            keys_count
+                        );
                     }
                 } else if let Some(pause_binding) = whkdrc.pause_binding.as_mut() {
                     if keys_count == 1 {
@@ -113,7 +118,10 @@ impl Whkd {
                         pause_binding.push(key);
                     } else {
                         //TODO: show error to user
-                        println!("Failed to add key {key} to pause_binding since key count is {}, should be <=1", keys_count);
+                        println!(
+                            "Failed to add key {key} to pause_binding since key count is {}, should be <=1",
+                            keys_count
+                        );
                     }
                 } else {
                     whkdrc.pause_binding = Some(vec![key]);
@@ -420,7 +428,7 @@ pub enum NavMessage {
 }
 
 pub fn navigation_sub() -> Subscription<NavMessage> {
-    use iced::{event, mouse, Event};
+    use iced::{Event, event, mouse};
 
     event::listen_with(|e, s, _| {
         if matches!(s, event::Status::Ignored) {

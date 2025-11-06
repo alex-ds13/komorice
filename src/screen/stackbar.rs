@@ -1,10 +1,10 @@
 use crate::widget::opt_helpers;
 
 use iced::{
-    widget::{column, container, horizontal_space, row, text},
     Center, Element, Fill,
     Length::Fixed,
     Task,
+    widget::{column, container, horizontal_space, row, text},
 };
 use komorebi_client::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
 
@@ -198,7 +198,9 @@ impl Stackbar {
                 ),
                 opt_helpers::input_with_disable_default(
                     "Stackbar Font Family",
-                    Some("Tabs font family name. (default: empty string)\n\nWhen empty use system font."),
+                    Some(
+                        "Tabs font family name. (default: empty string)\n\nWhen empty use system font.",
+                    ),
                     "",
                     config
                         .tabs
@@ -311,7 +313,7 @@ fn into_color(colour: Colour) -> iced::Color {
     }
 }
 
-fn tabs_demo(config: &StackbarConfig) -> Element<Message> {
+fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
     let background = config
         .tabs
         .as_ref()

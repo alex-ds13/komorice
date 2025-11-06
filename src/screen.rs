@@ -16,7 +16,7 @@ pub mod workspace;
 
 use std::fmt::{Display, Formatter};
 
-use iced::{widget::value, Element};
+use iced::{Element, widget::value};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Screen {
