@@ -66,8 +66,7 @@ impl Transparency {
             },
             Message::SetScreen(screen) => {
                 if matches!(screen, Screen::TransparencyIgnoreRules) {
-                    let rules = get_rules_from_config_mut(config);
-                    self.rule = Rule::new(rules);
+                    self.rule = Rule::new();
                 }
                 self.screen = screen;
             }

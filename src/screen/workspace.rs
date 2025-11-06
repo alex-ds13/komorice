@@ -100,8 +100,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                     screen,
                     Screen::WorkspaceRules | Screen::InitialWorkspaceRules
                 ) {
-                    let rules = get_rules_from_config_mut(self, &screen);
-                    workspace.rule = rule::Rule::new(rules);
+                    workspace.rule = rule::Rule::new();
                     workspace.screen = screen.clone();
                     let task = iced::widget::scrollable::scroll_to(
                         iced::widget::scrollable::Id::new("monitors_scrollable"),
