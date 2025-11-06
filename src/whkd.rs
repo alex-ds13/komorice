@@ -438,35 +438,8 @@ pub fn load_task() -> Task<Message> {
 }
 
 pub async fn load() -> Result<Whkdrc, AppError> {
-    use smol::prelude::*;
-    use whkd_parser::chumsky::Parser;
-
-    let mut contents = String::new();
-
-    let file_open_res = smol::fs::File::open(config_path()).await;
-
-    let mut file = match file_open_res {
-        Ok(file) => file,
-        Err(error) => {
-            println!("Failed to find 'whkdrc' file.\nError: {}", error);
-            return Err(AppError {
-                title: "Failed to find 'whkdrc' file.".into(),
-                description: None,
-                kind: AppErrorKind::Info,
-            });
-        }
-    };
-
-    file.read_to_string(&mut contents)
-        .await
-        .map_err(|e| AppError {
-            title: "Error opening 'whkdrc' file.".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
-
     smol::unblock(|| {
-        whkd_parser::parser().parse(contents).map_err(|e| AppError {
+        whkd_parser::load(&config_path()).map_err(|e| AppError {
             title: "Error reading 'whkdrc' file.".into(),
             description: Some(format!("{e:#?}")),
             kind: AppErrorKind::Error,
