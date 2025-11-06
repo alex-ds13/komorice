@@ -9,8 +9,8 @@ clipboard-win= "5"
 dirs = "6"
 iced = { version = "0.14.0-dev", features = ["advanced", "canvas", "debug", "image", "lazy", "markdown", "smol"] }
 iced_core = { version = "0.14.0-dev" }
-komorebi-client = { git = "https://github.com/LGUG2Z/komorebi.git", default-features = false }
-komorebi-themes = { git = "https://github.com/LGUG2Z/komorebi.git", default-features = false }
+komorebi-client = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/public-placement", default-features = false }
+komorebi-themes = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/public-placement", default-features = false }
 lazy_static = "1"
 notify-debouncer-mini = "*"
 num-traits = "0.2.19"

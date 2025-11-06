@@ -47,6 +47,7 @@ pub enum Layout {
     Rows,
     Columns,
     Grid,
+    Scrolling,
 }
 
 impl From<DefaultLayout> for Layout {
@@ -60,6 +61,7 @@ impl From<DefaultLayout> for Layout {
             DefaultLayout::UltrawideVerticalStack => Layout::UltrawideVerticalStack,
             DefaultLayout::Grid => Layout::Grid,
             DefaultLayout::RightMainVerticalStack => Layout::RightMainVerticalStack,
+            DefaultLayout::Scrolling => Layout::Scrolling,
         }
     }
 }
@@ -75,6 +77,7 @@ impl From<Layout> for DefaultLayout {
             Layout::UltrawideVerticalStack => DefaultLayout::UltrawideVerticalStack,
             Layout::Grid => DefaultLayout::Grid,
             Layout::RightMainVerticalStack => DefaultLayout::RightMainVerticalStack,
+            Layout::Scrolling => DefaultLayout::Scrolling,
         }
     }
 }
@@ -90,6 +93,7 @@ impl Display for Layout {
             Layout::UltrawideVerticalStack => write!(f, "\u{E806} UltrawideVerticalStack"),
             Layout::Grid => write!(f, "\u{E802} Grid"),
             Layout::RightMainVerticalStack => write!(f, "\u{E804} RightMainVerticalStack"),
+            Layout::Scrolling => write!(f, "   Scrolling"),
         }
     }
 }

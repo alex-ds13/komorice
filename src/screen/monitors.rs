@@ -140,7 +140,7 @@ impl Monitors {
                     idx,
                     MonitorConfig {
                         workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
-                        ..*DEFAULT_MONITOR_CONFIG
+                        ..DEFAULT_MONITOR_CONFIG.clone()
                     },
                 );
                 let mut previous_m = self.monitors.insert(
@@ -162,14 +162,14 @@ impl Monitors {
                 if idx + 1 >= monitors_config.len() {
                     monitors_config.push(MonitorConfig {
                         workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
-                        ..*DEFAULT_MONITOR_CONFIG
+                        ..DEFAULT_MONITOR_CONFIG.clone()
                     });
                 } else {
                     monitors_config.insert(
                         idx + 1,
                         MonitorConfig {
                             workspaces: Vec::from([DEFAULT_WORKSPACE_CONFIG.clone()]),
-                            ..*DEFAULT_MONITOR_CONFIG
+                            ..DEFAULT_MONITOR_CONFIG.clone()
                         },
                     );
                 }

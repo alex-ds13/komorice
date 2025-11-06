@@ -86,9 +86,9 @@ impl LiveDebug {
                             (
                                 i,
                                 DisplayInfo {
-                                    device_id: monitor.device_id().clone(),
-                                    serial_number_id: monitor.serial_number_id().clone(),
-                                    size: *monitor.size(),
+                                    device_id: monitor.device_id.clone(),
+                                    serial_number_id: monitor.serial_number_id.clone(),
+                                    size: monitor.size,
                                 },
                             )
                         })
@@ -171,10 +171,10 @@ impl LiveDebug {
                 col = col.push(horizontal_rule(2.0));
                 col = col.push(column![
                     text!("Monitor {}:", monitor_idx).size(16),
-                    text!("    -> Id: {}", device.id()),
-                    text!("    -> DeviceId: {}", device.device_id()),
-                    text!("    -> Device: {}", device.device()),
-                    text!("    -> Size: {:#?}", device.size()),
+                    text!("    -> Id: {}", device.id),
+                    text!("    -> DeviceId: {}", device.device_id),
+                    text!("    -> Device: {}", device.device),
+                    text!("    -> Size: {:#?}", device.size),
                 ]);
                 col = col.push(horizontal_rule(2.0));
                 col = col.push(text("Workspaces:"));
@@ -186,11 +186,11 @@ impl LiveDebug {
                         col.push(column![
                             row![
                                 text("Name: "),
-                                text!("{}", workspace.name().as_ref().map_or("", |v| v))
+                                text!("{}", workspace.name.as_ref().map_or("", |v| v))
                             ],
                             row![
                                 text("Tile: "),
-                                checkbox("Tile", *workspace.tile()).on_toggle(move |c| {
+                                checkbox("Tile", workspace.tile).on_toggle(move |c| {
                                     Message::ToggleWorkspaceTile(monitor_idx, idx, c)
                                 })
                             ],
