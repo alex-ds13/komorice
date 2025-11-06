@@ -1,5 +1,7 @@
 use crate::widget::{self, button_with_icon, icons, opt_helpers};
 
+use std::collections::HashSet;
+
 use iced::{
     padding,
     widget::{button, column, container, pick_list, row, text, text_input, Row, Space},
@@ -66,19 +68,16 @@ pub enum Action {
 pub struct Rule {
     pub show_new_rule: bool,
     pub new_rule: Vec<IdWithIdentifier>,
-    pub rules_edit: Vec<bool>,
+    pub rules_editing: HashSet<usize>,
     pub clipboard_has_rule: bool,
 }
 
 impl Rule {
-    pub fn new(rules: &Option<Vec<MatchingRule>>) -> Self {
+    pub fn new() -> Self {
         Rule {
             show_new_rule: false,
             new_rule: Vec::new(),
-            rules_edit: rules.as_ref().map_or(Vec::new(), |rules| {
-                let count = rules.len();
-                vec![false; count]
-            }),
+            rules_editing: HashSet::new(),
             clipboard_has_rule: false,
         }
     }
@@ -116,20 +115,16 @@ impl Rule {
                     if let Some(rules) = rules {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         rules.push(rule);
-                        self.rules_edit.push(false);
                     } else {
                         let rule = MatchingRule::Simple(self.new_rule.remove(0));
                         *rules = Some(vec![rule]);
-                        self.rules_edit = vec![false];
                     }
                 } else if let Some(rules) = rules {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     rules.push(rule);
-                    self.rules_edit.push(false);
                 } else {
                     let rule = MatchingRule::Composite(self.new_rule.drain(..).collect());
                     *rules = Some(vec![rule]);
-                    self.rules_edit = vec![false];
                 }
                 self.new_rule = vec![default_rule()];
             }
@@ -140,11 +135,10 @@ impl Rule {
                 self.new_rule.remove(idx);
             }
             Message::ToggleRuleEdit(idx, edit) => {
-                if let (Some(_rule), Some(rule_edit)) = (
-                    rules.as_mut().and_then(|rls| rls.get_mut(idx)),
-                    self.rules_edit.get_mut(idx),
-                ) {
-                    *rule_edit = edit;
+                if edit {
+                    self.rules_editing.insert(idx);
+                } else {
+                    self.rules_editing.remove(&idx);
                 }
             }
             Message::ChangeRuleKind(idx, sub_idx, kind) => {
@@ -223,7 +217,7 @@ impl Rule {
                 if let Some(rules) = rules {
                     if rules.get(idx).is_some() {
                         rules.remove(idx);
-                        self.rules_edit.remove(idx);
+                        self.rules_editing.remove(&idx);
                     }
                 }
             }
@@ -324,8 +318,8 @@ impl Rule {
                             column!["Match any window where:"]
                                 .push(rule_view(
                                     rule,
-                                    self.rules_edit[idx],
-                                    self.rules_edit[idx],
+                                    self.rules_editing.contains(&idx),
+                                    self.rules_editing.contains(&idx),
                                     move |v| Message::ChangeRuleKind(idx, 0, v),
                                     move |v| Message::ChangeRuleMatchingStrategy(idx, 0, Some(v)),
                                     move |v| Message::ChangeRuleId(idx, 0, v),
@@ -347,12 +341,12 @@ impl Rule {
                                     |col, (i, r)| {
                                         col.push(rule_view(
                                             r,
-                                            if self.rules_edit[idx] {
+                                            if self.rules_editing.contains(&idx) {
                                                 i == rules.len() - 1
                                             } else {
                                                 i != rules.len() - 1
                                             },
-                                            self.rules_edit[idx],
+                                            self.rules_editing.contains(&idx),
                                             move |v| Message::ChangeRuleKind(idx, i, v),
                                             move |v| {
                                                 Message::ChangeRuleMatchingStrategy(idx, i, Some(v))
@@ -402,14 +396,14 @@ impl Rule {
                 .into(),
                 column![row![]
                     .push_maybe(
-                        self.rules_edit[idx].then_some(
+                        self.rules_editing.contains(&idx).then_some(
                             button(icons::check())
                                 .on_press(Message::ToggleRuleEdit(idx, false))
                                 .style(button::primary),
                         )
                     )
                     .push_maybe(
-                        self.rules_edit[idx].then_some(
+                        self.rules_editing.contains(&idx).then_some(
                             button(icons::delete())
                                 .on_press(Message::RemoveRule(idx))
                                 .style(button::danger),
@@ -425,14 +419,14 @@ impl Rule {
             ]),
             column![row![]
                 .push_maybe(
-                    (!self.rules_edit[idx]).then_some(
+                    (!self.rules_editing.contains(&idx)).then_some(
                         button(icons::edit())
                             .on_press(Message::ToggleRuleEdit(idx, true))
                             .style(button::secondary),
                     )
                 )
                 .push_maybe(
-                    (!self.rules_edit[idx]).then_some(
+                    (!self.rules_editing.contains(&idx)).then_some(
                         button(icons::copy())
                             .on_press(Message::CopyRule(idx))
                             .style(button::secondary),

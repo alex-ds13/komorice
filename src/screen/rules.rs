@@ -78,8 +78,7 @@ impl Rules {
     ) -> (Action, Task<Message>) {
         match message {
             Message::SetScreen(screen) => {
-                let rules = get_rules_from_config_mut(config, &screen);
-                let rule = Rule::new(rules);
+                let rule = Rule::new();
                 self.rule_screen = Some((rule, screen));
             }
             Message::SetMainRulesScreen => {
