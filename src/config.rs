@@ -16,9 +16,9 @@ use komorebi_client::{
     AnimationStyle, AnimationsConfig, AppSpecificConfigurationPath, AspectRatio, BorderColours,
     BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
     FloatingLayerBehaviour, HidingBehaviour, KomorebiTheme, MonitorConfig, MoveBehaviour,
-    OperationBehaviour, PerAnimationPrefixConfig, PredefinedAspectRatio, Rgb, StackbarConfig,
-    StackbarLabel, StackbarMode, StaticConfig, TabsConfig, WindowContainerBehaviour,
-    WorkspaceConfig,
+    OperationBehaviour, PerAnimationPrefixConfig, Placement, PredefinedAspectRatio, Rgb,
+    StackbarConfig, StackbarLabel, StackbarMode, StaticConfig, TabsConfig,
+    WindowContainerBehaviour, WindowHandlingBehaviour, WorkspaceConfig,
 };
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
@@ -36,6 +36,16 @@ lazy_static! {
         resize_delta: Some(50),
         window_container_behaviour: Some(WindowContainerBehaviour::Create),
         float_override: Some(false),
+        //TODO: add to general screen
+        floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
+        //TODO: add to general screen
+        toggle_float_placement: Some(Placement::CenterAndResize),
+        //TODO: add to general screen
+        floating_layer_placement: Some(Placement::Center),
+        //TODO: add to general screen
+        float_override_placement: Some(Placement::None),
+        //TODO: add to general screen
+        float_rule_placement: Some(Placement::None),
         cross_monitor_move_behaviour: Some(MoveBehaviour::Swap),
         cross_boundary_behaviour: Some(CrossBoundaryBehaviour::Monitor),
         unmanaged_window_operation_behaviour: Some(OperationBehaviour::Op),
@@ -103,6 +113,8 @@ lazy_static! {
         floating_window_aspect_ratio: Some(AspectRatio::Predefined(
             PredefinedAspectRatio::Standard
         )),
+        //TODO: add to general screen
+        window_handling_behaviour: Some(WindowHandlingBehaviour::Sync),
     };
     pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
         container_padding: None,
@@ -111,10 +123,16 @@ lazy_static! {
         work_area_offset: None,
         window_based_work_area_offset: None,
         window_based_work_area_offset_limit: Some(1),
+        //TODO: add to monitor screen
+        wallpaper: None,
+        //TODO: add to monitor screen
+        floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
     };
     pub static ref DEFAULT_WORKSPACE_CONFIG: WorkspaceConfig = WorkspaceConfig {
         name: String::new(),
         layout: Some(DefaultLayout::BSP),
+        //TODO: add to workspace screen
+        layout_options: None,
         custom_layout: None,
         layout_rules: None,
         custom_layout_rules: None,
@@ -122,12 +140,18 @@ lazy_static! {
         workspace_padding: None,
         initial_workspace_rules: Some(Vec::new()),
         workspace_rules: Some(Vec::new()),
+        //TODO: add to workspace screen
+        work_area_offset: None,
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
         window_container_behaviour_rules: None,
         float_override: None,
+        //TODO: add to workspace screen
+        tile: Some(true),
         layout_flip: None,
         floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
+        //TODO: add to workspace screen
+        wallpaper: None,
     };
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
         name: Catppuccin::Macchiato,
@@ -171,7 +195,7 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
         for _ in 0..(physical_monitors_len - config_monitors_len) {
             config_monitors.push(MonitorConfig {
                 workspaces: vec![DEFAULT_WORKSPACE_CONFIG.clone()],
-                ..*DEFAULT_MONITOR_CONFIG
+                ..DEFAULT_MONITOR_CONFIG.clone()
             })
         }
     } else {
@@ -184,6 +208,7 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
                     workspaces: vec![komorebi_client::WorkspaceConfig {
                         name: String::new(),
                         layout: Some(komorebi_client::DefaultLayout::BSP),
+                        layout_options: None,
                         custom_layout: None,
                         layout_rules: None,
                         custom_layout_rules: None,
@@ -191,16 +216,21 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
                         workspace_padding: None,
                         initial_workspace_rules: None,
                         workspace_rules: None,
+                        work_area_offset: None,
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
                         window_container_behaviour_rules: None,
                         float_override: None,
+                        tile: None,
                         layout_flip: None,
                         floating_layer_behaviour: None,
+                        wallpaper: None,
                     }],
                     work_area_offset: None,
                     window_based_work_area_offset: None,
                     window_based_work_area_offset_limit: None,
+                    wallpaper: None,
+                    floating_layer_behaviour: None,
                 })
                 .collect(),
         );
@@ -238,6 +268,21 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
             .window_container_behaviour
             .or(DEFAULT_CONFIG.window_container_behaviour),
         float_override: config.float_override.or(DEFAULT_CONFIG.float_override),
+        floating_layer_behaviour: config
+            .floating_layer_behaviour
+            .or(DEFAULT_CONFIG.floating_layer_behaviour),
+        toggle_float_placement: config
+            .toggle_float_placement
+            .or(DEFAULT_CONFIG.toggle_float_placement),
+        floating_layer_placement: config
+            .floating_layer_placement
+            .or(DEFAULT_CONFIG.floating_layer_placement),
+        float_override_placement: config
+            .float_override_placement
+            .or(DEFAULT_CONFIG.float_override_placement),
+        float_rule_placement: config
+            .float_rule_placement
+            .or(DEFAULT_CONFIG.float_rule_placement),
         cross_monitor_move_behaviour: config
             .cross_monitor_move_behaviour
             .or(DEFAULT_CONFIG.cross_monitor_move_behaviour),
@@ -330,6 +375,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                         .map(|w| WorkspaceConfig {
                             name: w.name,
                             layout: w.layout,
+                            layout_options: w
+                                .layout_options
+                                .or(DEFAULT_WORKSPACE_CONFIG.layout_options),
                             custom_layout: w
                                 .custom_layout
                                 .or(DEFAULT_WORKSPACE_CONFIG.custom_layout.clone()),
@@ -351,6 +399,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             workspace_rules: w
                                 .workspace_rules
                                 .or(DEFAULT_WORKSPACE_CONFIG.workspace_rules.clone()),
+                            work_area_offset: w
+                                .work_area_offset
+                                .or(DEFAULT_WORKSPACE_CONFIG.work_area_offset),
                             apply_window_based_work_area_offset: w
                                 .apply_window_based_work_area_offset
                                 .or(DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset),
@@ -365,10 +416,12 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             float_override: w
                                 .float_override
                                 .or(DEFAULT_WORKSPACE_CONFIG.float_override),
+                            tile: w.tile.or(DEFAULT_WORKSPACE_CONFIG.tile),
                             layout_flip: w.layout_flip.or(DEFAULT_WORKSPACE_CONFIG.layout_flip),
                             floating_layer_behaviour: w
                                 .floating_layer_behaviour
                                 .or(DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour),
+                            wallpaper: w.wallpaper.or(DEFAULT_WORKSPACE_CONFIG.wallpaper.clone()),
                         })
                         .collect(),
                     work_area_offset: m
@@ -380,6 +433,10 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                     window_based_work_area_offset_limit: m
                         .window_based_work_area_offset_limit
                         .or(DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit),
+                    wallpaper: m.wallpaper.or(DEFAULT_MONITOR_CONFIG.wallpaper.clone()),
+                    floating_layer_behaviour: m
+                        .floating_layer_behaviour
+                        .or(DEFAULT_MONITOR_CONFIG.floating_layer_behaviour),
                 })
                 .collect()
         }),
@@ -585,8 +642,33 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                         }
                     }
                 }
+                KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                },
             })
-            .or(DEFAULT_CONFIG.theme),
+            .or(DEFAULT_CONFIG.theme.clone()),
         slow_application_identifiers: config
             .slow_application_identifiers
             .or(DEFAULT_CONFIG.slow_application_identifiers.clone()),
@@ -602,6 +684,9 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         floating_window_aspect_ratio: config
             .floating_window_aspect_ratio
             .or(DEFAULT_CONFIG.floating_window_aspect_ratio),
+        window_handling_behaviour: config
+            .window_handling_behaviour
+            .or(DEFAULT_CONFIG.window_handling_behaviour),
     }
 }
 
@@ -629,6 +714,21 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         float_override: config
             .float_override
             .and_then(|v| (DEFAULT_CONFIG.float_override != Some(v)).then_some(v)),
+        floating_layer_behaviour: config
+            .floating_layer_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.floating_layer_behaviour != Some(v)).then_some(v)),
+        toggle_float_placement: config
+            .toggle_float_placement
+            .and_then(|v| (DEFAULT_CONFIG.toggle_float_placement != Some(v)).then_some(v)),
+        floating_layer_placement: config
+            .floating_layer_placement
+            .and_then(|v| (DEFAULT_CONFIG.floating_layer_placement != Some(v)).then_some(v)),
+        float_override_placement: config
+            .float_override_placement
+            .and_then(|v| (DEFAULT_CONFIG.float_override_placement != Some(v)).then_some(v)),
+        float_rule_placement: config
+            .float_rule_placement
+            .and_then(|v| (DEFAULT_CONFIG.float_rule_placement != Some(v)).then_some(v)),
         cross_monitor_move_behaviour: config
             .cross_monitor_move_behaviour
             .and_then(|v| (DEFAULT_CONFIG.cross_monitor_move_behaviour != Some(v)).then_some(v)),
@@ -755,6 +855,10 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                         .map(|ws| WorkspaceConfig {
                             name: ws.name,
                             layout: ws.layout,
+                            layout_options: ws.layout_options.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.layout_options.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
                             custom_layout: ws.custom_layout.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.custom_layout.as_ref() != Some(&v))
                                     .then_some(v)
@@ -782,6 +886,10 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                                 (DEFAULT_WORKSPACE_CONFIG.workspace_rules.as_ref() != Some(&v))
                                     .then_some(v)
                             }),
+                            work_area_offset: ws.work_area_offset.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.work_area_offset.as_ref() != Some(&v))
+                                    .then_some(v)
+                            }),
                             apply_window_based_work_area_offset: ws
                                 .apply_window_based_work_area_offset
                                 .and_then(|v| {
@@ -807,11 +915,18 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             float_override: ws.float_override.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.float_override != Some(v)).then_some(v)
                             }),
+                            tile: ws.tile.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.tile != Some(v)).then_some(v)
+                            }),
                             layout_flip: ws.layout_flip.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.layout_flip != Some(v)).then_some(v)
                             }),
                             floating_layer_behaviour: ws.floating_layer_behaviour.and_then(|v| {
                                 (DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour != Some(v))
+                                    .then_some(v)
+                            }),
+                            wallpaper: ws.wallpaper.and_then(|v| {
+                                (DEFAULT_WORKSPACE_CONFIG.wallpaper.as_ref() != Some(&v))
                                     .then_some(v)
                             }),
                         })
@@ -829,6 +944,12 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             (DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit != Some(v))
                                 .then_some(v)
                         }),
+                    wallpaper: m.wallpaper.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.wallpaper.as_ref() != Some(&v)).then_some(v)
+                    }),
+                    floating_layer_behaviour: m.floating_layer_behaviour.and_then(|v| {
+                        (DEFAULT_MONITOR_CONFIG.floating_layer_behaviour != Some(v)).then_some(v)
+                    }),
                 })
                 .collect()
         }),
@@ -1097,8 +1218,33 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                         }
                     }
                 }
+                KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                } => KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                },
             })
-            .and_then(|v| (DEFAULT_CONFIG.theme != Some(v)).then_some(v)),
+            .and_then(|v| (DEFAULT_CONFIG.theme.as_ref() != Some(&v)).then_some(v)),
         slow_application_identifiers: config.slow_application_identifiers.and_then(|v| {
             (DEFAULT_CONFIG.slow_application_identifiers.as_ref() != Some(&v)).then_some(v)
         }),
@@ -1114,6 +1260,9 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         floating_window_aspect_ratio: config
             .floating_window_aspect_ratio
             .and_then(|v| (DEFAULT_CONFIG.floating_window_aspect_ratio != Some(v)).then_some(v)),
+        window_handling_behaviour: config
+            .window_handling_behaviour
+            .and_then(|v| (DEFAULT_CONFIG.window_handling_behaviour != Some(v)).then_some(v)),
     }
 }
 
@@ -1165,6 +1314,8 @@ impl ChangeConfig for StaticConfig {
                         work_area_offset: None,
                         window_based_work_area_offset: None,
                         window_based_work_area_offset_limit: None,
+                        wallpaper: None,
+                        floating_layer_behaviour: None,
                     });
                 }
                 f(&mut monitors[idx]);
@@ -1178,6 +1329,8 @@ impl ChangeConfig for StaticConfig {
                     work_area_offset: None,
                     window_based_work_area_offset: None,
                     window_based_work_area_offset_limit: None,
+                    wallpaper: None,
+                    floating_layer_behaviour: None,
                 };
                 idx + 1
             ];
@@ -1203,6 +1356,7 @@ impl ChangeConfig for StaticConfig {
                     monitor.workspaces.push(WorkspaceConfig {
                         name: String::default(),
                         layout: None,
+                        layout_options: None,
                         custom_layout: None,
                         layout_rules: None,
                         custom_layout_rules: None,
@@ -1210,12 +1364,15 @@ impl ChangeConfig for StaticConfig {
                         workspace_padding: None,
                         initial_workspace_rules: None,
                         workspace_rules: None,
+                        work_area_offset: None,
                         apply_window_based_work_area_offset: None,
                         window_container_behaviour: None,
                         window_container_behaviour_rules: None,
                         float_override: None,
+                        tile: None,
                         layout_flip: None,
                         floating_layer_behaviour: None,
+                        wallpaper: None,
                     });
                 }
                 f(&mut monitor.workspaces[workspace_idx]);
@@ -1486,12 +1643,11 @@ pub fn home_path() -> (PathBuf, HomePathType) {
 }
 
 pub fn unresolve_home_path(path: PathBuf) -> PathBuf {
-    let user_profile =
-        komorebi_client::resolve_home_path(PathBuf::from("$Env:USERPROFILE")).unwrap_or_default();
-    let komorebi_config_home =
-        komorebi_client::resolve_home_path(PathBuf::from("$Env:KOMOREBI_CONFIG_HOME"))
-            .unwrap_or_default();
-    let path = komorebi_client::resolve_home_path(path).unwrap_or_default();
+    use komorebi_client::PathExt;
+
+    let user_profile = PathBuf::from("$Env:USERPROFILE").replace_env();
+    let komorebi_config_home = PathBuf::from("$Env:KOMOREBI_CONFIG_HOME").replace_env();
+    let path = path.replace_env();
 
     if path == user_profile {
         PathBuf::from("$Env:USERPROFILE")

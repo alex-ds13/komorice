@@ -3,7 +3,7 @@ use crate::widget::opt_helpers;
 
 use iced::{Element, Task, widget::combo_box};
 use komorebi_client::{KomorebiTheme, StaticConfig};
-use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
+use komorebi_themes::{Base16, Base16Wrapper, Base16Value, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -338,6 +338,7 @@ pub enum ThemeType {
     None,
     Catppuccin,
     Base16,
+    Custom,
 }
 impl std::fmt::Display for ThemeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -345,6 +346,7 @@ impl std::fmt::Display for ThemeType {
             ThemeType::None => write!(f, "[None]"),
             ThemeType::Catppuccin => write!(f, "Catppuccin"),
             ThemeType::Base16 => write!(f, "Base16"),
+            ThemeType::Custom => write!(f, "Custom"),
         }
     }
 }
@@ -404,8 +406,10 @@ impl Theme {
             Message::ChangeThemeType(theme_type) => {
                 if let Some(theme_type) = theme_type {
                     match theme_type {
-                        ThemeType::Catppuccin => config.theme = Some(*DEFAULT_CATPPUCCIN_THEME),
-                        ThemeType::Base16 => config.theme = Some(*DEFAULT_BASE16_THEME),
+                        ThemeType::Catppuccin => config.theme = Some(DEFAULT_CATPPUCCIN_THEME.clone()),
+                        ThemeType::Base16 => config.theme = Some(DEFAULT_BASE16_THEME.clone()),
+                        //TODO: what should custom be here?
+                        ThemeType::Custom => config.theme = Some(DEFAULT_BASE16_THEME.clone()),
                         ThemeType::None => config.theme = None,
                     }
                 } else {
@@ -1082,6 +1086,7 @@ impl Theme {
         let theme_type = match config.theme.as_ref() {
             Some(KomorebiTheme::Catppuccin { .. }) => ThemeType::Catppuccin,
             Some(KomorebiTheme::Base16 { .. }) => ThemeType::Base16,
+            Some(KomorebiTheme::Custom { .. }) => ThemeType::Custom,
             None => ThemeType::None,
         };
         let mut contents: Vec<Element<Message>> = match theme_type {
@@ -1114,11 +1119,11 @@ impl Theme {
                         stackbar_background: d_stackbar_background,
                         bar_accent: d_bar_accent,
                     },
-                ) = (config.theme, *DEFAULT_CATPPUCCIN_THEME)
+                ) = (&config.theme, &*DEFAULT_CATPPUCCIN_THEME)
                 {
                     let t = name.as_theme();
-                    let get_color = |c: Option<CatppuccinValue>, d_c: Option<CatppuccinValue>| {
-                        iced::Color::from(c.or(d_c).unwrap().color32(t).to_normalized_gamma_f32())
+                    let get_color = |c: &Option<CatppuccinValue>, d_c: &Option<CatppuccinValue>| {
+                        iced::Color::from(c.or(*d_c).unwrap().color32(t).to_normalized_gamma_f32())
                     };
                     let single_border_color = get_color(single_border, d_single_border);
                     let stack_border_color = get_color(stack_border, d_stack_border);
@@ -1152,9 +1157,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            single_border.or(d_single_border),
+                            single_border.or(*d_single_border),
                             Message::ChangeCatppuccinThemeSingleBorder,
-                            d_single_border,
+                            *d_single_border,
                             None,
                             single_border_color,
                         ),
@@ -1165,9 +1170,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            stack_border.or(d_stack_border),
+                            stack_border.or(*d_stack_border),
                             Message::ChangeCatppuccinThemeStackBorder,
-                            d_stack_border,
+                            *d_stack_border,
                             None,
                             stack_border_color,
                         ),
@@ -1178,9 +1183,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            monocle_border.or(d_monocle_border),
+                            monocle_border.or(*d_monocle_border),
                             Message::ChangeCatppuccinThemeMonocleBorder,
-                            d_monocle_border,
+                            *d_monocle_border,
                             None,
                             monocle_border_color,
                         ),
@@ -1189,9 +1194,9 @@ impl Theme {
                             Some("Border colour when the window is floating (default: Yellow)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            floating_border.or(d_floating_border),
+                            floating_border.or(*d_floating_border),
                             Message::ChangeCatppuccinThemeFloatingBorder,
-                            d_floating_border,
+                            *d_floating_border,
                             None,
                             floating_border_color,
                         ),
@@ -1200,9 +1205,9 @@ impl Theme {
                             Some("Border colour when the container is unfocused (default: Base)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            unfocused_border.or(d_unfocused_border),
+                            unfocused_border.or(*d_unfocused_border),
                             Message::ChangeCatppuccinThemeUnfocusedBorder,
-                            d_unfocused_border,
+                            *d_unfocused_border,
                             None,
                             unfocused_border_color,
                         ),
@@ -1213,9 +1218,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            unfocused_locked_border.or(d_unfocused_locked_border),
+                            unfocused_locked_border.or(*d_unfocused_locked_border),
                             Message::ChangeCatppuccinThemeUnfocusedLockedBorder,
-                            d_unfocused_locked_border,
+                            *d_unfocused_locked_border,
                             None,
                             unfocused_locked_border_color,
                         ),
@@ -1224,9 +1229,9 @@ impl Theme {
                             Some("Stackbar focused tab text colour (default: Green)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            stackbar_focused_text.or(d_stackbar_focused_text),
+                            stackbar_focused_text.or(*d_stackbar_focused_text),
                             Message::ChangeCatppuccinThemeStackbarFocusedText,
-                            d_stackbar_focused_text,
+                            *d_stackbar_focused_text,
                             None,
                             stackbar_focused_text_color,
                         ),
@@ -1235,9 +1240,9 @@ impl Theme {
                             Some("Stackbar unfocused tab text colour (default: Text)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            stackbar_unfocused_text.or(d_stackbar_unfocused_text),
+                            stackbar_unfocused_text.or(*d_stackbar_unfocused_text),
                             Message::ChangeCatppuccinThemeStackbarUnfocusedText,
-                            d_stackbar_unfocused_text,
+                            *d_stackbar_unfocused_text,
                             None,
                             stackbar_unfocused_text_color,
                         ),
@@ -1246,9 +1251,9 @@ impl Theme {
                             Some("Stackbar tab background colour (default: Base)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            stackbar_background.or(d_stackbar_background),
+                            stackbar_background.or(*d_stackbar_background),
                             Message::ChangeCatppuccinThemeStackbarBackground,
-                            d_stackbar_background,
+                            *d_stackbar_background,
                             None,
                             stackbar_background_color,
                         ),
@@ -1257,9 +1262,9 @@ impl Theme {
                             Some("Komorebi status bar accent (default: Blue)"),
                             Vec::new(),
                             &CATPPUCCIN_VALUE_OPTIONS[..],
-                            bar_accent.or(d_bar_accent),
+                            bar_accent.or(*d_bar_accent),
                             Message::ChangeCatppuccinThemeBarAccent,
-                            d_bar_accent,
+                            *d_bar_accent,
                             None,
                             bar_accent_color,
                         ),
@@ -1296,11 +1301,11 @@ impl Theme {
                         stackbar_background: d_stackbar_background,
                         bar_accent: d_bar_accent,
                     },
-                ) = (config.theme, *DEFAULT_BASE16_THEME)
+                ) = (&config.theme, &*DEFAULT_BASE16_THEME)
                 {
-                    let get_color = |c: Option<Base16Value>, d_c: Option<Base16Value>| {
+                    let get_color = |c: &Option<Base16Value>, d_c: &Option<Base16Value>| {
                         iced::Color::from(
-                            c.or(d_c).unwrap().color32(name).to_normalized_gamma_f32(),
+                            c.or(*d_c).unwrap().color32(Base16Wrapper::Base16(*name)).to_normalized_gamma_f32(),
                         )
                     };
                     let single_border_color = get_color(single_border, d_single_border);
@@ -1324,9 +1329,9 @@ impl Theme {
                             Some("The Theme variant to use"),
                             Vec::new(),
                             &self.base16_state,
-                            Some(name),
+                            Some(*name),
                             Message::ChangeBase16ThemeName,
-                            Some(d_name),
+                            Some(*d_name),
                             None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
@@ -1336,9 +1341,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            single_border.or(d_single_border),
+                            single_border.or(*d_single_border),
                             Message::ChangeBase16ThemeSingleBorder,
-                            d_single_border,
+                            *d_single_border,
                             None,
                             single_border_color,
                         ),
@@ -1349,9 +1354,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stack_border.or(d_stack_border),
+                            stack_border.or(*d_stack_border),
                             Message::ChangeBase16ThemeStackBorder,
-                            d_stack_border,
+                            *d_stack_border,
                             None,
                             stack_border_color,
                         ),
@@ -1362,9 +1367,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            monocle_border.or(d_monocle_border),
+                            monocle_border.or(*d_monocle_border),
                             Message::ChangeBase16ThemeMonocleBorder,
-                            d_monocle_border,
+                            *d_monocle_border,
                             None,
                             monocle_border_color,
                         ),
@@ -1373,9 +1378,9 @@ impl Theme {
                             Some("Border colour when the window is floating (default: Base09)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            floating_border.or(d_floating_border),
+                            floating_border.or(*d_floating_border),
                             Message::ChangeBase16ThemeFloatingBorder,
-                            d_floating_border,
+                            *d_floating_border,
                             None,
                             floating_border_color,
                         ),
@@ -1384,9 +1389,9 @@ impl Theme {
                             Some("Border colour when the container is unfocused (default: Base01)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            unfocused_border.or(d_unfocused_border),
+                            unfocused_border.or(*d_unfocused_border),
                             Message::ChangeBase16ThemeUnfocusedBorder,
-                            d_unfocused_border,
+                            *d_unfocused_border,
                             None,
                             unfocused_border_color,
                         ),
@@ -1397,9 +1402,9 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            unfocused_locked_border.or(d_unfocused_locked_border),
+                            unfocused_locked_border.or(*d_unfocused_locked_border),
                             Message::ChangeBase16ThemeUnfocusedLockedBorder,
-                            d_unfocused_locked_border,
+                            *d_unfocused_locked_border,
                             None,
                             unfocused_locked_border_color,
                         ),
@@ -1408,9 +1413,9 @@ impl Theme {
                             Some("Stackbar focused tab text colour (default: Base0B)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_focused_text.or(d_stackbar_focused_text),
+                            stackbar_focused_text.or(*d_stackbar_focused_text),
                             Message::ChangeBase16ThemeStackbarFocusedText,
-                            d_stackbar_focused_text,
+                            *d_stackbar_focused_text,
                             None,
                             stackbar_focused_text_color,
                         ),
@@ -1419,9 +1424,9 @@ impl Theme {
                             Some("Stackbar unfocused tab text colour (default: Base05)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_unfocused_text.or(d_stackbar_unfocused_text),
+                            stackbar_unfocused_text.or(*d_stackbar_unfocused_text),
                             Message::ChangeBase16ThemeStackbarUnfocusedText,
-                            d_stackbar_unfocused_text,
+                            *d_stackbar_unfocused_text,
                             None,
                             stackbar_unfocused_text_color,
                         ),
@@ -1430,9 +1435,9 @@ impl Theme {
                             Some("Stackbar tab background colour (default: Base01)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_background.or(d_stackbar_background),
+                            stackbar_background.or(*d_stackbar_background),
                             Message::ChangeBase16ThemeStackbarBackground,
-                            d_stackbar_background,
+                            *d_stackbar_background,
                             None,
                             stackbar_background_color,
                         ),
@@ -1441,9 +1446,194 @@ impl Theme {
                             Some("Komorebi status bar accent (default: Base0D)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            bar_accent.or(d_bar_accent),
+                            bar_accent.or(*d_bar_accent),
                             Message::ChangeBase16ThemeBarAccent,
-                            d_bar_accent,
+                            *d_bar_accent,
+                            None,
+                            bar_accent_color,
+                        ),
+                    ]
+                } else {
+                    Vec::new()
+                }
+            }
+            ThemeType::Custom => {
+                //TODO: actually use custom theme
+                if let (
+                    Some(KomorebiTheme::Base16 {
+                        name,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    }),
+                    KomorebiTheme::Base16 {
+                        name: d_name,
+                        single_border: d_single_border,
+                        stack_border: d_stack_border,
+                        monocle_border: d_monocle_border,
+                        floating_border: d_floating_border,
+                        unfocused_border: d_unfocused_border,
+                        unfocused_locked_border: d_unfocused_locked_border,
+                        stackbar_focused_text: d_stackbar_focused_text,
+                        stackbar_unfocused_text: d_stackbar_unfocused_text,
+                        stackbar_background: d_stackbar_background,
+                        bar_accent: d_bar_accent,
+                    },
+                ) = (&config.theme, &*DEFAULT_BASE16_THEME)
+                {
+                    let get_color = |c: &Option<Base16Value>, d_c: &Option<Base16Value>| {
+                        iced::Color::from(
+                            c.or(*d_c).unwrap().color32(Base16Wrapper::Base16(*name)).to_normalized_gamma_f32(),
+                        )
+                    };
+                    let single_border_color = get_color(single_border, d_single_border);
+                    let stack_border_color = get_color(stack_border, d_stack_border);
+                    let monocle_border_color = get_color(monocle_border, d_monocle_border);
+                    let floating_border_color = get_color(floating_border, d_floating_border);
+                    let unfocused_border_color = get_color(unfocused_border, d_unfocused_border);
+                    let unfocused_locked_border_color =
+                        get_color(unfocused_locked_border, d_unfocused_locked_border);
+                    let stackbar_focused_text_color =
+                        get_color(stackbar_focused_text, d_stackbar_focused_text);
+                    let stackbar_unfocused_text_color =
+                        get_color(stackbar_unfocused_text, d_stackbar_unfocused_text);
+                    let stackbar_background_color =
+                        get_color(stackbar_background, d_stackbar_background);
+                    let bar_accent_color = get_color(bar_accent, d_bar_accent);
+                    vec![
+                        opt_helpers::combo_with_disable_default(
+                            "Theme Name",
+                            "",
+                            Some("The Theme variant to use"),
+                            Vec::new(),
+                            &self.base16_state,
+                            Some(*name),
+                            Message::ChangeBase16ThemeName,
+                            Some(*d_name),
+                            None,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Single Border",
+                            Some(
+                                "Border colour when the container contains a single window (default: Base0D)",
+                            ),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            single_border.or(*d_single_border),
+                            Message::ChangeBase16ThemeSingleBorder,
+                            *d_single_border,
+                            None,
+                            single_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Stack Border",
+                            Some(
+                                "Border colour when the container contains multiple windows (default: Base0B)",
+                            ),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            stack_border.or(*d_stack_border),
+                            Message::ChangeBase16ThemeStackBorder,
+                            *d_stack_border,
+                            None,
+                            stack_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Monocle Border",
+                            Some(
+                                "Border colour when the container is in monocle mode (default: Base0F)",
+                            ),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            monocle_border.or(*d_monocle_border),
+                            Message::ChangeBase16ThemeMonocleBorder,
+                            *d_monocle_border,
+                            None,
+                            monocle_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Floating Border",
+                            Some("Border colour when the window is floating (default: Base09)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            floating_border.or(*d_floating_border),
+                            Message::ChangeBase16ThemeFloatingBorder,
+                            *d_floating_border,
+                            None,
+                            floating_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Unfocused Border",
+                            Some("Border colour when the container is unfocused (default: Base01)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            unfocused_border.or(*d_unfocused_border),
+                            Message::ChangeBase16ThemeUnfocusedBorder,
+                            *d_unfocused_border,
+                            None,
+                            unfocused_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Unfocused Locked Border",
+                            Some(
+                                "Border colour when the container is unfocused and locked (default: Base08)",
+                            ),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            unfocused_locked_border.or(*d_unfocused_locked_border),
+                            Message::ChangeBase16ThemeUnfocusedLockedBorder,
+                            *d_unfocused_locked_border,
+                            None,
+                            unfocused_locked_border_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Stackbar Focused Text",
+                            Some("Stackbar focused tab text colour (default: Base0B)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            stackbar_focused_text.or(*d_stackbar_focused_text),
+                            Message::ChangeBase16ThemeStackbarFocusedText,
+                            *d_stackbar_focused_text,
+                            None,
+                            stackbar_focused_text_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Stackbar Unfocused Text",
+                            Some("Stackbar unfocused tab text colour (default: Base05)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            stackbar_unfocused_text.or(*d_stackbar_unfocused_text),
+                            Message::ChangeBase16ThemeStackbarUnfocusedText,
+                            *d_stackbar_unfocused_text,
+                            None,
+                            stackbar_unfocused_text_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Stackbar Background",
+                            Some("Stackbar tab background colour (default: Base01)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            stackbar_background.or(*d_stackbar_background),
+                            Message::ChangeBase16ThemeStackbarBackground,
+                            *d_stackbar_background,
+                            None,
+                            stackbar_background_color,
+                        ),
+                        opt_helpers::choose_with_disable_default_bg(
+                            "Bar Accent",
+                            Some("Komorebi status bar accent (default: Base0D)"),
+                            Vec::new(),
+                            &BASE16_VALUE_OPTIONS[..],
+                            bar_accent.or(*d_bar_accent),
+                            Message::ChangeBase16ThemeBarAccent,
+                            *d_bar_accent,
                             None,
                             bar_accent_color,
                         ),
