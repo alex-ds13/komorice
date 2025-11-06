@@ -1,6 +1,6 @@
 use super::{ConfigType, Screen};
 
-use crate::SCREENS_TO_RESET;
+use crate::SCREENS_BACK_TO_START;
 
 use iced::{
     padding,
@@ -50,13 +50,13 @@ impl Sidebar {
             }
             Message::SelectScreen(screen) => match config_type {
                 ConfigType::Komorebi => {
-                    if screen != self.komorebi_selected || SCREENS_TO_RESET.contains(&screen) {
+                    if screen != self.komorebi_selected || SCREENS_BACK_TO_START.contains(&screen) {
                         self.komorebi_selected = screen.clone();
                         return (Action::UpdateMainScreen(screen), Task::none());
                     }
                 }
                 ConfigType::Whkd => {
-                    if screen != self.whkd_selected || SCREENS_TO_RESET.contains(&screen) {
+                    if screen != self.whkd_selected || SCREENS_BACK_TO_START.contains(&screen) {
                         self.whkd_selected = screen.clone();
                         return (Action::UpdateMainScreen(screen), Task::none());
                     }
