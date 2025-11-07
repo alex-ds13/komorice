@@ -11,7 +11,7 @@ use async_compat::Compat;
 use iced::{
     Element, Subscription, Task, Theme,
     futures::{SinkExt, channel::mpsc},
-    widget::markdown,
+    widget::{markdown, space},
 };
 use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer, new_debouncer,
@@ -165,7 +165,7 @@ impl Whkd {
                 .bindings
                 .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
                 .map(Message::Bindings),
-            _ => iced::widget::horizontal_space().into(),
+            _ => space::horizontal().into(),
         }
     }
 

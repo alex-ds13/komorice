@@ -9,7 +9,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use iced::{
     Center, Element, Fill, Task, padding,
-    widget::{button, checkbox, column, container, horizontal_rule, row, scrollable, text},
+    widget::{Id, button, checkbox, column, container, row, rule, scrollable, text},
 };
 
 #[derive(Clone, Debug)]
@@ -129,7 +129,7 @@ impl LiveDebug {
         );
         column![
             text("Live Debug:").size(20).font(*BOLD_FONT),
-            horizontal_rule(2.0),
+            rule::horizontal(2.0),
             monitors,
             notifications,
         ]
@@ -168,7 +168,7 @@ impl LiveDebug {
                     .and_then(|s| s.monitors.elements().get(idx))
             }) {
                 let monitor_idx = self.monitor_to_config.expect("unreachable");
-                col = col.push(horizontal_rule(2.0));
+                col = col.push(rule::horizontal(2.0));
                 col = col.push(column![
                     text!("Monitor {}:", monitor_idx).size(16),
                     text!("    -> Id: {}", device.id),
@@ -176,7 +176,7 @@ impl LiveDebug {
                     text!("    -> Device: {}", device.device),
                     text!("    -> Size: {:#?}", device.size),
                 ]);
-                col = col.push(horizontal_rule(2.0));
+                col = col.push(rule::horizontal(2.0));
                 col = col.push(text("Workspaces:"));
                 col = device
                     .workspaces()
@@ -197,12 +197,10 @@ impl LiveDebug {
                         ])
                     });
             }
-            scrollable(col)
-                .id(scrollable::Id::new("monitors_scrollable"))
-                .into()
+            scrollable(col).id(Id::new("monitors_scrollable")).into()
         };
 
-        column![title, horizontal_rule(2.0), monitors]
+        column![title, rule::horizontal(2.0), monitors]
             .spacing(10)
             .into()
     }
@@ -225,7 +223,7 @@ impl LiveDebug {
                 .width(Fill)
                 .padding(padding::top(10).bottom(10).right(20)),
         );
-        column![title, horizontal_rule(2.0), notifications]
+        column![title, rule::horizontal(2.0), notifications]
             .spacing(10)
             .width(Fill)
             .height(Fill)

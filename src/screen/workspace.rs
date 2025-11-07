@@ -11,8 +11,12 @@ use crate::widget::{ICONS, icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
 
-use iced::widget::{Space, button, column, container, horizontal_rule, pick_list, row, text};
-use iced::{Center, Element, Fill, Shrink, Subscription, Task};
+use iced::widget::{
+    Id, button, column, container,
+    operation::{self, AbsoluteOffset},
+    pick_list, row, rule as ruler, space, text,
+};
+use iced::{Center, Element, Fill, Subscription, Task};
 use komorebi_client::{
     Axis, DefaultLayout, FloatingLayerBehaviour, MatchingRule, WindowContainerBehaviour,
     WorkspaceConfig,
@@ -102,9 +106,9 @@ impl WorkspaceScreen for WorkspaceConfig {
                 ) {
                     workspace.rule = rule::Rule::new();
                     workspace.screen = screen.clone();
-                    let task = iced::widget::scrollable::scroll_to(
-                        iced::widget::scrollable::Id::new("monitors_scrollable"),
-                        iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                    let task = operation::scroll_to(
+                        Id::new("monitors_scrollable"),
+                        AbsoluteOffset { x: 0.0, y: 0.0 },
                     );
                     return (Action::ScreenChange(screen), task);
                 }
@@ -320,7 +324,7 @@ impl Workspace {
             "Layout Flip",
             Some("Specify an axis on which to flip the selected layout (default: None)"),
             vec![
-                Space::new(Shrink, Shrink).into(),
+                space().into(),
                 t("Selected: 'Vertical' -> Flip layout on vertical axis").into(),
                 t("Selected: 'Horizontal' -> Flip layout on horizontal axis").into(),
                 t("Selected: 'HorizontalAndVertical' -> Flip layout on both axis").into(),
@@ -620,11 +624,11 @@ fn layout_rules_children<'a>(
         // The 30.8 height came from trial and error to make it so the space is the
         // same as the one from one rule. Why isn't it 30, I don't know?! Any other
         // value other 30.8 would result in the UI adjusting when adding first rule.
-        rules.push(Space::new(Shrink, 30.8).into());
+        rules.push(space().height(30.8).into());
     } else {
         rules.insert(0, text("Rules:").into());
     }
-    children.push(horizontal_rule(2.0).into());
+    children.push(ruler::horizontal(2.0).into());
     children.extend(rules);
     children
 }
@@ -724,11 +728,11 @@ fn behaviour_rules_children<'a>(
         // The 30.8 height came from trial and error to make it so the space is the
         // same as the one from one rule. Why isn't it 30, I don't know?! Any other
         // value other 30.8 would result in the UI adjusting when adding first rule.
-        rules.push(Space::new(Shrink, 30.8).into());
+        rules.push(space().height(30.8).into());
     } else {
         rules.insert(0, text("Rules:").into());
     }
-    children.push(horizontal_rule(2.0).into());
+    children.push(ruler::horizontal(2.0).into());
     children.extend(rules);
     children
 }

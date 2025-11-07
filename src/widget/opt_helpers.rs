@@ -15,7 +15,7 @@ use iced::{
     Background, Center, Color, Element, Fill, border, padding,
     widget::{
         Button, Column, Container, Row, Text, button, checkbox, column, combo_box, container,
-        horizontal_rule, mouse_area, pick_list, row, scrollable, text, toggler,
+        mouse_area, pick_list, row, rule, space, scrollable, text, toggler,
     },
 };
 use num_traits::{Bounded, Num, NumAssignOps};
@@ -157,7 +157,7 @@ pub fn label_element_with_description<'a, Message: 'a>(
     description: Option<impl Into<Description<'a, Message>>>,
 ) -> Element<'a, Message> {
     column![label_el.into()]
-        .push_maybe(description.map(|d| match d.into() {
+        .push(description.map(|d| match d.into() {
             Description::Str(str) => description_text(str).into(),
             Description::Element(el) => el,
         }))
@@ -204,7 +204,7 @@ pub fn opt_custom_el_disable_default<'a, Message: 'a + Clone>(
         row![name.into()].height(30).align_y(Center)
     };
     let element = row![label_element_with_description(label, description)]
-        .push_maybe(disable_checkbox(disable_args.as_ref()))
+        .push(disable_checkbox(disable_args.as_ref()))
         .push(element.into())
         .spacing(10)
         .align_y(Center);
@@ -215,7 +215,7 @@ pub fn opt_custom_el_disable_default<'a, Message: 'a + Clone>(
 ///Creates a `button` with `name` as label and with a custom element as the button itself.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn opt_custom_button<'a, Message: Clone + 'a, F, I>(
+pub fn opt_custom_button<'a, Message: Clone + 'static, F, I>(
     name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
     on_press: Message,
@@ -231,7 +231,7 @@ where
 ///Creates a `button` with `name` as label.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn opt_button<'a, Message: Clone + 'a>(
+pub fn opt_button<'a, Message: Clone + 'static>(
     name: &'a str,
     description: Option<&'a str>,
     on_press: Message,
@@ -254,7 +254,7 @@ pub fn opt_button<'a, Message: Clone + 'a>(
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn opt_button_add_move<'a, Message: Clone + 'a>(
+pub fn opt_button_add_move<'a, Message: Clone + 'static>(
     name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
     show_delete: bool,
@@ -296,7 +296,7 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
             )
             .spacing(2.5);
 
-        let delete_button = Column::new().push_maybe(
+        let delete_button = Column::new().push(
             show_delete.then_some(
                 button(icons::delete().size(18))
                     .on_press(on_delete.clone())
@@ -306,7 +306,7 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
         );
 
         let move_buttons = Column::new()
-            .push_maybe(
+            .push(
                 show_up.then_some(
                     button(icons::up_chevron().size(10))
                         .on_press(on_move_up.clone())
@@ -314,7 +314,7 @@ pub fn opt_button_add_move<'a, Message: Clone + 'a>(
                         .padding(padding::left(5).right(5)),
                 ),
             )
-            .push_maybe(
+            .push(
                 show_down.then_some(
                     button(icons::down_chevron().size(10))
                         .on_press(on_move_down.clone())
@@ -889,7 +889,7 @@ where
         {
             return d;
         }
-        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+        space().into()
     })();
     let description: Option<Element<_>> = description.map(|d| {
         column![description_text(d), selected_description]
@@ -950,7 +950,7 @@ where
         {
             return d;
         }
-        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+        space().into()
     })();
 
     // Calculate text_color according to bg_color. Based on this stackoverflow answer:
@@ -1023,7 +1023,7 @@ where
         {
             return d;
         }
-        iced::widget::Space::new(iced::Shrink, iced::Shrink).into()
+        space().into()
     })();
 
     let description: Option<Element<_>> = description.map(|d| {
@@ -1049,7 +1049,7 @@ where
 ///Creates an expandable option with children options to be shown when expanded.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
-pub fn expandable<'a, Message: Clone + 'a, I>(
+pub fn expandable<'a, Message: Clone + 'static, I>(
     name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
     children: impl Fn() -> I + 'a,
@@ -1090,6 +1090,7 @@ where
                 text_color,
                 border: border::rounded(2),
                 shadow: Default::default(),
+                snap: false,
             }
         })
     };
@@ -1111,7 +1112,7 @@ where
 ///
 ///If `Some(description)` is given, it adds the description below the label.
 #[allow(clippy::too_many_arguments)]
-pub fn expandable_custom<'a, Message: Clone + 'a, E, I>(
+pub fn expandable_custom<'a, Message: Clone + 'static, E, I>(
     name: impl text::IntoFragment<'a>,
     description: Option<&'a str>,
     right_element: impl Fn(bool, bool) -> E + 'a,
@@ -1157,7 +1158,7 @@ pub fn sub_section_view<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     column![
         title,
-        horizontal_rule(2.0),
+        rule::horizontal(2.0),
         Column::with_children(contents)
             .padding(padding::top(10).bottom(10))
             .spacing(10),
@@ -1174,7 +1175,7 @@ pub fn section_view<'a, Message: 'a>(
     let section_title: Text = (title.into() as Text).size(20.0).font(*BOLD_FONT);
     column![
         section_title,
-        horizontal_rule(2.0),
+        rule::horizontal(2.0),
         scrollable(
             Column::with_children(contents)
                 .padding(padding::top(10).bottom(10).right(20))

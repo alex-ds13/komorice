@@ -7,7 +7,7 @@ edition = "2024"
 async-compat = "0.2.4"
 clipboard-win= "5"
 dirs = "6"
-iced = { version = "0.14.0-dev", features = ["advanced", "canvas", "debug", "image", "lazy", "markdown", "smol"] }
+iced = { version = "0.14.0-dev", features = ["advanced", "canvas", "debug", "image", "markdown", "smol"] }
 iced_core = { version = "0.14.0-dev" }
 komorebi-client = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/public-placement", default-features = false }
 komorebi-themes = { git = "https://github.com/alex-ds13/komorebi.git", branch = "fix/public-placement", default-features = false }
@@ -23,10 +23,8 @@ whkd-core = { git = "https://github.com/LGUG2Z/whkd.git", rev = "797209aabd6db72
 whkd-parser = { git = "https://github.com/LGUG2Z/whkd.git", rev = "797209aabd6db7241b82a27716146d0b1da524bb" }
 
 [patch.crates-io]
-# iced = { git = "https://github.com/iced-rs/iced.git" }
-# iced_core = { git = "https://github.com/iced-rs/iced.git" }
-iced = { git = "https://github.com/alex-ds13/iced.git", branch = "fix/component-redraw" }
-iced_core = { git = "https://github.com/alex-ds13/iced.git", branch = "fix/component-redraw" }
+iced = { git = "https://github.com/iced-rs/iced.git", branch = "bless-component" }
+iced_core = { git = "https://github.com/iced-rs/iced.git", branch = "bless-component" }
 
 [build-dependencies]
 iced_fontello = { git = "https://github.com/alex-ds13/iced_fontello.git", branch = "feat/custom-icons" }

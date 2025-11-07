@@ -4,7 +4,7 @@ use iced::{
     Center, Element, Fill,
     Length::Fixed,
     Task,
-    widget::{column, container, horizontal_space, row, text},
+    widget::{column, container, row, space, text},
 };
 use komorebi_client::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
 
@@ -347,7 +347,7 @@ fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
     let tabs_height = config.height.map(|h| h as f32).unwrap_or(40.0);
 
     column![
-        row!["Tabs Look:", horizontal_space()],
+        row!["Tabs Look:", space::horizontal()],
         row![
             container(text("Focused Tab").size(font_size))
                 .width(Fixed(tabs_width))

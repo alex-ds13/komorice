@@ -5,7 +5,7 @@ use crate::{BOLD_FONT, widget::opt_helpers};
 
 use iced::{
     Element, Fill, Subscription, Task, padding,
-    widget::{button, column, container, horizontal_rule, row, text},
+    widget::{button, column, container, row, rule as ruler, text},
 };
 use komorebi_client::{MatchingRule, StaticConfig};
 
@@ -99,7 +99,7 @@ impl Transparency {
                 let content = self.rule.view(rules.as_ref()).map(Message::Rule);
                 column![
                     title,
-                    horizontal_rule(2.0),
+                    ruler::horizontal(2.0),
                     container(content)
                         .width(Fill)
                         .padding(padding::top(10).bottom(10))

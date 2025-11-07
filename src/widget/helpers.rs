@@ -2,7 +2,6 @@
 use crate::widget::text_input::TextInput;
 use iced::widget::{
     Button, Row, Rule, Text, button, container, row, rule, text::IntoFragment, tooltip,
-    vertical_rule,
 };
 use iced::{Center, Element, Theme};
 
@@ -31,7 +30,7 @@ pub fn button_with_icon<'a, Message: 'a>(
 }
 
 pub fn button_separator<'a>() -> Rule<'a> {
-    vertical_rule(1.0).style(|t: &Theme| rule::Style {
+    rule::vertical(1.0).style(|t: &Theme| rule::Style {
         color: t.extended_palette().primary.base.color,
         ..rule::default(t)
     })

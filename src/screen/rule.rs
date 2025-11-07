@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use iced::{
     Center, Element, Fill, Right, Shrink, Subscription, Task, Top, padding,
-    widget::{Row, Space, button, column, container, pick_list, row, text, text_input},
+    widget::{Row, space, button, column, container, pick_list, row, text, text_input},
 };
 use komorebi_client::{ApplicationIdentifier, IdWithIdentifier, MatchingRule, MatchingStrategy};
 use lazy_static::lazy_static;
@@ -303,7 +303,7 @@ impl Rule {
             .max_width(685)
             .into()
         } else {
-            Space::new(Shrink, Shrink).into()
+            space().into()
         };
 
         let rls: Element<_> = if let Some(rules) = rules {
@@ -366,7 +366,7 @@ impl Rule {
                 });
             rls.into()
         } else {
-            Space::new(Shrink, Shrink).into()
+            space().into()
         };
 
         column![
@@ -395,14 +395,14 @@ impl Rule {
                 .into(),
                 column![
                     row![]
-                        .push_maybe(
+                        .push(
                             self.rules_editing.contains(&idx).then_some(
                                 button(icons::check())
                                     .on_press(Message::ToggleRuleEdit(idx, false))
                                     .style(button::primary),
                             )
                         )
-                        .push_maybe(
+                        .push(
                             self.rules_editing.contains(&idx).then_some(
                                 button(icons::delete())
                                     .on_press(Message::RemoveRule(idx))
@@ -420,14 +420,14 @@ impl Rule {
             ]),
             column![
                 row![]
-                    .push_maybe(
+                    .push(
                         (!self.rules_editing.contains(&idx)).then_some(
                             button(icons::edit())
                                 .on_press(Message::ToggleRuleEdit(idx, true))
                                 .style(button::secondary),
                         )
                     )
-                    .push_maybe(
+                    .push(
                         (!self.rules_editing.contains(&idx)).then_some(
                             button(icons::copy())
                                 .on_press(Message::CopyRule(idx))
@@ -551,13 +551,13 @@ fn rule_view<'a>(
                         .style(button::danger)
                         .into()
                 })
-                .or_else(|| Some(Space::new(33, Shrink).into())),
+                .or_else(|| Some(space().width(33).into())),
         )
         .flatten();
 
     row![kind, matching_strategy, id]
-        .push_maybe(composing_add_button)
-        .push_maybe(delete_rule_line_button)
+        .push(composing_add_button)
+        .push(delete_rule_line_button)
         .spacing(10)
         .align_y(Center)
 }

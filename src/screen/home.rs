@@ -4,7 +4,7 @@ use crate::EMOJI_FONT;
 
 use iced::{
     Center, Element, Fill, Shrink, Task,
-    widget::{Space, button, center, column, container, image, row, text},
+    widget::{button, center, column, container, image, row, space, text},
 };
 
 #[derive(Debug, Clone)]
@@ -94,7 +94,7 @@ impl Home {
         load: Message,
         new_file: Message,
     ) -> Element<'_, Message> {
-        let fixed_width = Space::new(180, Shrink);
+        let fixed_width = space().width(180);
         let edit = match config_type {
             ConfigType::Komorebi => self.has_loaded_config.then_some(edit),
             ConfigType::Whkd => self.has_loaded_whkdrc.then_some(edit),

@@ -108,7 +108,7 @@ where
         }
     }
 
-    fn layout(&self, _tree: &mut Tree, _renderer: &Renderer, _limits: &Limits) -> Node {
+    fn layout(&mut self, _tree: &mut Tree, _renderer: &Renderer, limits: &Limits) -> Node {
         // let mut origin_point = Point::ORIGIN;
         let (rects, top_left) = self.get_rects();
         let zero_rect = Rectangle::with_size(Size::ZERO);
@@ -127,7 +127,7 @@ where
             .iter()
             .map(|r| {
                 let n = layout::padded(
-                    _limits,
+                    limits,
                     Shrink,
                     Shrink,
                     Padding::new(Self::DEFAULT_PADDING),
@@ -269,6 +269,7 @@ where
                         radius: Radius::default(),
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 background,
             );

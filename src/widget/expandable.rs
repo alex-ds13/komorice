@@ -4,8 +4,8 @@ use crate::widget::opt_helpers::{
     opt_box_style_top, reset_button,
 };
 use iced::{
-    Center, Element, padding,
-    widget::{Column, Component, column, horizontal_rule, mouse_area, row, text},
+    Center, Element, Renderer, padding,
+    widget::{Column, Component, column, component, mouse_area, row, rule, text},
 };
 
 pub struct Expandable<'a, Message, F, E, I>
@@ -152,9 +152,9 @@ pub enum InternalMessage<Message> {
     Message(Message),
 }
 
-impl<'a, Message, F, E, I> Component<Message> for Expandable<'a, Message, F, E, I>
+impl<'a, Message, F, E, I> Component<'a, Message> for Expandable<'a, Message, F, E, I>
 where
-    Message: Clone + 'a,
+    Message: Clone + 'static,
     F: Fn(bool, bool) -> E,
     E: Into<Element<'a, Message>>,
     I: IntoIterator<Item = Element<'a, Message>>,
@@ -163,7 +163,12 @@ where
 
     type Event = InternalMessage<Message>;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+    fn update(
+        &mut self,
+        state: &mut Self::State,
+        event: Self::Event,
+        _renderer: &Renderer,
+    ) -> Option<Message> {
         match event {
             InternalMessage::None => {}
             InternalMessage::SetHovered(hover) => state.is_hovered = hover,
@@ -184,11 +189,11 @@ where
         None
     }
 
-    fn view(&self, state: &Self::State) -> Element<'_, Self::Event> {
+    fn view(&self, state: &Self::State) -> Element<'a, Self::Event> {
         let main = if let Some(name) = &self.name {
             let label = if self.is_dirty {
-                row![text(name)]
-                    .push_maybe(
+                row![text(name.clone())]
+                    .push(
                         self.on_default
                             .as_ref()
                             .map(|d| reset_button(Some(InternalMessage::Message(d.clone())))),
@@ -197,10 +202,10 @@ where
                     .height(30)
                     .align_y(Center)
             } else {
-                row![text(name)].height(30).align_y(Center)
+                row![text(name.clone())].height(30).align_y(Center)
             };
             row![label_element_with_description(label, self.description)]
-                .push_maybe(
+                .push(
                     disable_checkbox(self.disable_args.as_ref())
                         .map(|el| el.map(InternalMessage::Message)),
                 )
@@ -260,8 +265,8 @@ where
             };
             column![]
                 .push(wrapped_top)
-                .push_maybe(wrapped_inner.is_some().then_some(horizontal_rule(2.0)))
-                .push_maybe(wrapped_inner)
+                .push(wrapped_inner.is_some().then_some(rule::horizontal(2.0)))
+                .push(wrapped_inner)
                 .into()
         } else {
             column![area(opt_box(main))].into()
@@ -271,13 +276,13 @@ where
 
 impl<'a, Message, F, E, I> From<Expandable<'a, Message, F, E, I>> for Element<'a, Message>
 where
-    Message: Clone + 'a,
+    Message: Clone + 'static,
     F: Fn(bool, bool) -> E + 'a,
     E: Into<Element<'a, Message>> + 'a,
     I: IntoIterator<Item = Element<'a, Message>> + 'a,
 {
     fn from(value: Expandable<'a, Message, F, E, I>) -> Self {
-        iced::widget::component(value)
+        component(value)
     }
 }
 

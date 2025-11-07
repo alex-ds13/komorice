@@ -6,7 +6,7 @@ use iced::{
     Element,
     Length::{Fill, Shrink},
     Task, padding,
-    widget::{Container, Space, button, column, container, horizontal_rule, scrollable},
+    widget::{Container, button, column, container, rule, scrollable, space},
 };
 
 #[derive(Clone, Debug)]
@@ -74,7 +74,7 @@ impl Sidebar {
         )
         .width(Fill);
         let screen_buttons = self.get_screens(config_type);
-        let fixed_width = Space::new(120, Shrink);
+        let fixed_width = space().width(120);
         let main_content = scrollable(
             column![fixed_width]
                 .extend(screen_buttons)
@@ -83,10 +83,10 @@ impl Sidebar {
                 .width(Shrink),
         )
         .height(Fill);
-        let fixed_width_wider = Space::new(135, Shrink);
+        let fixed_width_wider = space().width(135);
         let bottom_content = column![
             fixed_width_wider,
-            container(horizontal_rule(2.0)).padding(padding::bottom(5)),
+            container(rule::horizontal(2.0)).padding(padding::bottom(5)),
             home.padding(padding::right(15)),
         ]
         .width(Shrink)

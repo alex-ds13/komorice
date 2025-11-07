@@ -12,11 +12,8 @@ use crate::{
 use std::collections::{BTreeMap, HashMap};
 
 use iced::{
-    Center, Element, Fill, Shrink, Subscription, Task, padding,
-    widget::{
-        Space, button, checkbox, column, container, horizontal_rule, horizontal_space, row,
-        scrollable, text,
-    },
+    Center, Element, Fill, Subscription, Task, padding,
+    widget::{Id, button, checkbox, column, container, row, rule, scrollable, space, text},
 };
 use komorebi_client::{MonitorConfig, Rect};
 
@@ -282,7 +279,7 @@ impl Monitors {
             row![text("Monitors:").size(20).font(*BOLD_FONT)]
         };
 
-        let mut col = column![horizontal_space()]
+        let mut col = column![space::horizontal()]
             .spacing(10)
             .padding(padding::bottom(10).right(20));
 
@@ -348,8 +345,8 @@ impl Monitors {
             )
         });
 
-        col = col.push_maybe(dip);
-        let contents = scrollable(col).id(scrollable::Id::new("monitors_scrollable"));
+        col = col.push(dip);
+        let contents = scrollable(col).id(Id::new("monitors_scrollable"));
 
         let show_monitors_display = container(
             checkbox("Show Monitors", !self.show_monitors_list)
@@ -370,8 +367,8 @@ impl Monitors {
                 .style(container::rounded_box)
         });
 
-        column![main_title, horizontal_rule(2.0), show_monitors_display]
-            .push_maybe(monitors_display)
+        column![main_title, rule::horizontal(2.0), show_monitors_display]
+            .push(monitors_display)
             .push(contents)
             .spacing(10)
             .into()
@@ -434,11 +431,11 @@ impl Monitors {
             // The 30.8 height came from trial and error to make it so the space is the
             // same as the one from one rule. Why isn't it 30, I don't know?! Any other
             // value other 30.8 would result in the UI adjusting when adding first rule.
-            preferences.push(Space::new(Shrink, 30.8).into());
+            preferences.push(space().height(30.8).into());
         } else {
             preferences.insert(0, text("Preferences:").into());
         }
-        children.push(horizontal_rule(2.0).into());
+        children.push(rule::horizontal(2.0).into());
         children.extend(preferences);
         children
     }
