@@ -1,8 +1,8 @@
 #![allow(deprecated)]
 use crate::widget::opt_helpers::{label_with_description, opt_box};
 use iced::{
-    Center, Element, padding,
-    widget::{Component, mouse_area, row, text},
+    Center, Element, Renderer, padding,
+    widget::{Component, component, mouse_area, row, text},
 };
 
 pub struct OptButton<'a, Message, F, I>
@@ -78,9 +78,9 @@ pub enum InternalMessage<Message> {
     Message(Message),
 }
 
-impl<'a, Message, F, I> Component<Message> for OptButton<'a, Message, F, I>
+impl<'a, Message, F, I> Component<'a, Message> for OptButton<'a, Message, F, I>
 where
-    Message: Clone + 'a,
+    Message: Clone + 'static,
     F: Fn(bool) -> I,
     I: Into<Element<'a, Message>>,
 {
@@ -88,7 +88,7 @@ where
 
     type Event = InternalMessage<Message>;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+    fn update(&mut self, state: &mut Self::State, event: Self::Event, _renderer: &Renderer) -> Option<Message> {
         match event {
             InternalMessage::None => {}
             InternalMessage::SetHovered(hover) => state.is_hovered = hover,
@@ -97,12 +97,12 @@ where
         None
     }
 
-    fn view(&self, state: &Self::State) -> Element<'_, Self::Event> {
+    fn view(&self, state: &Self::State) -> Element<'a, Self::Event> {
         let main = row![
-            label_with_description(text(&self.name), self.description)
+            label_with_description(text(self.name.clone()), self.description)
                 .map(InternalMessage::Message),
         ]
-        .push_maybe(
+        .push(
             self.element
                 .as_ref()
                 .map(|el| el(state.is_hovered).into().map(InternalMessage::Message)),
@@ -125,12 +125,12 @@ where
 
 impl<'a, Message, F, I> From<OptButton<'a, Message, F, I>> for Element<'a, Message>
 where
-    Message: Clone + 'a,
+    Message: Clone + 'static,
     F: Fn(bool) -> I + 'a,
     I: Into<Element<'a, Message>> + 'a,
 {
     fn from(value: OptButton<'a, Message, F, I>) -> Self {
-        iced::widget::component(value)
+        component(value)
     }
 }
 
@@ -138,7 +138,7 @@ pub fn opt_button<'a, Message, F, I>(
     name: impl text::IntoFragment<'a>,
 ) -> OptButton<'a, Message, F, I>
 where
-    Message: Clone + 'a,
+    Message: Clone + 'static,
     F: Fn(bool) -> I + 'a,
     I: Into<Element<'a, Message>> + 'a,
 {

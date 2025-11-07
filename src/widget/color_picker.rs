@@ -315,9 +315,9 @@ where
         self.underlay.as_widget().size()
     }
 
-    fn layout(&self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
+    fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
         self.underlay
-            .as_widget()
+            .as_widget_mut()
             .layout(&mut tree.children[0], renderer, limits)
     }
 
@@ -1534,6 +1534,7 @@ where
                         color: style_sheet[&style_state].border_color,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 style_sheet[&style_state].background,
             );
@@ -1746,7 +1747,7 @@ where
 
     // Pre-Buttons TODO: get rid of it
     let cancel_limits = block2_limits;
-    let cancel_button = color_picker.cancel_button.as_widget().layout(
+    let cancel_button = color_picker.cancel_button.as_widget_mut().layout(
         &mut color_picker.tree.children[0],
         renderer,
         &cancel_limits,
@@ -1793,7 +1794,7 @@ where
                 ),
         );
     }
-    let element: Element<Message, Theme, Renderer> = Element::new(rgba_colors);
+    let mut element: Element<Message, Theme, Renderer> = Element::new(rgba_colors);
     let rgba_tree = if let Some(child_tree) = color_picker.tree.children[2].children.get_mut(0) {
         child_tree.diff(element.as_widget());
         child_tree
@@ -1804,7 +1805,7 @@ where
     };
 
     let mut rgba_colors = element
-        .as_widget()
+        .as_widget_mut()
         .layout(rgba_tree, renderer, &block2_limits);
 
     let rgba_bounds = rgba_colors.bounds();
@@ -1826,7 +1827,7 @@ where
     let cancel_limits =
         block2_limits.max_width(((rgba_bounds.width / 2.0) - BUTTON_SPACING.0).max(0.0));
 
-    let mut cancel_button = color_picker.cancel_button.as_widget().layout(
+    let mut cancel_button = color_picker.cancel_button.as_widget_mut().layout(
         &mut color_picker.tree.children[0],
         renderer,
         &cancel_limits,
@@ -1835,7 +1836,7 @@ where
     let submit_limits =
         block2_limits.max_width(((rgba_bounds.width / 2.0) - BUTTON_SPACING.0).max(0.0));
 
-    let mut submit_button = color_picker.submit_button.as_widget().layout(
+    let mut submit_button = color_picker.submit_button.as_widget_mut().layout(
         &mut color_picker.tree.children[1],
         renderer,
         &submit_limits,
@@ -1995,6 +1996,7 @@ fn block2<Message, Theme>(
                         color: style_sheet[&StyleState::Focused].border_color,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 Color::TRANSPARENT,
             );
@@ -2013,6 +2015,7 @@ fn block2<Message, Theme>(
                         color: style_sheet[&StyleState::Focused].border_color,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 Color::TRANSPARENT,
             );
@@ -2298,6 +2301,7 @@ fn rgba_color(
                         color: Color::TRANSPARENT,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 color,
             );
@@ -2324,6 +2328,7 @@ fn rgba_color(
                             .bar_border_color,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 Color::TRANSPARENT,
             );
@@ -2371,6 +2376,7 @@ fn rgba_color(
                             .border_color,
                     },
                     shadow: Shadow::default(),
+                    snap: true,
                 },
                 Color::TRANSPARENT,
             );

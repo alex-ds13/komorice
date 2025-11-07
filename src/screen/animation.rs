@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use iced::{
     Center, Element, Task,
-    widget::{column, horizontal_space, pick_list, row},
+    widget::{column, pick_list, row, space},
 };
 use komorebi_client::{
     AnimationPrefix, AnimationStyle, AnimationsConfig, PerAnimationPrefixConfig,
@@ -269,9 +269,9 @@ impl Animation {
                                             "Enable/Disable animations per type of animation"
                                         }),
                                     ].spacing(5),
-                                    horizontal_space(),
+                                    space::horizontal(),
                                 ]
-                                .push_maybe(matches!(&config.enabled, PerAnimationPrefixConfig::Global(_)).then(|| -> Element<Message> {
+                                .push(matches!(&config.enabled, PerAnimationPrefixConfig::Global(_)).then(|| -> Element<Message> {
                                     iced::widget::toggler(matches!(&config.enabled, PerAnimationPrefixConfig::Global(v) if v == &true))
                                         .on_toggle(|v| Message::ConfigChange(ConfigChange::EnableGlobal(v)))
                                         .label(match config.enabled {
@@ -283,7 +283,7 @@ impl Animation {
                                 .align_y(Center)
                             )
                         ]
-                        .push_maybe(matches!(&enable_config_type, ConfigType::PerType).then(|| {
+                        .push(matches!(&enable_config_type, ConfigType::PerType).then(|| {
                             opt_helpers::toggle(
                                 "Enable Movement Animations",
                                 None,
@@ -291,7 +291,7 @@ impl Animation {
                                 |v| Message::ConfigChange(ConfigChange::EnablePerType(AnimationPrefix::Movement, v)),
                             )
                         }))
-                        .push_maybe(matches!(&enable_config_type, ConfigType::PerType).then(|| {
+                        .push(matches!(&enable_config_type, ConfigType::PerType).then(|| {
                             opt_helpers::toggle(
                                 "Enable Transparency Animations",
                                 None,
@@ -334,9 +334,9 @@ impl Animation {
                                     ),
                                 ]
                                 .spacing(5),
-                                horizontal_space(),
+                                space::horizontal(),
                             ]
-                            .push_maybe(config.duration.as_ref().map(|d| -> Element<Message> {
+                            .push(config.duration.as_ref().map(|d| -> Element<Message> {
                                 if let PerAnimationPrefixConfig::Global(duration) = d {
                                     number_input("", *duration)
                                         .on_input(|v| {
@@ -344,12 +344,12 @@ impl Animation {
                                         })
                                         .into()
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             }))
                             .align_y(Center)
                         )]
-                        .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(
+                        .push(matches!(&duration_config_type, ConfigType::PerType).then(
                             || -> Element<Message> {
                                 if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration
                                 {
@@ -370,14 +370,14 @@ impl Animation {
                                             None,
                                         )
                                     } else {
-                                        horizontal_space().into()
+                                        space::horizontal().into()
                                     }
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             },
                         ))
-                        .push_maybe(matches!(&duration_config_type, ConfigType::PerType).then(
+                        .push(matches!(&duration_config_type, ConfigType::PerType).then(
                             || -> Element<Message> {
                                 if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.duration
                                 {
@@ -398,10 +398,10 @@ impl Animation {
                                             None,
                                         )
                                     } else {
-                                        horizontal_space().into()
+                                        space::horizontal().into()
                                     }
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             },
                         ))
@@ -439,21 +439,21 @@ impl Animation {
                                     ),
                                 ]
                                 .spacing(5),
-                                horizontal_space(),
+                                space::horizontal(),
                             ]
-                            .push_maybe(config.style.as_ref().map(|s| -> Element<Message> {
+                            .push(config.style.as_ref().map(|s| -> Element<Message> {
                                 if let PerAnimationPrefixConfig::Global(style) = s {
                                     pick_list(*ALL_ANIMATIONS_STYLES, Some(style), |s| {
                                         Message::ConfigChange(ConfigChange::StyleGlobal(s))
                                     })
                                     .into()
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             }))
                             .align_y(Center)
                         )]
-                        .push_maybe(matches!(&style_config_type, ConfigType::PerType).then(
+                        .push(matches!(&style_config_type, ConfigType::PerType).then(
                             || -> Element<Message> {
                                 if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.style {
                                     if let Some(style) = hm.get(&AnimationPrefix::Movement) {
@@ -470,14 +470,14 @@ impl Animation {
                                             },
                                         )
                                     } else {
-                                        horizontal_space().into()
+                                        space::horizontal().into()
                                     }
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             },
                         ))
-                        .push_maybe(matches!(&style_config_type, ConfigType::PerType).then(
+                        .push(matches!(&style_config_type, ConfigType::PerType).then(
                             || -> Element<Message> {
                                 if let Some(PerAnimationPrefixConfig::Prefix(hm)) = &config.style {
                                     if let Some(style) = hm.get(&AnimationPrefix::Transparency) {
@@ -494,10 +494,10 @@ impl Animation {
                                             },
                                         )
                                     } else {
-                                        horizontal_space().into()
+                                        space::horizontal().into()
                                     }
                                 } else {
-                                    horizontal_space().into()
+                                    space::horizontal().into()
                                 }
                             },
                         ))

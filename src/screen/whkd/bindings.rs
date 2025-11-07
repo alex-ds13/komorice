@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        button, column, container, horizontal_space, hover, markdown, pick_list, right, row,
+        button, column, container, space, hover, markdown, pick_list, right, row,
         scrollable, text,
     },
 };
@@ -196,7 +196,7 @@ impl Bindings {
 
                     let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
-                    key_pressed = key_pressed.push_maybe(
+                    key_pressed = key_pressed.push(
                         (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty())
                             .then_some(text(SEPARATOR)),
                     );
@@ -210,7 +210,7 @@ impl Bindings {
                                     command,
                                     key_pressed,
                                     row![
-                                        horizontal_space(),
+                                        space::horizontal(),
                                         button(icons::check())
                                             .on_press(Message::FinishEditBinding(idx)),
                                         button(icons::copy())
@@ -358,10 +358,10 @@ fn keys(idx: usize, binding: &HotkeyBinding) -> Element<'_, Message> {
     .width(75);
     column![
         row![]
-            .push_maybe(mod_choose(idx, sb.modifiers, 3))
-            .push_maybe(mod_choose(idx, sb.modifiers, 2))
-            .push_maybe(mod_choose(idx, sb.modifiers, 1))
-            .push_maybe(mod_choose(idx, sb.modifiers, 0))
+            .push(mod_choose(idx, sb.modifiers, 3))
+            .push(mod_choose(idx, sb.modifiers, 2))
+            .push(mod_choose(idx, sb.modifiers, 1))
+            .push(mod_choose(idx, sb.modifiers, 0))
             .push(key)
             .spacing(5),
         binding
@@ -402,7 +402,7 @@ fn command_edit<'a>(
                 // .width(550);
                 column![
                     row!["Komorebic commands:", pick]
-                        .push_maybe(
+                        .push(
                             commands_desc
                                 .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
                                 .map(|_| {
@@ -441,7 +441,7 @@ fn command_edit<'a>(
             Message::ChangeBindingCommand(idx, String::new()),
             None,
         ))
-        .push_maybe(
+        .push(
             commands_desc
                 .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
                 .map(|_| {

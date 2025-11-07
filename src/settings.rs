@@ -10,7 +10,7 @@ use iced::futures::{SinkExt, channel::mpsc};
 use iced::{
     Element, Fill, Subscription, Task, padding,
     theme::{Custom, Theme},
-    widget::{column, horizontal_rule, text},
+    widget::{column, rule, text},
 };
 use notify_debouncer_mini::{
     DebounceEventResult, DebouncedEvent, DebouncedEventKind, Debouncer, new_debouncer,
@@ -123,7 +123,7 @@ impl Settings {
         let col = column![theme, show_advanced, show_save_warning]
             .spacing(10)
             .padding(padding::top(10).bottom(10).right(20));
-        column![title, horizontal_rule(2.0), col]
+        column![title, rule::horizontal(2.0), col]
             .spacing(10)
             .width(Fill)
             .height(Fill)

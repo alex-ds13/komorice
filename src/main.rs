@@ -25,8 +25,8 @@ use std::sync::Arc;
 use iced::{
     Center, Element, Fill, Font, Right, Subscription, Task, Theme, padding,
     widget::{
-        button, checkbox, column, container, horizontal_rule, horizontal_space, rich_text, row,
-        scrollable, span, text, vertical_rule,
+        button, checkbox, column, container, rule, space, rich_text, row,
+        scrollable, span, text,
     },
 };
 use lazy_static::lazy_static;
@@ -433,7 +433,7 @@ impl Komorice {
                         )
                         .map(Message::Monitors)
                 } else {
-                    iced::widget::horizontal_space().into()
+                    space::horizontal().into()
                 }
             }
             Screen::Border => self.border.view(&self.config).map(Message::Border),
@@ -467,13 +467,13 @@ impl Komorice {
 
         let sidebar = self.sidebar.view(&self.config_type).map(Message::Sidebar);
         let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
-        save_buttons = save_buttons.push_maybe((!self.errors.is_empty()).then(|| {
+        save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
             button("Errors")
                 .on_press(Message::OpenErrorsModal)
                 .style(button::danger)
         }));
         save_buttons = save_buttons.extend([
-            horizontal_space().into(),
+            space::horizontal().into(),
             button("Save")
                 .on_press_maybe(self.is_dirty().then_some(Message::TrySave))
                 .into(),
@@ -485,10 +485,10 @@ impl Komorice {
             container(main_screen)
                 .height(Fill)
                 .padding(padding::all(20).bottom(0)),
-            container(horizontal_rule(2.0)).padding(padding::bottom(5)),
+            container(rule::horizontal(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];
-        let main_content = row![sidebar, vertical_rule(2.0), right_col].padding(10);
+        let main_content = row![sidebar, rule::vertical(2.0), right_col].padding(10);
         let modal_content = self.show_save_modal.then(|| self.save_warning());
         let main_modal = widget::modal(main_content, modal_content, Message::ToggleSaveModal);
         let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());
@@ -621,7 +621,7 @@ impl Komorice {
         let mut errors_column = column![
             row![
                 text("Errors").size(30.0),
-                horizontal_space(),
+                space::horizontal(),
                 button(text("❌").font(*EMOJI_FONT))
                     .on_press(Message::CloseErrorsModal)
                     .style(button::text),

@@ -4,7 +4,7 @@ use crate::{BOLD_FONT, ITALIC_FONT, widget::opt_helpers};
 
 use iced::{
     Center, Element, Fill, Subscription, Task, padding,
-    widget::{Column, button, column, container, horizontal_rule, row, scrollable, text},
+    widget::{Column, button, column, container, row, rule as ruler, scrollable, text},
 };
 use komorebi_client::{MatchingRule, StaticConfig};
 
@@ -114,7 +114,7 @@ impl Rules {
             let content = rule.view(rules.as_ref()).map(Message::Rule);
             column![
                 title,
-                horizontal_rule(2.0),
+                ruler::horizontal(2.0),
                 container(content)
                     .width(Fill)
                     .padding(padding::top(10).bottom(10))
@@ -197,7 +197,7 @@ impl Rules {
                     .spacing(5)
                     .align_y(Center)
                     .into(),
-                    horizontal_rule(2.0).into(),
+                    ruler::horizontal(2.0).into(),
                     tray_and_multi_window_applications_button,
                     object_name_change_apps_button,
                     slow_application_identifiers_button,
@@ -207,7 +207,7 @@ impl Rules {
             }
             column![
                 text!("{}:", self.title()).size(20).font(*BOLD_FONT),
-                horizontal_rule(2.0),
+                ruler::horizontal(2.0),
                 scrollable(
                     Column::with_children(children)
                         .spacing(10)

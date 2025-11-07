@@ -27,7 +27,7 @@ impl AppError {
                 .spacing(10)
                 .align_y(Center)
         ]
-        .push_maybe(self.description.as_ref().map(|d| {
+        .push(self.description.as_ref().map(|d| {
             container(text(d))
                 .width(Fill)
                 .style(|_| container::Style {

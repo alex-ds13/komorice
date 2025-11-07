@@ -10,7 +10,7 @@ where
     Message: Clone + 'a,
 {
     stack![base.into()]
-        .push_maybe(content.map(|content| {
+        .push(content.map(|content| {
             mouse_area(center(opaque(content)).style(|_theme| {
                 container::Style {
                     background: Some(
@@ -48,6 +48,7 @@ pub fn default(theme: &Theme) -> container::Style {
             radius: 10.0.into(),
         },
         shadow: iced::Shadow::default(),
+        snap: false,
     }
 }
 
@@ -71,5 +72,6 @@ pub fn red(theme: &Theme) -> container::Style {
             radius: 10.0.into(),
         },
         shadow: iced::Shadow::default(),
+        snap: false,
     }
 }

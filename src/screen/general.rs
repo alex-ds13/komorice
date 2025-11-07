@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use iced::{
     Element, Task, padding,
-    widget::{button, column, horizontal_rule, pick_list, row, text},
+    widget::{button, column, pick_list, row, rule, text},
 };
 use komorebi_client::{
     AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour,
@@ -573,7 +573,7 @@ impl General {
         .style(button::text);
         let new_path_row = row![new_path, add_button].spacing(10);
 
-        let new_path_col = column![horizontal_rule(2), text("New path:"), new_path_row]
+        let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
             .spacing(10)
             .padding(padding::top(10));
         elements.push(new_path_col.into());

@@ -51,7 +51,7 @@ use iced::widget::{Button, button};
 use iced::window;
 use iced::{
     Alignment, Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Size,
-    Task, Theme, Vector,
+    Theme, Vector,
     border::{self, Border},
 };
 use iced_core::input_method::{self, InputMethod};
@@ -95,7 +95,7 @@ where
     Theme: Catalog + button::Catalog + iced::widget::text::Catalog,
     Renderer: text::Renderer,
 {
-    id: Option<Id>,
+    id: Option<widget::Id>,
     placeholder: String,
     value: Value,
     _number_value: T,
@@ -181,7 +181,7 @@ where
     }
 
     /// Sets the [`Id`] of the [`NumberInput`].
-    pub fn id(mut self, id: impl Into<Id>) -> Self {
+    pub fn id(mut self, id: impl Into<widget::Id>) -> Self {
         self.id = Some(id.into());
         self
     }
@@ -379,7 +379,7 @@ where
     ///
     /// [`Renderer`]: text::Renderer
     pub fn layout(
-        &self,
+        &mut self,
         tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
@@ -827,7 +827,7 @@ where
     }
 
     fn layout(
-        &self,
+        &mut self,
         tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
@@ -836,7 +836,7 @@ where
     }
 
     fn operate(
-        &self,
+        &mut self,
         tree: &mut Tree,
         layout: Layout<'_>,
         _renderer: &Renderer,
@@ -844,9 +844,9 @@ where
     ) {
         let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
-        operation.focusable(self.id.as_ref().map(|id| &id.0), layout.bounds(), state);
+        operation.focusable(self.id.as_ref(), layout.bounds(), state);
 
-        operation.text_input(self.id.as_ref().map(|id| &id.0), layout.bounds(), state);
+        operation.text_input(self.id.as_ref(), layout.bounds(), state);
     }
 
     fn update(
@@ -1794,90 +1794,6 @@ pub enum Side {
     Right,
 }
 
-/// The identifier of a [`NumberInput`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Id(widget::Id);
-
-impl Id {
-    /// Creates a custom [`Id`].
-    pub fn new(id: impl Into<std::borrow::Cow<'static, str>>) -> Self {
-        Self(widget::Id::new(id))
-    }
-
-    /// Creates a unique [`Id`].
-    ///
-    /// This function produces a different [`Id`] every time it is called.
-    pub fn unique() -> Self {
-        Self(widget::Id::unique())
-    }
-}
-
-impl From<Id> for widget::Id {
-    fn from(id: Id) -> Self {
-        id.0
-    }
-}
-
-impl From<&'static str> for Id {
-    fn from(id: &'static str) -> Self {
-        Self::new(id)
-    }
-}
-
-impl From<String> for Id {
-    fn from(id: String) -> Self {
-        Self::new(id)
-    }
-}
-
-/// Produces a [`Task`] that returns whether the [`NumberInput`] with the given [`Id`] is focused or not.
-pub fn is_focused(id: impl Into<Id>) -> Task<bool> {
-    widget::operate(operation::focusable::is_focused(id.into().0))
-}
-
-/// Produces a [`Task`] that focuses the [`NumberInput`] with the given [`Id`].
-pub fn focus<T>(id: impl Into<Id>) -> Task<T>
-where
-    T: Send + 'static,
-{
-    widget::operate(operation::focusable::focus(id.into().0))
-}
-
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
-/// end.
-pub fn move_cursor_to_end<T>(id: impl Into<Id>) -> Task<T>
-where
-    T: Send + 'static,
-{
-    widget::operate(operation::text_input::move_cursor_to_end(id.into().0))
-}
-
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
-/// front.
-pub fn move_cursor_to_front<T>(id: impl Into<Id>) -> Task<T>
-where
-    T: Send + 'static,
-{
-    widget::operate(operation::text_input::move_cursor_to_front(id.into().0))
-}
-
-/// Produces a [`Task`] that moves the cursor of the [`NumberInput`] with the given [`Id`] to the
-/// provided position.
-pub fn move_cursor_to<T>(id: impl Into<Id>, position: usize) -> Task<T>
-where
-    T: Send + 'static,
-{
-    widget::operate(operation::text_input::move_cursor_to(id.into().0, position))
-}
-
-/// Produces a [`Task`] that selects all the content of the [`NumberInput`] with the given [`Id`].
-pub fn select_all<T>(id: impl Into<Id>) -> Task<T>
-where
-    T: Send + 'static,
-{
-    widget::operate(operation::text_input::select_all(id.into().0))
-}
-
 /// The state of a [`NumberInput`].
 #[derive(Debug, Default, Clone)]
 pub struct State<P: text::Paragraph> {
@@ -1977,6 +1893,14 @@ impl<P: text::Paragraph> operation::Focusable for State<P> {
 }
 
 impl<P: text::Paragraph> operation::TextInput for State<P> {
+    fn text(&self) -> &str {
+        if self.value.content().is_empty() {
+            self.placeholder.content()
+        } else {
+            self.value.content()
+        }
+    }
+
     fn move_cursor_to_front(&mut self) {
         State::move_cursor_to_front(self);
     }

@@ -198,7 +198,7 @@ impl Whkd {
 
         let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
-        key_pressed = key_pressed.push_maybe(
+        key_pressed = key_pressed.push(
             (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty()).then_some(text(" + ")),
         );
         key_pressed = key_pressed.push(text!("{}", self.pressed_key));
@@ -291,10 +291,10 @@ fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
     .width(75);
     column![
         row![]
-            .push_maybe(mod_choose(sb.modifiers, 3))
-            .push_maybe(mod_choose(sb.modifiers, 2))
-            .push_maybe(mod_choose(sb.modifiers, 1))
-            .push_maybe(mod_choose(sb.modifiers, 0))
+            .push(mod_choose(sb.modifiers, 3))
+            .push(mod_choose(sb.modifiers, 2))
+            .push(mod_choose(sb.modifiers, 1))
+            .push(mod_choose(sb.modifiers, 0))
             .push(key)
             .spacing(5),
         binding.as_ref().map_or(row!["PB: [None]"], |pb| pb

@@ -10,7 +10,11 @@ use std::collections::HashMap;
 
 use iced::{
     Element, Subscription, Task,
-    widget::{button, row, text},
+    widget::{
+        Id, button,
+        operation::{self, AbsoluteOffset},
+        row, text,
+    },
 };
 use komorebi_client::{MonitorConfig, Rect, WorkspaceConfig};
 use lazy_static::lazy_static;
@@ -230,24 +234,24 @@ impl Monitor {
             }
             Message::SetSubScreenMonitor => {
                 self.sub_screen = SubScreen::Monitor;
-                return iced::widget::scrollable::scroll_to(
-                    iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                return operation::scroll_to(
+                    Id::new("monitors_scrollable"),
+                    AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
             }
             Message::SetSubScreenWorkspaces => {
                 self.sub_screen = SubScreen::Workspaces;
-                return iced::widget::scrollable::scroll_to(
-                    iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                return operation::scroll_to(
+                    Id::new("monitors_scrollable"),
+                    AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
             }
             Message::SetSubScreenWorkspace(idx) => {
                 self.sub_screen = SubScreen::Workspace(idx);
                 self.workspaces.entry(idx).or_default().screen = workspace::Screen::Workspace;
-                return iced::widget::scrollable::scroll_to(
-                    iced::widget::scrollable::Id::new("monitors_scrollable"),
-                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                return operation::scroll_to(
+                    Id::new("monitors_scrollable"),
+                    AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
             }
             Message::DeleteWorkspace(idx) => {
@@ -653,9 +657,9 @@ impl Monitor {
 }
 
 fn nav_button<'a>(
-    content: impl Into<iced::widget::Text<'a>>,
+    content: impl Into<text::Text<'a>>,
     on_press: Message,
-) -> iced::widget::Button<'a, Message> {
+) -> button::Button<'a, Message> {
     button(content.into().size(20).font(*BOLD_FONT))
         .on_press(on_press)
         .padding(0)
