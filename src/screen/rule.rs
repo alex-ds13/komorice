@@ -3,8 +3,8 @@ use crate::widget::{self, button_with_icon, icons, opt_helpers};
 use std::collections::HashSet;
 
 use iced::{
-    Center, Element, Fill, Right, Shrink, Subscription, Task, Top, padding,
-    widget::{Row, space, button, column, container, pick_list, row, text, text_input},
+    Center, Element, Fill, Right, Subscription, Task, Top, padding,
+    widget::{Row, button, column, container, pick_list, row, space, text, text_input},
 };
 use komorebi_client::{ApplicationIdentifier, IdWithIdentifier, MatchingRule, MatchingStrategy};
 use lazy_static::lazy_static;
@@ -290,7 +290,7 @@ impl Rule {
             let paste_button = button(icons::paste())
                 .on_press_maybe(self.clipboard_has_rule.then_some(Message::PasteRule))
                 .style(button::secondary);
-            opt_helpers::opt_box(
+            container(opt_helpers::opt_box(
                 row![
                     column!["Match any window where:", rls].spacing(10),
                     column![add_rule_button, row![copy_button, paste_button].spacing(5)]
@@ -299,8 +299,11 @@ impl Rule {
                 ]
                 .spacing(10)
                 .align_y(Top),
-            )
-            .max_width(685)
+            ))
+            // The extra padding is 90 to equal the hover butons + 20 from the scrollbar and
+            // padding of the rules below, so that when resizing it behaves as the rules below it.
+            .max_width(685 + 90 + 20)
+            .padding(padding::right(90 + 20))
             .into()
         } else {
             space().into()
@@ -384,60 +387,36 @@ impl Rule {
         content: Element<'a, Message>,
     ) -> Element<'a, Message> {
         iced::widget::hover(
-            iced::widget::stack([
-                container(
-                    opt_helpers::opt_box(content)
-                        .max_width(685)
-                        .style(opt_helpers::opt_box_style_bottom),
-                )
-                .width(Shrink)
-                .padding(padding::right(90))
-                .into(),
-                column![
-                    row![]
-                        .push(
-                            self.rules_editing.contains(&idx).then_some(
-                                button(icons::check())
-                                    .on_press(Message::ToggleRuleEdit(idx, false))
-                                    .style(button::primary),
-                            )
-                        )
-                        .push(
-                            self.rules_editing.contains(&idx).then_some(
-                                button(icons::delete())
-                                    .on_press(Message::RemoveRule(idx))
-                                    .style(button::danger),
-                            )
-                        )
-                        .spacing(10)
-                        .align_y(Center)
-                        .width(80)
-                        .height(Fill)
-                ]
-                .width(Fill)
-                .align_x(Right)
-                .into(),
-            ]),
+            container(opt_helpers::opt_box(content))
+                .max_width(685 + 90)
+                .padding(padding::right(90)),
             column![
-                row![]
-                    .push(
-                        (!self.rules_editing.contains(&idx)).then_some(
-                            button(icons::edit())
-                                .on_press(Message::ToggleRuleEdit(idx, true))
-                                .style(button::secondary),
-                        )
-                    )
-                    .push(
-                        (!self.rules_editing.contains(&idx)).then_some(
-                            button(icons::copy())
-                                .on_press(Message::CopyRule(idx))
-                                .style(button::secondary),
-                        )
-                    )
-                    .spacing(10)
-                    .align_y(Center)
-                    .width(80)
-                    .height(Fill)
+                row![
+                    (!self.rules_editing.contains(&idx)).then_some(
+                        button(icons::edit())
+                            .on_press(Message::ToggleRuleEdit(idx, true))
+                            .style(button::secondary),
+                    ),
+                    (!self.rules_editing.contains(&idx)).then_some(
+                        button(icons::copy())
+                            .on_press(Message::CopyRule(idx))
+                            .style(button::secondary),
+                    ),
+                    self.rules_editing.contains(&idx).then_some(
+                        button(icons::check())
+                            .on_press(Message::ToggleRuleEdit(idx, false))
+                            .style(button::primary),
+                    ),
+                    self.rules_editing.contains(&idx).then_some(
+                        button(icons::delete())
+                            .on_press(Message::RemoveRule(idx))
+                            .style(button::danger),
+                    ),
+                ]
+                .spacing(10)
+                .align_y(Center)
+                .width(80)
+                .height(Fill)
             ]
             .width(Fill)
             .align_x(Right),
