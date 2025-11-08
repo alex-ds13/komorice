@@ -8,8 +8,8 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        button, column, container, space, hover, markdown, pick_list, right, row,
-        scrollable, text,
+        bottom_center, button, column, container, hover, markdown, pick_list, right, row, scrollable,
+        space, text,
     },
 };
 
@@ -380,84 +380,91 @@ fn command_edit<'a>(
     theme: &'a Theme,
 ) -> Element<'a, Message> {
     let (main_cmd, rest) = split_command(command, commands);
-    iced::widget::Stack::new()
-        .push(opt_helpers::expandable_custom(
-            "Command",
-            Some("A command that should run when the keybind above is triggered."),
-            move |hovered, _expanded| {
-                let pick = pick_list(commands, Some(main_cmd.to_string()), move |v| {
-                    let cmd = if rest.is_empty() {
-                        format!("komorebic {v}")
-                    } else {
-                        format!("komorebic {v} {rest}")
-                    };
-                    Message::ChangeBindingCommand(idx, cmd)
-                });
-                let custom = widget::input(
-                    "",
-                    command,
-                    move |v| Message::ChangeBindingCommand(idx, v),
-                    None,
-                );
-                // .width(550);
-                column![
-                    row!["Komorebic commands:", pick]
-                        .push(
-                            commands_desc
-                                .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-                                .map(|_| {
-                                    container(icons::info()).style(move |t| {
-                                        if hovered {
-                                            container::Style {
-                                                text_color: Some(*crate::widget::BLUE),
-                                                ..container::transparent(t)
-                                            }
-                                        } else {
-                                            container::transparent(t)
-                                        }
-                                    })
-                                }),
-                        )
-                        .spacing(5),
-                    "Command:",
-                    custom,
-                    text(command),
-                ]
-                .width(iced::Shrink)
-                .padding(padding::bottom(10))
-                .spacing(10)
-            },
-            move || {
-                if let Some(items) =
-                    commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-                {
-                    vec![markdown(items, theme).map(Message::UrlClicked)]
+    widget::expandable::expandable(move |hovered, expanded| {
+        let label = if false {
+            row![text("Command")]
+                .push(widget::opt_helpers::reset_button(Some(
+                    Message::ChangeBindingCommand(idx, String::new()),
+                )))
+                .spacing(5)
+                .height(30)
+                .align_y(iced::Center)
+        } else {
+            row![text("Command")].height(30).align_y(iced::Center)
+        };
+
+        let main = row![widget::opt_helpers::label_element_with_description(
+            label,
+            Some("A command that should run when the keybind above is triggered.")
+        )]
+        .push(widget::opt_helpers::disable_checkbox(None))
+        .push({
+            let pick = pick_list(commands, Some(main_cmd.to_string()), move |v| {
+                let cmd = if rest.is_empty() {
+                    format!("komorebic {v}")
                 } else {
-                    vec![]
-                }
-            },
-            false,
-            false,
-            Message::ChangeBindingCommand(idx, String::new()),
-            None,
-        ))
-        .push(
-            commands_desc
-                .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-                .map(|_| {
-                    container(
-                        row![
-                            icons::info().size(12),
-                            text(" Command Documentation ").size(10),
-                            icons::down_chevron().size(12),
-                        ]
-                        .align_y(iced::Center),
-                    )
-                    .center_x(iced::Fill)
-                    .padding(padding::top(145))
-                }),
-        )
-        .into()
+                    format!("komorebic {v} {rest}")
+                };
+                Message::ChangeBindingCommand(idx, cmd)
+            });
+            let custom = widget::input(
+                "",
+                command,
+                move |v| Message::ChangeBindingCommand(idx, v),
+                None,
+            );
+            column![
+                row!["Komorebic commands:", pick].spacing(5),
+                "Command:",
+                custom,
+                text(command),
+            ]
+            .width(iced::Shrink)
+            .padding(padding::bottom(10))
+            .spacing(10)
+        })
+        .spacing(10);
+
+        let top = commands_desc
+            .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+            .is_some()
+            .then(|| {
+                bottom_center(
+                    row![
+                        container(icons::info().size(12)).style(move |t| {
+                            if hovered {
+                                container::Style {
+                                    text_color: Some(*crate::widget::BLUE),
+                                    ..container::transparent(t)
+                                }
+                            } else {
+                                container::transparent(t)
+                            }
+                        }),
+                        text(" Command Documentation ").size(10),
+                        if expanded {
+                            icons::up_chevron().size(12)
+                        } else {
+                            icons::down_chevron().size(12)
+                        },
+                    ]
+                    .align_y(iced::Center),
+                )
+                .padding(padding::bottom(-10.0))
+            });
+
+        hover(main, top)
+    })
+    .bottom_elements(move || {
+        if let Some(items) =
+            commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+        {
+            vec![markdown(items, theme).map(Message::UrlClicked)]
+        } else {
+            vec![]
+        }
+    })
+    .into()
 }
 
 fn split_command<'a>(command: &'a str, commands: &'a [String]) -> (&'a str, &'a str) {
