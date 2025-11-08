@@ -163,6 +163,13 @@ where
 
     type Event = InternalMessage<Message>;
 
+    fn size_hint(&self) -> iced::Size<iced::Length> {
+        iced::Size {
+            width: iced::Fill,
+            height: iced::Shrink,
+        }
+    }
+
     fn update(
         &mut self,
         state: &mut Self::State,
