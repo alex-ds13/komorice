@@ -1,6 +1,7 @@
 pub mod color_picker;
 pub mod expandable;
 mod helpers;
+pub mod hover;
 pub mod icons;
 pub mod modal;
 pub mod monitors_viewer;
@@ -12,6 +13,7 @@ pub mod text_input;
 pub use helpers::*;
 pub use modal::modal;
 pub use opt_button::opt_button;
+pub use hover::hover;
 
 use std::fmt::Display;
 use std::str::FromStr;
