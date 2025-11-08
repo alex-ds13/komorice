@@ -1,6 +1,6 @@
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, icons, opt_helpers},
+    widget::{self, hover, icons, opt_helpers},
 };
 
 use std::collections::{HashMap, HashSet};
@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        bottom_center, button, column, container, hover, markdown, pick_list, right, row, scrollable,
+        bottom_center, button, column, container, markdown, pick_list, right, row, scrollable,
         space, text,
     },
 };
