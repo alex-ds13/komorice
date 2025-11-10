@@ -123,7 +123,10 @@ impl Whkd {
                 );
             }
             Message::Bindings(message) => {
-                let (action, task) = self.whkd.bindings.update(message, &mut self.whkdrc);
+                let (action, task) =
+                    self.whkd
+                        .bindings
+                        .update(message, &mut self.whkdrc, &self.commands);
                 let action_task = match action {
                     screen::whkd::bindings::Action::None => Task::none(),
                 };
