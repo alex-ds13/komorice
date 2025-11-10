@@ -4,14 +4,14 @@ pub use bindings::Bindings;
 
 use crate::{
     whkd::{DEFAULT_WHKDRC, HotkeyBinding, Shell, Whkdrc},
-    widget::{self, opt_helpers},
+    widget::{self, hover, icons, opt_helpers},
 };
 
 use std::collections::HashMap;
 
 use iced::{
-    Element, Subscription, Task, Theme,
-    widget::{column, markdown, pick_list, row, text},
+    Element, Subscription, Task, Theme, padding,
+    widget::{bottom_center, column, combo_box, container, markdown, pick_list, row, text},
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
@@ -54,6 +54,7 @@ pub struct Whkd {
     pressed_key: String,
     pressed_mod: String,
     pub bindings: Bindings,
+    pause_hook_state: iced::widget::combo_box::State<String>,
 }
 
 impl Whkd {
@@ -194,7 +195,13 @@ impl Whkd {
             Some(Message::PauseBinding(None)),
             None,
         );
-        let pause_hook = hook_custom(&whkdrc.pause_hook, commands, commands_desc, theme);
+        let pause_hook = hook_custom(
+            &self.pause_hook_state,
+            &whkdrc.pause_hook,
+            commands,
+            commands_desc,
+            theme,
+        );
 
         let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
@@ -245,6 +252,10 @@ impl Whkd {
         let navigation = navigation_sub().map(Message::Navigate);
 
         Subscription::batch([press, release, navigation])
+    }
+
+    pub fn update_pause_hook_state(&mut self, commands: &[String]) {
+        self.pause_hook_state = combo_box::State::new(commands.to_vec());
     }
 }
 
@@ -305,6 +316,7 @@ fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
 }
 
 fn hook_custom<'a>(
+    state: &'a combo_box::State<String>,
     pause_hook: &'a Option<String>,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
@@ -312,57 +324,93 @@ fn hook_custom<'a>(
 ) -> Element<'a, Message> {
     let (hook_command, hook_custom) = split_pause_hook(pause_hook, commands);
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
-    opt_helpers::expandable_custom(
-        "Pause Hook",
-        Some("A command that should run on pause keybind trigger.  (default: None)"),
-        move |_, _| {
-            let pick = pick_list(commands, Some(hook_command.to_string()), move |v| {
-                let hook = Some(if hook_custom.is_empty() {
+    widget::expandable::expandable(move |hovered, expanded| {
+        let label = if is_dirty {
+            row![text("Command")]
+                .push(widget::opt_helpers::reset_button(Some(Message::PauseHook(
+                    DEFAULT_WHKDRC.pause_hook.clone(),
+                ))))
+                .spacing(5)
+                .height(30)
+                .align_y(iced::Center)
+        } else {
+            row![text("Command")].height(30).align_y(iced::Center)
+        };
+
+        let main = row![widget::opt_helpers::label_element_with_description(
+            label,
+            Some("A command that should run when the keybind above is triggered.")
+        )]
+        .push(widget::opt_helpers::disable_checkbox(None))
+        .push({
+            let rest = hook_custom.to_string();
+            let main_cmd = hook_command.to_string();
+            let commands_box = combo_box(state, "", Some(&main_cmd), move |v| {
+                let cmd = if rest.is_empty() {
                     format!("komorebic {v}")
                 } else {
-                    format!("komorebic {v} {hook_custom}")
-                });
-                Message::PauseHook(hook)
+                    format!("komorebic {v} {rest}")
+                };
+                Message::PauseHook(Some(cmd))
             });
             let ph = pause_hook.as_ref().map_or("", String::as_str);
-            let custom = widget::input(
-                "",
-                ph,
-                // move |v| {
-                //     let hook = Some(if hook_command.is_empty() {
-                //         v
-                //     } else {
-                //         format!("{} {}", hook_command, v)
-                //     });
-                //     Message::PauseHook(hook)
-                // },
-                |v| Message::PauseHook(Some(v)),
-                None,
+            let custom = widget::input("", ph, |v| Message::PauseHook(Some(v)), None);
+            container(
+                column![
+                    row!["Komorebic commands:", commands_box].spacing(5),
+                    "Command:",
+                    custom,
+                    text(ph),
+                ]
+                .max_width(700)
+                .padding(padding::bottom(10))
+                .spacing(10),
             )
-            .width(550);
-            column![
-                row!["Komorebic commands:", pick].spacing(5),
-                "Command:",
-                custom,
-                text(ph)
-            ]
-            .width(iced::Shrink)
-            .spacing(10)
-        },
-        move || {
-            if let Some(items) =
-                commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
-            {
-                vec![markdown(items, theme).map(Message::UrlClicked)]
-            } else {
-                vec![]
-            }
-        },
-        is_dirty,
-        true,
-        Message::PauseHook(DEFAULT_WHKDRC.pause_hook.clone()),
-        None,
-    )
+            .align_right(iced::FillPortion(3))
+        })
+        .spacing(10);
+
+        let top = commands_desc
+            .get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
+            .is_some()
+            .then(|| {
+                bottom_center(
+                    row![
+                        container(icons::info().size(12)).style(move |t| {
+                            if hovered {
+                                container::Style {
+                                    text_color: Some(*crate::widget::BLUE),
+                                    ..container::transparent(t)
+                                }
+                            } else {
+                                container::transparent(t)
+                            }
+                        }),
+                        text(" Command Documentation ").size(10),
+                        if expanded {
+                            icons::up_chevron().size(12)
+                        } else {
+                            icons::down_chevron().size(12)
+                        },
+                    ]
+                    .align_y(iced::Center),
+                )
+                .padding(padding::bottom(-10.0))
+            });
+
+        hover(main, top)
+    })
+    .bottom_elements(move || {
+        if let Some(items) =
+            commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
+        {
+            vec![markdown(items, theme).map(Message::UrlClicked)]
+        } else {
+            vec![]
+        }
+    })
+    .dirty(is_dirty)
+    .into()
 }
 
 fn split_pause_hook<'a>(
