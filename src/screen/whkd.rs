@@ -254,8 +254,9 @@ impl Whkd {
         Subscription::batch([press, release, navigation])
     }
 
-    pub fn update_pause_hook_state(&mut self, commands: &[String]) {
+    pub fn load_new_commands(&mut self, commands: &[String]) {
         self.pause_hook_state = combo_box::State::new(commands.to_vec());
+        self.bindings.load_new_commands(commands);
     }
 }
 

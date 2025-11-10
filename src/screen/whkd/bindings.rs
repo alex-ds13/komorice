@@ -1,6 +1,7 @@
 use crate::{
+    BOLD_FONT,
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, hover, icons, opt_helpers},
+    widget::{self, button_with_icon, hover, icons, opt_helpers},
 };
 
 use std::collections::{HashMap, HashSet};
@@ -8,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
+        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row, rule,
         scrollable, space, text,
     },
 };
@@ -23,6 +24,7 @@ pub enum Message {
     ChangeNewBindingMod(usize, String),
     ChangeNewBindingKey(String),
     ChangeNewBindingCommand(String),
+    ToggleShowNewBinding,
     AddNewBinding,
     RemoveBinding(usize),
     ChangeBindingKeys(usize, Vec<String>),
@@ -48,6 +50,8 @@ pub struct Bindings {
     pressed_key: String,
     pressed_mod: String,
     new_binding: HotkeyBinding,
+    new_binding_state: combo_box::State<String>,
+    show_new_binding: bool,
     editing: HashSet<usize>,
     editing_states: HashMap<usize, combo_box::State<String>>,
 }
@@ -62,6 +66,8 @@ impl Default for Bindings {
                 command: String::new(),
                 process_name: None,
             },
+            new_binding_state: Default::default(),
+            show_new_binding: false,
             editing: Default::default(),
             editing_states: Default::default(),
         }
@@ -156,16 +162,96 @@ impl Bindings {
                 }
             }
             Message::Bindings(_) => todo!(),
-            Message::AddNewBinding => todo!(),
-            Message::RemoveBinding(_) => todo!(),
+            Message::AddNewBinding => {
+                let default_binding = HotkeyBinding {
+                    keys: Vec::new(),
+                    command: String::new(),
+                    process_name: None,
+                };
+                let new_binding = std::mem::replace(&mut self.new_binding, default_binding);
+                whkdrc.bindings.push(new_binding);
+            }
+            Message::RemoveBinding(idx) => {
+                if whkdrc.bindings.len() > idx {
+                    whkdrc.bindings.remove(idx);
+                }
+            }
             Message::ChangeBindingKeys(_, _) => todo!(),
             Message::Nothing => {}
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
-            Message::ChangeNewBindingMod(_, _) => todo!(),
-            Message::ChangeNewBindingKey(_) => todo!(),
-            Message::ChangeNewBindingCommand(_) => todo!(),
+            Message::ChangeNewBindingMod(pos, mod1) => {
+                let sb = split_binding(&self.new_binding);
+                if mod1.is_empty() {
+                    if pos < sb.modifiers.len() {
+                        self.new_binding.keys.remove(pos);
+                    }
+                } else if let Some(k) = self
+                    .new_binding
+                    .keys
+                    .iter_mut()
+                    .filter(|m| is_mod(m))
+                    .nth(pos)
+                {
+                    *k = mod1.to_lowercase();
+                } else if pos <= self.new_binding.keys.len() {
+                    self.new_binding.keys.insert(pos, mod1.to_lowercase());
+                } else {
+                    //TODO: show error to user in case `i` is higher than len(), this shouldn't
+                    //happen though
+                    println!(
+                        "Failed to add mod {mod1} to binding with index {pos} since len is {}",
+                        self.new_binding.keys.len()
+                    );
+                }
+            }
+            Message::ChangeNewBindingKey(key) => {
+                let sb = split_binding(&self.new_binding);
+                let keys_count = sb.keys.len();
+                let mods_count = sb.modifiers.len();
+                if key.is_empty() {
+                    if keys_count == 1 {
+                        self.new_binding.keys.pop();
+                    } else if keys_count >= 2 {
+                        //TODO: show error to user
+                        println!(
+                            "Failed to remove key {key} from new binding since key count is {}, should be <=1",
+                            keys_count
+                        );
+                    }
+                } else {
+                    println!("Adding/Updating a key");
+                    if keys_count == 1 {
+                        let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
+                        if kk.len() > 1 {
+                            self.new_binding.keys.truncate(mods_count);
+                            kk.into_iter().for_each(|k| {
+                                println!("Adding key {k}...");
+                                self.new_binding.keys.push(k);
+                            });
+                        } else if let Some(k) = self.new_binding.keys.last_mut() {
+                            *k = key;
+                        } else {
+                            self.new_binding.keys.push(key);
+                        }
+                    } else if keys_count == 0 {
+                        self.new_binding.keys.push(key);
+                    } else {
+                        //TODO: show error to user
+                        // println!("Failed to add key {key} to new binding since key count is {}, should be <=1", keys_count);
+                        self.new_binding
+                            .keys
+                            .truncate(self.new_binding.keys.len() - keys_count);
+                        key.split(SEPARATOR).map(String::from).for_each(|k| {
+                            println!("Adding key {k}...");
+                            self.new_binding.keys.push(k);
+                        });
+                    }
+                }
+            }
+            Message::ChangeNewBindingCommand(command) => self.new_binding.command = command,
+            Message::ToggleShowNewBinding => self.show_new_binding = !self.show_new_binding,
             Message::EditBinding(idx) => {
                 self.editing.insert(idx);
                 self.editing_states
@@ -186,6 +272,51 @@ impl Bindings {
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
     ) -> Element<'a, Message> {
+        let add_new_binding_button =
+            widget::button_with_icon(icons::plus(), text("Add New Binding"))
+                .on_press(Message::ToggleShowNewBinding)
+                .style(button::secondary)
+                .into();
+
+        let new_binding = if self.show_new_binding {
+            let keybind = opt_helpers::opt_custom_el_disable_default(
+                "Keybind",
+                Some("A key combination to trigger the following command."),
+                keys(
+                    &self.new_binding,
+                    Message::ChangeNewBindingKey,
+                    Message::ChangeNewBindingMod,
+                ),
+                false,
+                None,
+                None,
+            );
+            let command = command_edit(
+                Some(&self.new_binding_state),
+                &self.new_binding.command,
+                commands,
+                commands_desc,
+                theme,
+                Message::ChangeNewBindingCommand,
+            );
+
+            let add_binding_button = button_with_icon(icons::plus(), "Add")
+                .on_press(Message::AddNewBinding)
+                .width(77);
+
+            column![
+                keybind,
+                command,
+                column![add_binding_button] //, row![copy_button, paste_button].spacing(5)]
+                    .align_x(iced::Right)
+                    .spacing(10),
+            ]
+            .spacing(10)
+            .into()
+        } else {
+            space().into()
+        };
+
         let col = column![];
         let bindings = whkdrc
             .bindings
@@ -195,19 +326,23 @@ impl Bindings {
                 if self.editing.contains(&idx) {
                     let keybind = opt_helpers::opt_custom_el_disable_default(
                         "Keybind",
-                        Some("A key combination to trigger the command below."),
-                        keys(idx, binding),
+                        Some("A key combination to trigger the following command."),
+                        keys(
+                            binding,
+                            move |k| Message::ChangeBindingKey(idx, k),
+                            move |pos, m| Message::ChangeBindingMod(idx, (pos, m)),
+                        ),
                         false,
                         None,
                         None,
                     );
                     let command = command_edit(
-                        idx,
                         self.editing_states.get(&idx),
                         &binding.command,
                         commands,
                         commands_desc,
                         theme,
+                        move |c| Message::ChangeBindingCommand(idx, c),
                     );
 
                     let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
@@ -286,7 +421,12 @@ impl Bindings {
             })
             .into();
 
-        opt_helpers::section_view("Bindings:", [bindings])
+        column![
+            opt_helpers::section_view("Bindings:", [add_new_binding_button, new_binding]),
+            opt_helpers::section_view("Bindings:", [bindings]),
+        ]
+        .spacing(10)
+        .into()
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -325,14 +465,23 @@ impl Bindings {
 
         Subscription::batch([press, release])
     }
+
+    pub fn load_new_commands(&mut self, commands: &[String]) {
+        self.new_binding_state = combo_box::State::new(commands.to_vec());
+    }
 }
 
 fn is_mod(key: &str) -> bool {
     MODIFIERS.contains(&key.to_uppercase().as_str())
 }
 
-fn mod_choose<'a>(idx: usize, binding_mods: &[String], pos: usize) -> Option<Element<'a, Message>> {
-    let pl = |k: String| -> Element<Message> {
+fn mod_choose<'a>(
+    binding_mods: &[String],
+    pos: usize,
+    on_mod_change: impl Fn(usize, String) -> Message + Clone + 'a,
+) -> Option<Element<'a, Message>> {
+    let on_mod_change_clone = on_mod_change.clone();
+    let pl = move |k: String| -> Element<Message> {
         let mut options = vec![
             "".into(),
             "CTRL".into(),
@@ -346,10 +495,7 @@ fn mod_choose<'a>(idx: usize, binding_mods: &[String], pos: usize) -> Option<Ele
                 .map(|m| m.to_uppercase())
                 .any(|m| &m == v)
         });
-        pick_list(options, Some(k), move |v| {
-            Message::ChangeBindingMod(idx, (pos, v))
-        })
-        .into()
+        pick_list(options, Some(k), move |v| on_mod_change_clone(pos, v)).into()
     };
     if let Some(k) = binding_mods.get(pos) {
         Some(pl((*k).clone()))
@@ -362,22 +508,20 @@ fn mod_choose<'a>(idx: usize, binding_mods: &[String], pos: usize) -> Option<Ele
     }
 }
 
-fn keys(idx: usize, binding: &HotkeyBinding) -> Element<'_, Message> {
+fn keys<'a>(
+    binding: &'a HotkeyBinding,
+    on_key_change: impl Fn(String) -> Message + 'a,
+    on_mod_change: impl Fn(usize, String) -> Message + Clone + 'a,
+) -> Element<'a, Message> {
     let sb = split_binding(binding);
     let joined_key = sb.keys.join(SEPARATOR);
-    let key = widget::input(
-        "",
-        joined_key,
-        move |v| Message::ChangeBindingKey(idx, v),
-        None,
-    )
-    .width(75);
+    let key = widget::input("", joined_key, on_key_change, None).width(75);
     column![
         row![]
-            .push(mod_choose(idx, sb.modifiers, 3))
-            .push(mod_choose(idx, sb.modifiers, 2))
-            .push(mod_choose(idx, sb.modifiers, 1))
-            .push(mod_choose(idx, sb.modifiers, 0))
+            .push(mod_choose(sb.modifiers, 3, on_mod_change.clone()))
+            .push(mod_choose(sb.modifiers, 2, on_mod_change.clone()))
+            .push(mod_choose(sb.modifiers, 1, on_mod_change.clone()))
+            .push(mod_choose(sb.modifiers, 0, on_mod_change))
             .push(key)
             .spacing(5),
         binding
@@ -389,19 +533,20 @@ fn keys(idx: usize, binding: &HotkeyBinding) -> Element<'_, Message> {
 }
 
 fn command_edit<'a>(
-    idx: usize,
     state: Option<&'a combo_box::State<String>>,
     command: &'a String,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
     theme: &'a Theme,
+    on_command_change: impl Fn(String) -> Message + Clone + 'static,
 ) -> Element<'a, Message> {
     let (main_cmd, rest) = split_command(command, commands);
     widget::expandable::expandable(move |hovered, expanded| {
+        let on_command_change_clone = on_command_change.clone();
         let label = if false {
             row![text("Command")]
                 .push(widget::opt_helpers::reset_button(Some(
-                    Message::ChangeBindingCommand(idx, String::new()),
+                    on_command_change_clone(String::new()),
                 )))
                 .spacing(5)
                 .height(30)
@@ -419,21 +564,18 @@ fn command_edit<'a>(
             let commands_box = state.map(|state| {
                 let rest = rest.to_string();
                 let main_cmd = main_cmd.to_string();
+                let on_command_change_clone = on_command_change.clone();
                 combo_box(state, "", Some(&main_cmd), move |v| {
                     let cmd = if rest.is_empty() {
                         format!("komorebic {v}")
                     } else {
                         format!("komorebic {v} {rest}")
                     };
-                    Message::ChangeBindingCommand(idx, cmd)
+                    on_command_change_clone(cmd)
                 })
             });
-            let custom = widget::input(
-                "",
-                command,
-                move |v| Message::ChangeBindingCommand(idx, v),
-                None,
-            );
+            let on_command_change_c = on_command_change.clone();
+            let custom = widget::input("", command, on_command_change_c, None);
             container(
                 column![
                     row!["Komorebic commands:", commands_box].spacing(5),
