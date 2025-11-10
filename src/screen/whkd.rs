@@ -80,9 +80,9 @@ impl Whkd {
                     }
                 } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
                     if let Some(k) = pause_binding.iter_mut().filter(|m| is_mod(m)).nth(i) {
-                        *k = mod1.clone();
+                        *k = mod1.to_lowercase();
                     } else if i <= pause_binding.len() {
-                        pause_binding.insert(i, mod1.clone());
+                        pause_binding.insert(i, mod1.to_lowercase());
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
@@ -92,7 +92,7 @@ impl Whkd {
                         );
                     }
                 } else {
-                    whkdrc.pause_binding = Some(vec![mod1.clone()]);
+                    whkdrc.pause_binding = Some(vec![mod1.to_lowercase()]);
                 }
             }
             Message::PBKey(key) => {
