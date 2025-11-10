@@ -127,7 +127,7 @@ impl Whkd {
                     whkdrc.pause_binding = Some(vec![key]);
                 }
             }
-            Message::PauseBinding(_) => todo!(),
+            Message::PauseBinding(binding) => whkdrc.pause_binding = binding,
             Message::PauseHook(pause_hook) => {
                 // if let Some(hook) = &pause_hook {
                 //     if let Some(command) = COMMANDS.iter().find(|c| hook.starts_with(*c)) {
@@ -190,8 +190,8 @@ impl Whkd {
             "Pause Binding",
             Some("Can be any hotkey combo to toggle all other hotkeys on/off. (default: None)"),
             keys(&whkdrc.pause_binding),
-            false,
-            None,
+            whkdrc.pause_binding.is_some(),
+            Some(Message::PauseBinding(None)),
             None,
         );
         let pause_hook = hook_custom(&whkdrc.pause_hook, commands, commands_desc, theme);
