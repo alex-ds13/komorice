@@ -8,8 +8,8 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        bottom_center, button, column, container, markdown, pick_list, right, row, scrollable,
-        space, text,
+        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
+        scrollable, space, text,
     },
 };
 
@@ -49,6 +49,7 @@ pub struct Bindings {
     pressed_mod: String,
     new_binding: HotkeyBinding,
     editing: HashSet<usize>,
+    editing_states: HashMap<usize, combo_box::State<String>>,
 }
 
 impl Default for Bindings {
@@ -62,12 +63,18 @@ impl Default for Bindings {
                 process_name: None,
             },
             editing: Default::default(),
+            editing_states: Default::default(),
         }
     }
 }
 
 impl Bindings {
-    pub fn update(&mut self, message: Message, whkdrc: &mut Whkdrc) -> (Action, Task<Message>) {
+    pub fn update(
+        &mut self,
+        message: Message,
+        whkdrc: &mut Whkdrc,
+        commands: &[String],
+    ) -> (Action, Task<Message>) {
         match message {
             Message::KeyPress(Some(k), m) => {
                 self.pressed_key = k;
@@ -161,9 +168,12 @@ impl Bindings {
             Message::ChangeNewBindingCommand(_) => todo!(),
             Message::EditBinding(idx) => {
                 self.editing.insert(idx);
+                self.editing_states
+                    .insert(idx, combo_box::State::new(commands.to_vec()));
             }
             Message::FinishEditBinding(idx) => {
                 self.editing.remove(&idx);
+                self.editing_states.remove(&idx);
             }
         }
         (Action::None, Task::none())
@@ -191,8 +201,14 @@ impl Bindings {
                         None,
                         None,
                     );
-                    let command =
-                        command_edit(idx, &binding.command, commands, commands_desc, theme);
+                    let command = command_edit(
+                        idx,
+                        self.editing_states.get(&idx),
+                        &binding.command,
+                        commands,
+                        commands_desc,
+                        theme,
+                    );
 
                     let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
 
@@ -374,6 +390,7 @@ fn keys(idx: usize, binding: &HotkeyBinding) -> Element<'_, Message> {
 
 fn command_edit<'a>(
     idx: usize,
+    state: Option<&'a combo_box::State<String>>,
     command: &'a String,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
@@ -399,13 +416,17 @@ fn command_edit<'a>(
         )]
         .push(widget::opt_helpers::disable_checkbox(None))
         .push({
-            let pick = pick_list(commands, Some(main_cmd.to_string()), move |v| {
-                let cmd = if rest.is_empty() {
-                    format!("komorebic {v}")
-                } else {
-                    format!("komorebic {v} {rest}")
-                };
-                Message::ChangeBindingCommand(idx, cmd)
+            let commands_box = state.map(|state| {
+                let rest = rest.to_string();
+                let main_cmd = main_cmd.to_string();
+                combo_box(state, "", Some(&main_cmd), move |v| {
+                    let cmd = if rest.is_empty() {
+                        format!("komorebic {v}")
+                    } else {
+                        format!("komorebic {v} {rest}")
+                    };
+                    Message::ChangeBindingCommand(idx, cmd)
+                })
             });
             let custom = widget::input(
                 "",
@@ -413,15 +434,18 @@ fn command_edit<'a>(
                 move |v| Message::ChangeBindingCommand(idx, v),
                 None,
             );
-            column![
-                row!["Komorebic commands:", pick].spacing(5),
-                "Command:",
-                custom,
-                text(command),
-            ]
-            .width(iced::Shrink)
-            .padding(padding::bottom(10))
-            .spacing(10)
+            container(
+                column![
+                    row!["Komorebic commands:", commands_box].spacing(5),
+                    "Command:",
+                    custom,
+                    text(command),
+                ]
+                .max_width(700)
+                .padding(padding::bottom(10))
+                .spacing(10),
+            )
+            .align_right(iced::FillPortion(3))
         })
         .spacing(10);
 
