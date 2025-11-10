@@ -139,7 +139,7 @@ impl Whkd {
             Message::LoadedCommands(commands) => {
                 // println!("{commands:?}");
                 self.commands = commands;
-                self.whkd.update_pause_hook_state(&self.commands);
+                self.whkd.load_new_commands(&self.commands);
                 self.loaded_commands = true;
                 return (Action::None, self.load_commands_description());
             }
