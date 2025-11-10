@@ -93,9 +93,9 @@ impl Bindings {
                             binding.keys.remove(pos);
                         }
                     } else if let Some(k) = binding.keys.iter_mut().filter(|m| is_mod(m)).nth(pos) {
-                        *k = mod1.clone();
+                        *k = mod1.to_lowercase();
                     } else if pos <= binding.keys.len() {
-                        binding.keys.insert(pos, mod1.clone());
+                        binding.keys.insert(pos, mod1.to_lowercase());
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
