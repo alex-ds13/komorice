@@ -61,6 +61,7 @@ pub struct Whkd {
     pub loaded_whkdrc: Arc<Whkdrc>,
     pub is_dirty: bool,
     pub whkd: screen::whkd::Whkd,
+    pub bindings: screen::whkd::Bindings,
     pub screen: Screen,
     pub loaded_commands: bool,
     commands: Vec<String>,
@@ -75,6 +76,7 @@ impl Default for Whkd {
             loaded_whkdrc: Arc::new(DEFAULT_WHKDRC.clone()),
             is_dirty: false,
             whkd: Default::default(),
+            bindings: Default::default(),
             screen: Screen::Whkd,
             loaded_commands: false,
             commands: Default::default(),
@@ -124,8 +126,7 @@ impl Whkd {
             }
             Message::Bindings(message) => {
                 let (action, task) =
-                    self.whkd
-                        .bindings
+                    self.bindings
                         .update(message, &mut self.whkdrc, &self.commands);
                 let action_task = match action {
                     screen::whkd::bindings::Action::None => Task::none(),
@@ -140,6 +141,7 @@ impl Whkd {
                 // println!("{commands:?}");
                 self.commands = commands;
                 self.whkd.load_new_commands(&self.commands);
+                self.bindings.load_new_commands(&self.commands);
                 self.loaded_commands = true;
                 return (Action::None, self.load_commands_description());
             }
@@ -165,7 +167,6 @@ impl Whkd {
                 .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
                 .map(Message::Whkd),
             Screen::WhkdBinding => self
-                .whkd
                 .bindings
                 .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
                 .map(Message::Bindings),
@@ -176,6 +177,7 @@ impl Whkd {
     pub fn subscription(&self) -> Subscription<Message> {
         let screen_subscription = match self.screen {
             Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
+            Screen::WhkdBinding => self.bindings.subscription().map(Message::Bindings),
             _ => Subscription::none(),
         };
 

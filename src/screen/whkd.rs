@@ -3,7 +3,7 @@ pub mod bindings;
 pub use bindings::Bindings;
 
 use crate::{
-    whkd::{DEFAULT_WHKDRC, HotkeyBinding, Shell, Whkdrc},
+    whkd::{DEFAULT_WHKDRC, Shell, Whkdrc},
     widget::{self, hover, icons, opt_helpers},
 };
 
@@ -23,25 +23,16 @@ pub enum Message {
     PBKey(String),
     PauseBinding(Option<Vec<String>>),
     PauseHook(Option<String>),
-    AppBindings(Vec<(Vec<String>, Vec<HotkeyBinding>)>),
-    AddNewAppBinding,
-    RemoveAppBinding(usize),
-    ChangeAppBindingKeys(usize, Vec<String>),
-    ChangeAppBindingProcessName(usize, String),
-    ChangeAppBindingCommand(usize, String),
-    Bindings(Vec<HotkeyBinding>),
-    AddNewBinding,
-    RemoveBinding(usize),
-    ChangeBindingKeys(usize, Vec<String>),
-    ChangeBindingCommand(usize, String),
-
+    // AppBindings(Vec<(Vec<String>, Vec<HotkeyBinding>)>),
+    // AddNewAppBinding,
+    // RemoveAppBinding(usize),
+    // ChangeAppBindingKeys(usize, Vec<String>),
+    // ChangeAppBindingProcessName(usize, String),
+    // ChangeAppBindingCommand(usize, String),
     KeyPress(Option<String>, String),
     KeyRelease,
     Navigate(NavMessage),
-    NavigateForward,
-    NavigateBack,
     UrlClicked(markdown::Url),
-    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -53,7 +44,6 @@ pub enum Action {
 pub struct Whkd {
     pressed_key: String,
     pressed_mod: String,
-    pub bindings: Bindings,
     pause_hook_state: iced::widget::combo_box::State<String>,
 }
 
@@ -130,39 +120,12 @@ impl Whkd {
             }
             Message::PauseBinding(binding) => whkdrc.pause_binding = binding,
             Message::PauseHook(pause_hook) => {
-                // if let Some(hook) = &pause_hook {
-                //     if let Some(command) = COMMANDS.iter().find(|c| hook.starts_with(*c)) {
-                //         self.pause_hook_command = command.clone();
-                //         self.pause_hook_custom =
-                //             hook.split_at(command.len()).1.trim_start().to_string();
-                //     } else {
-                //         self.pause_hook_command = String::new();
-                //         self.pause_hook_custom = hook.clone();
-                //     }
-                // } else {
-                //     self.pause_hook_command = String::new();
-                //     self.pause_hook_custom = String::new();
-                // }
                 whkdrc.pause_hook = pause_hook;
             }
-            Message::AppBindings(_) => todo!(),
-            Message::AddNewAppBinding => todo!(),
-            Message::RemoveAppBinding(_) => todo!(),
-            Message::ChangeAppBindingKeys(_, _) => todo!(),
-            Message::ChangeAppBindingProcessName(_, _) => todo!(),
-            Message::ChangeAppBindingCommand(_, _) => todo!(),
-            Message::Bindings(_) => todo!(),
-            Message::AddNewBinding => todo!(),
-            Message::RemoveBinding(_) => todo!(),
-            Message::ChangeBindingKeys(_, _) => todo!(),
-            Message::ChangeBindingCommand(_, _) => todo!(),
             Message::Navigate(nav) => match nav {
                 NavMessage::Forward => {}
                 NavMessage::Back => {}
             },
-            Message::NavigateForward => {}
-            Message::NavigateBack => {}
-            Message::Nothing => {}
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
@@ -203,17 +166,7 @@ impl Whkd {
             theme,
         );
 
-        let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
-
-        key_pressed = key_pressed.push(
-            (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty()).then_some(text(" + ")),
-        );
-        key_pressed = key_pressed.push(text!("{}", self.pressed_key));
-
-        opt_helpers::section_view(
-            "Whkd:",
-            [shell, pause_binding, pause_hook, key_pressed.into()],
-        )
+        opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook])
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -256,7 +209,6 @@ impl Whkd {
 
     pub fn load_new_commands(&mut self, commands: &[String]) {
         self.pause_hook_state = combo_box::State::new(commands.to_vec());
-        self.bindings.load_new_commands(commands);
     }
 }
 
@@ -301,18 +253,14 @@ fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
         None,
     )
     .width(75);
-    column![
-        row![]
-            .push(mod_choose(sb.modifiers, 3))
-            .push(mod_choose(sb.modifiers, 2))
-            .push(mod_choose(sb.modifiers, 1))
-            .push(mod_choose(sb.modifiers, 0))
-            .push(key)
-            .spacing(5),
-        binding.as_ref().map_or(row!["PB: [None]"], |pb| pb
-            .iter()
-            .fold(row!["PB:"].spacing(5), |r, m| { r.push(text(m)) })),
+    row![
+        mod_choose(sb.modifiers, 3),
+        mod_choose(sb.modifiers, 2),
+        mod_choose(sb.modifiers, 1),
+        mod_choose(sb.modifiers, 0),
+        key,
     ]
+    .spacing(5)
     .into()
 }
 
@@ -361,7 +309,6 @@ fn hook_custom<'a>(
                     row!["Komorebic commands:", commands_box].spacing(5),
                     "Command:",
                     custom,
-                    text(ph),
                 ]
                 .max_width(700)
                 .padding(padding::bottom(10))
