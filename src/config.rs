@@ -124,7 +124,6 @@ lazy_static! {
     pub static ref DEFAULT_WORKSPACE_CONFIG: WorkspaceConfig = WorkspaceConfig {
         name: String::new(),
         layout: Some(DefaultLayout::BSP),
-        //TODO: add to workspace screen
         layout_options: None,
         custom_layout: None,
         layout_rules: None,
@@ -133,19 +132,18 @@ lazy_static! {
         workspace_padding: None,
         initial_workspace_rules: Some(Vec::new()),
         workspace_rules: Some(Vec::new()),
-        //TODO: add to workspace screen
         work_area_offset: None,
         apply_window_based_work_area_offset: Some(true),
         window_container_behaviour: None,
         window_container_behaviour_rules: None,
         float_override: None,
-        //TODO: add to workspace screen
         tile: Some(true),
         layout_flip: None,
-        floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
+        floating_layer_behaviour: None,
         //TODO: add to workspace screen
         wallpaper: None,
     };
+    //TODO: add KomorebiTheme::Custom to Theme screen
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
         name: Catppuccin::Macchiato,
         single_border: Some(CatppuccinValue::Blue),
