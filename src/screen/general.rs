@@ -13,9 +13,9 @@ use iced::{
     widget::{button, column, pick_list, row, rule, text},
 };
 use komorebi_client::{
-    AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour,
-    FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour, OperationBehaviour,
-    PredefinedAspectRatio, Rect, StaticConfig, WindowContainerBehaviour,
+    AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour, FloatingLayerBehaviour,
+    FocusFollowsMouseImplementation, HidingBehaviour, MoveBehaviour, OperationBehaviour, Placement,
+    PredefinedAspectRatio, Rect, StaticConfig, WindowContainerBehaviour, WindowHandlingBehaviour,
 };
 use lazy_static::lazy_static;
 
@@ -58,6 +58,12 @@ pub enum ConfigChange {
     FloatingWindowAspectRatio(Option<AspectRatio>),
     FloatingWindowAspectRatioWidth(i32),
     FloatingWindowAspectRatioHeight(i32),
+    FloatingLayerBehaviour(Option<FloatingLayerBehaviour>),
+    ToggleFloatPlacement(Option<Placement>),
+    FloatingLayerPlacement(Option<Placement>),
+    FloatOverridePlacement(Option<Placement>),
+    FloatRulePlacement(Option<Placement>),
+    WindowHandlingBehaviour(Option<WindowHandlingBehaviour>),
 }
 
 #[derive(Clone, Debug)]
@@ -243,6 +249,24 @@ impl General {
                         AspectRatio::Custom(4, value)
                     };
                     config.floating_window_aspect_ratio = Some(ratio);
+                }
+                ConfigChange::FloatingLayerBehaviour(value) => {
+                    config.floating_layer_behaviour = value;
+                }
+                ConfigChange::ToggleFloatPlacement(placement) => {
+                    config.toggle_float_placement = placement;
+                }
+                ConfigChange::FloatingLayerPlacement(placement) => {
+                    config.floating_layer_placement = placement;
+                }
+                ConfigChange::FloatOverridePlacement(placement) => {
+                    config.float_override_placement = placement;
+                }
+                ConfigChange::FloatRulePlacement(placement) => {
+                    config.float_rule_placement = placement;
+                }
+                ConfigChange::WindowHandlingBehaviour(value) => {
+                    config.window_handling_behaviour = value;
                 }
             },
         }
@@ -516,6 +540,91 @@ impl General {
                     config.floating_window_aspect_ratio != DEFAULT_CONFIG.floating_window_aspect_ratio,
                     matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
                     Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(DEFAULT_CONFIG.floating_window_aspect_ratio)),
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Floating Layer Behaviour",
+                    Some("Determines what happens to a new window when on the `FloatingLayer` (default: Tile)"),
+                    vec![
+                        t("Selected: 'Tile' -> Tile new windows (unless they match a float rule or float override is active)").into(),
+                        t("Selected: 'Float' -> Float new windows").into(),
+                    ],
+                    [FloatingLayerBehaviour::Tile, FloatingLayerBehaviour::Float],
+                    config.floating_layer_behaviour.or(DEFAULT_CONFIG.floating_layer_behaviour),
+                    |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
+                    DEFAULT_CONFIG.floating_layer_behaviour,
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Toggle Float Placement",
+                    Some("Determines the placement of a window when toggling to float (default: CenterAndResize)"),
+                    vec![
+                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                        t("Selected: 'Center' -> Center the window without changing the size").into(),
+                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+                    ],
+                    [Placement::None, Placement::Center, Placement::CenterAndResize],
+                    config.toggle_float_placement.or(DEFAULT_CONFIG.toggle_float_placement),
+                    |v| Message::ConfigChange(ConfigChange::ToggleFloatPlacement(v)),
+                    DEFAULT_CONFIG.toggle_float_placement,
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Floating Layer Placement",
+                    Some("Determines the `Placement` to be used when spawning a window on the floating layer with the \
+                    `FloatingLayerBehaviour` set to `FloatingLayerBehaviour::Float` (default: Center)"),
+                    vec![
+                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                        t("Selected: 'Center' -> Center the window without changing the size").into(),
+                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+                    ],
+                    [Placement::None, Placement::Center, Placement::CenterAndResize],
+                    config.floating_layer_placement.or(DEFAULT_CONFIG.floating_layer_placement),
+                    |v| Message::ConfigChange(ConfigChange::FloatingLayerPlacement(v)),
+                    DEFAULT_CONFIG.floating_layer_placement,
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Float Override Placement",
+                    Some("Determines the `Placement` to be used when spawning a window with float override active (default: None)"),
+                    vec![
+                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                        t("Selected: 'Center' -> Center the window without changing the size").into(),
+                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+                    ],
+                    [Placement::None, Placement::Center, Placement::CenterAndResize],
+                    config.float_override_placement.or(DEFAULT_CONFIG.float_override_placement),
+                    |v| Message::ConfigChange(ConfigChange::FloatOverridePlacement(v)),
+                    DEFAULT_CONFIG.float_override_placement,
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Float Rule Placement",
+                    Some("Determines the `Placement` to be used when spawning a window that matches a 'floating_applications' rule (default: None)"),
+                    vec![
+                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                        t("Selected: 'Center' -> Center the window without changing the size").into(),
+                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+                    ],
+                    [Placement::None, Placement::Center, Placement::CenterAndResize],
+                    config.float_rule_placement.or(DEFAULT_CONFIG.float_rule_placement),
+                    |v| Message::ConfigChange(ConfigChange::FloatRulePlacement(v)),
+                    DEFAULT_CONFIG.float_rule_placement,
+                    None,
+                ),
+                opt_helpers::choose_with_disable_default(
+                    "Window Handling Behaviour",
+                    Some("Which Windows API behaviour to use when manipulating windows (default: Sync)"),
+                    vec![
+                        t("Selected: 'Sync' -> Uses synchronous Windows API to manipulate windows.\n\
+                        If a window hangs when komorebi is trying to access it it might hang komorebi as well.").into(),
+                        t("Selected: 'Async' -> Uses asynchronous Windows API to manipulate windows.\n\
+                        Hanging windows don't block komorebi.").into(),
+                    ],
+                    [WindowHandlingBehaviour::Sync, WindowHandlingBehaviour::Async],
+                    config.window_handling_behaviour.or(DEFAULT_CONFIG.window_handling_behaviour),
+                    |v| Message::ConfigChange(ConfigChange::WindowHandlingBehaviour(v)),
+                    DEFAULT_CONFIG.window_handling_behaviour,
                     None,
                 ),
             ],
