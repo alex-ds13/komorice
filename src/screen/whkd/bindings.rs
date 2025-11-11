@@ -175,6 +175,8 @@ impl Bindings {
                 if whkdrc.bindings.len() > idx {
                     whkdrc.bindings.remove(idx);
                 }
+                self.editing.remove(&idx);
+                self.editing_states.remove(&idx);
             }
             Message::ChangeBindingKeys(_, _) => todo!(),
             Message::Nothing => {}
@@ -364,9 +366,9 @@ impl Bindings {
                                         space::horizontal(),
                                         button(icons::check())
                                             .on_press(Message::FinishEditBinding(idx)),
-                                        button(icons::copy())
-                                            .on_press(Message::Nothing)
-                                            .style(button::secondary),
+                                        button(icons::delete())
+                                            .on_press(Message::RemoveBinding(idx))
+                                            .style(button::danger),
                                     ]
                                     .spacing(10),
                                 ]
