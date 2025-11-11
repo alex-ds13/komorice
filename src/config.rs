@@ -119,8 +119,7 @@ lazy_static! {
         window_based_work_area_offset_limit: Some(1),
         //TODO: add to monitor screen
         wallpaper: None,
-        //TODO: add to monitor screen
-        floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
+        floating_layer_behaviour: None,
     };
     pub static ref DEFAULT_WORKSPACE_CONFIG: WorkspaceConfig = WorkspaceConfig {
         name: String::new(),
