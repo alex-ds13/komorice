@@ -2,8 +2,8 @@ use super::workspace::{self, WorkspaceScreen};
 
 use crate::{
     BOLD_FONT,
-    config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
-    widget::opt_helpers,
+    config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    widget::opt_helpers::{self, description_text as t},
 };
 
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use iced::{
         row, text,
     },
 };
-use komorebi_client::{MonitorConfig, Rect, WorkspaceConfig};
+use komorebi_client::{FloatingLayerBehaviour, MonitorConfig, Rect, WorkspaceConfig};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -52,6 +52,7 @@ pub enum ConfigChange {
     WorkAreaOffsetBottom(i32),
     WorkAreaOffsetRight(i32),
     WorkAreaOffsetLeft(i32),
+    FloatingLayerBehaviour(Option<FloatingLayerBehaviour>),
 }
 
 #[derive(Clone, Debug, Default)]
@@ -207,6 +208,9 @@ impl Monitor {
                             bottom: 0,
                         });
                     }
+                }
+                ConfigChange::FloatingLayerBehaviour(value) => {
+                    config.floating_layer_behaviour = value;
                 }
             },
             Message::Workspace(idx, message) => {
@@ -506,6 +510,27 @@ impl Monitor {
                     on_toggle: |v| {
                         Message::ConfigChange(ConfigChange::WorkAreaOffset(
                             (!v).then_some(Rect::default()),
+                        ))
+                    },
+                }),
+            ),
+            opt_helpers::choose_with_disable_default(
+                "Floating Layer Behaviour",
+                Some("Determines what happens to a new window when on the `FloatingLayer` (default: global)"),
+                vec![
+                    t("Selected: 'Tile' -> Tile new windows (unless they match a float rule or float override is active)").into(),
+                    t("Selected: 'Float' -> Float new windows").into(),
+                ],
+                [FloatingLayerBehaviour::Tile, FloatingLayerBehaviour::Float],
+                config.floating_layer_behaviour.or(DEFAULT_MONITOR_CONFIG.floating_layer_behaviour),
+                |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
+                DEFAULT_MONITOR_CONFIG.floating_layer_behaviour,
+                Some(opt_helpers::DisableArgs {
+                    disable: config.floating_layer_behaviour.is_none(),
+                    label: Some("Global"),
+                    on_toggle: |v| {
+                        Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(
+                            (!v).then(|| DEFAULT_CONFIG.floating_layer_behaviour).flatten()
                         ))
                     },
                 }),
