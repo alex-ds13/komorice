@@ -3530,7 +3530,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 [[package]]
 name = "komorebi"
 version = "0.1.39"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#96381253ead042b27d2ac22165ea54e31924169f"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#7ace68b2cb9f2f87ec17c4b21d4a8971c53d3e1a"
 dependencies = [
  "base64 0.21.7",
  "bitflags 2.10.0",
@@ -3579,7 +3579,7 @@ dependencies = [
 [[package]]
 name = "komorebi-client"
 version = "0.1.39"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#96381253ead042b27d2ac22165ea54e31924169f"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#7ace68b2cb9f2f87ec17c4b21d4a8971c53d3e1a"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -3589,7 +3589,7 @@ dependencies = [
 [[package]]
 name = "komorebi-themes"
 version = "0.1.39"
-source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#96381253ead042b27d2ac22165ea54e31924169f"
+source = "git+https://github.com/alex-ds13/komorebi.git?branch=fix%2Fpublic-placement#7ace68b2cb9f2f87ec17c4b21d4a8971c53d3e1a"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",

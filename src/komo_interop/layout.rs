@@ -6,7 +6,7 @@ use komorebi_client::{Axis, DefaultLayout};
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub static ref LAYOUT_OPTIONS: [DisplayOptionCustom<Layout>; 9] = [
+    pub static ref LAYOUT_OPTIONS: [DisplayOptionCustom<Layout>; 10] = [
         DisplayOptionCustom(None, "[None] (Floating)"),
         DisplayOptionCustom(Some(Layout::BSP), "[None] (Floating)"),
         DisplayOptionCustom(Some(Layout::VerticalStack), "[None] (Floating)"),
@@ -16,8 +16,9 @@ lazy_static! {
         DisplayOptionCustom(Some(Layout::Rows), "[None] (Floating)"),
         DisplayOptionCustom(Some(Layout::Columns), "[None] (Floating)"),
         DisplayOptionCustom(Some(Layout::Grid), "[None] (Floating)"),
+        DisplayOptionCustom(Some(Layout::Scrolling), "[None] (Floating)"),
     ];
-    pub static ref LAYOUT_OPTIONS_WITHOUT_NONE: [Layout; 8] = [
+    pub static ref LAYOUT_OPTIONS_WITHOUT_NONE: [Layout; 9] = [
         Layout::BSP,
         Layout::VerticalStack,
         Layout::RightMainVerticalStack,
@@ -26,6 +27,7 @@ lazy_static! {
         Layout::Rows,
         Layout::Columns,
         Layout::Grid,
+        Layout::Scrolling,
     ];
     pub static ref LAYOUT_FLIP_OPTIONS: [DisplayOption<Axis>; 4] = [
         DisplayOption(None),
@@ -93,7 +95,7 @@ impl Display for Layout {
             Layout::UltrawideVerticalStack => write!(f, "\u{E806} UltrawideVerticalStack"),
             Layout::Grid => write!(f, "\u{E802} Grid"),
             Layout::RightMainVerticalStack => write!(f, "\u{E804} RightMainVerticalStack"),
-            Layout::Scrolling => write!(f, "   Scrolling"),
+            Layout::Scrolling => write!(f, "     Scrolling"),
         }
     }
 }
