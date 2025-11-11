@@ -1,5 +1,4 @@
 use crate::{
-    BOLD_FONT,
     whkd::{HotkeyBinding, Whkdrc},
     widget::{self, button_with_icon, hover, icons, opt_helpers},
 };
@@ -9,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Element, Subscription, Task, Theme, padding,
     widget::{
-        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row, rule,
+        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
         scrollable, space, text,
     },
 };
@@ -20,14 +19,12 @@ const SEPARATOR: &str = " + ";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
-    Bindings(Vec<HotkeyBinding>),
     ChangeNewBindingMod(usize, String),
     ChangeNewBindingKey(String),
     ChangeNewBindingCommand(String),
     ToggleShowNewBinding,
     AddNewBinding,
     RemoveBinding(usize),
-    ChangeBindingKeys(usize, Vec<String>),
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
     ChangeBindingCommand(usize, String),
@@ -37,7 +34,6 @@ pub enum Message {
     KeyPress(Option<String>, String),
     KeyRelease,
     UrlClicked(markdown::Url),
-    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -161,7 +157,6 @@ impl Bindings {
                     binding.command = command;
                 }
             }
-            Message::Bindings(_) => todo!(),
             Message::AddNewBinding => {
                 let default_binding = HotkeyBinding {
                     keys: Vec::new(),
@@ -178,8 +173,6 @@ impl Bindings {
                 self.editing.remove(&idx);
                 self.editing_states.remove(&idx);
             }
-            Message::ChangeBindingKeys(_, _) => todo!(),
-            Message::Nothing => {}
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
@@ -347,21 +340,12 @@ impl Bindings {
                         move |c| Message::ChangeBindingCommand(idx, c),
                     );
 
-                    let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
-
-                    key_pressed = key_pressed.push(
-                        (!self.pressed_mod.is_empty() && !self.pressed_key.is_empty())
-                            .then_some(text(SEPARATOR)),
-                    );
-                    key_pressed = key_pressed.push(text!("{}", self.pressed_key));
-
                     col.push(
                         container(
                             container(
                                 column![
                                     keybind,
                                     command,
-                                    key_pressed,
                                     row![
                                         space::horizontal(),
                                         button(icons::check())
@@ -518,19 +502,14 @@ fn keys<'a>(
     let sb = split_binding(binding);
     let joined_key = sb.keys.join(SEPARATOR);
     let key = widget::input("", joined_key, on_key_change, None).width(75);
-    column![
-        row![]
-            .push(mod_choose(sb.modifiers, 3, on_mod_change.clone()))
-            .push(mod_choose(sb.modifiers, 2, on_mod_change.clone()))
-            .push(mod_choose(sb.modifiers, 1, on_mod_change.clone()))
-            .push(mod_choose(sb.modifiers, 0, on_mod_change))
-            .push(key)
-            .spacing(5),
-        binding
-            .keys
-            .iter()
-            .fold(row!["PB:"].spacing(5), |r, m| { r.push(text(m)) }),
+    row![
+        mod_choose(sb.modifiers, 3, on_mod_change.clone()),
+        mod_choose(sb.modifiers, 2, on_mod_change.clone()),
+        mod_choose(sb.modifiers, 1, on_mod_change.clone()),
+        mod_choose(sb.modifiers, 0, on_mod_change),
+        key,
     ]
+    .spacing(5)
     .into()
 }
 
@@ -583,7 +562,6 @@ fn command_edit<'a>(
                     row!["Komorebic commands:", commands_box].spacing(5),
                     "Command:",
                     custom,
-                    text(command),
                 ]
                 .max_width(700)
                 .padding(padding::bottom(10))
