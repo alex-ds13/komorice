@@ -36,15 +36,10 @@ lazy_static! {
         resize_delta: Some(50),
         window_container_behaviour: Some(WindowContainerBehaviour::Create),
         float_override: Some(false),
-        //TODO: add to general screen
         floating_layer_behaviour: Some(FloatingLayerBehaviour::Tile),
-        //TODO: add to general screen
         toggle_float_placement: Some(Placement::CenterAndResize),
-        //TODO: add to general screen
         floating_layer_placement: Some(Placement::Center),
-        //TODO: add to general screen
         float_override_placement: Some(Placement::None),
-        //TODO: add to general screen
         float_rule_placement: Some(Placement::None),
         cross_monitor_move_behaviour: Some(MoveBehaviour::Swap),
         cross_boundary_behaviour: Some(CrossBoundaryBehaviour::Monitor),
@@ -113,7 +108,6 @@ lazy_static! {
         floating_window_aspect_ratio: Some(AspectRatio::Predefined(
             PredefinedAspectRatio::Standard
         )),
-        //TODO: add to general screen
         window_handling_behaviour: Some(WindowHandlingBehaviour::Sync),
     };
     pub static ref DEFAULT_MONITOR_CONFIG: MonitorConfig = MonitorConfig {
