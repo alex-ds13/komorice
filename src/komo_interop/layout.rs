@@ -90,12 +90,12 @@ impl Display for Layout {
             Layout::BSP => write!(f, "\u{E800} BSP"),
             Layout::Columns => write!(f, "\u{E801} Columns"),
             Layout::Rows => write!(f, "\u{E805} Rows"),
-            Layout::VerticalStack => write!(f, "\u{E807} VerticalStack"),
+            Layout::VerticalStack => write!(f, "\u{E808} VerticalStack"),
             Layout::HorizontalStack => write!(f, "\u{E803} HorizontalStack"),
-            Layout::UltrawideVerticalStack => write!(f, "\u{E806} UltrawideVerticalStack"),
+            Layout::UltrawideVerticalStack => write!(f, "\u{E807} UltrawideVerticalStack"),
             Layout::Grid => write!(f, "\u{E802} Grid"),
             Layout::RightMainVerticalStack => write!(f, "\u{E804} RightMainVerticalStack"),
-            Layout::Scrolling => write!(f, "     Scrolling"),
+            Layout::Scrolling => write!(f, "\u{E806} Scrolling"),
         }
     }
 }

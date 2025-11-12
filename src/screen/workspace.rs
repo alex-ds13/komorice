@@ -1036,12 +1036,46 @@ fn layout_options_descriptions<'a>() -> Vec<Element<'a, Message>> {
     vec![
         row![t("Selected: '[None] (Floating)' layout -> This workspace will behave as a floating workspace, like normal Windows does!")].spacing(5).into(),
         row![t("Selected: "), td(icons::bsp()), t("'BSP' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::vstack()), t("Vertical Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::rmvstack()), t("Right Main Vertical Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::uwvstack()), t("Ultra Wide Vertical Stack' layout -> recommended if using and ultrawide monitor")].spacing(5).into(),
-        row![t("Selected: "), td(icons::hstack()), t("Horizontal Stack' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::rows()), t("Rows' layout -> recommended if using a vertical monitor")].spacing(5).into(),
-        row![t("Selected: "), td(icons::columns()), t("Columns' layout")].spacing(5).into(),
-        row![t("Selected: "), td(icons::grid()), t("Grid' layout -> If you like the grid layout in LeftWM this is almost exactly the same!\n\nThe 'Grid' layout does not suppot resizing windows.")].spacing(5).into(),
+        row![t("Selected: "), td(icons::vstack()), t("'Vertical Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rmvstack()), t("'Right Main Vertical Stack' layout")].spacing(5).into(),
+        row![
+            t("Selected: "),
+            td(icons::uwvstack()),
+            t("'Ultra Wide Vertical Stack' layout ->"),
+            t("recommended if using an ultrawide monitor")
+        ]
+        .spacing(5)
+        .wrap()
+        .into(),
+        row![t("Selected: "), td(icons::hstack()), t("'Horizontal Stack' layout")].spacing(5).into(),
+        row![t("Selected: "), td(icons::rows()), t("'Rows' layout -> recommended if using a vertical monitor")].spacing(5).into(),
+        row![t("Selected: "), td(icons::columns()), t("'Columns' layout")].spacing(5).into(),
+        column![
+            row![
+                t("Selected: "),
+                td(icons::grid()),
+                t("'Grid' layout"),
+            ].spacing(5),
+            t("If you like the grid layout in LeftWM this is almost exactly the same!\n\n\
+            The 'Grid' layout does not support resizing windows.")
+        ]
+        .spacing(5)
+        .into(),
+        column![
+            row![
+                t("Selected: "),
+                td(icons::scrolling()),
+                t("'Scrolling' layout")
+            ]
+            .spacing(5),
+            t("The Scrolling layout is inspired by the Niri scrolling window manager, presenting a workspace \
+            as an infinite scrollable horizontal strip with a viewport which includes the focused window + N \
+            other windows in columns. There is no support for splitting columns into multiple rows.\n\n\
+            This layout can currently only be applied to single-monitor setups as the scrolling would result \
+            in layout calculations which push the windows in the columns moving out of the viewport onto \
+            adjacent monitors.")
+        ]
+        .spacing(5)
+        .into(),
     ]
 }
