@@ -143,7 +143,6 @@ lazy_static! {
         //TODO: add to workspace screen
         wallpaper: None,
     };
-    //TODO: add KomorebiTheme::Custom to Theme screen
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
         name: Catppuccin::Macchiato,
         single_border: Some(CatppuccinValue::Blue),
@@ -159,6 +158,38 @@ lazy_static! {
     };
     pub static ref DEFAULT_BASE16_THEME: KomorebiTheme = KomorebiTheme::Base16 {
         name: Base16::Ashes,
+        single_border: Some(Base16Value::Base0D),
+        stack_border: Some(Base16Value::Base0B),
+        monocle_border: Some(Base16Value::Base0F),
+        floating_border: Some(Base16Value::Base09),
+        unfocused_border: Some(Base16Value::Base01),
+        unfocused_locked_border: Some(Base16Value::Base08),
+        stackbar_focused_text: Some(Base16Value::Base0B),
+        stackbar_unfocused_text: Some(Base16Value::Base05),
+        stackbar_background: Some(Base16Value::Base01),
+        bar_accent: Some(Base16Value::Base0D),
+    };
+    // By default the Custom theme uses the colors from the Base16::Ashes theme, I had to use
+    // something so went for the same as the Base16 default.
+    pub static ref DEFAULT_CUSTOM_THEME: KomorebiTheme = KomorebiTheme::Custom {
+        colours: Box::new(komorebi_themes::Base16ColourPalette {
+            base_00: Colour::Rgb(Rgb::new(28, 32, 35)),
+            base_01: Colour::Rgb(Rgb::new(57, 63, 69)),
+            base_02: Colour::Rgb(Rgb::new(86, 94, 101)),
+            base_03: Colour::Rgb(Rgb::new(116, 124, 132)),
+            base_04: Colour::Rgb(Rgb::new(173, 179, 186)),
+            base_05: Colour::Rgb(Rgb::new(199, 204, 209)),
+            base_06: Colour::Rgb(Rgb::new(223, 226, 229)),
+            base_07: Colour::Rgb(Rgb::new(243, 244, 245)),
+            base_08: Colour::Rgb(Rgb::new(199, 174, 149)),
+            base_09: Colour::Rgb(Rgb::new(199, 199, 149)),
+            base_0a: Colour::Rgb(Rgb::new(174, 199, 149)),
+            base_0b: Colour::Rgb(Rgb::new(149, 199, 174)),
+            base_0c: Colour::Rgb(Rgb::new(149, 174, 199)),
+            base_0d: Colour::Rgb(Rgb::new(174, 149, 199)),
+            base_0e: Colour::Rgb(Rgb::new(199, 149, 174)),
+            base_0f: Colour::Rgb(Rgb::new(199, 149, 149)),
+        }),
         single_border: Some(Base16Value::Base0D),
         stack_border: Some(Base16Value::Base0B),
         monocle_border: Some(Base16Value::Base0F),
@@ -227,17 +258,6 @@ pub fn fill_monitors(config: &mut StaticConfig, monitors: &HashMap<usize, Displa
         );
     }
     true
-}
-
-/// It checks the value against the default config value. If the value is the default value, then
-/// we change value to `None` so that it doesn't show on the final config file. Otherwise, we keep
-/// value as it was.
-pub fn sanitize_value<T: Clone + PartialEq>(
-    value: Option<T>,
-    getter: impl Fn(&StaticConfig) -> &Option<T>,
-) -> Option<T> {
-    let default_value = getter(&DEFAULT_CONFIG);
-    if value == *default_value { None } else { value }
 }
 
 /// Merge the `DEFAULT_CONFIG` values on `config`. For each value that is `None` on `config`
@@ -514,152 +534,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                 .fps
                 .or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
         }),
-        theme: config
-            .theme
-            .map(|t| match t {
-                KomorebiTheme::Catppuccin {
-                    name,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => {
-                    if let KomorebiTheme::Catppuccin {
-                        name: _,
-                        single_border: d_single_border,
-                        stack_border: d_stack_border,
-                        monocle_border: d_monocle_border,
-                        floating_border: d_floating_border,
-                        unfocused_border: d_unfocused_border,
-                        unfocused_locked_border: d_unfocused_locked_border,
-                        stackbar_focused_text: d_stackbar_focused_text,
-                        stackbar_unfocused_text: d_stackbar_unfocused_text,
-                        stackbar_background: d_stackbar_background,
-                        bar_accent: d_bar_accent,
-                    } = *DEFAULT_CATPPUCCIN_THEME
-                    {
-                        KomorebiTheme::Catppuccin {
-                            name,
-                            single_border: single_border.or(d_single_border),
-                            stack_border: stack_border.or(d_stack_border),
-                            monocle_border: monocle_border.or(d_monocle_border),
-                            floating_border: floating_border.or(d_floating_border),
-                            unfocused_border: unfocused_border.or(d_unfocused_border),
-                            unfocused_locked_border: unfocused_border.or(d_unfocused_locked_border),
-                            stackbar_focused_text: stackbar_focused_text
-                                .or(d_stackbar_focused_text),
-                            stackbar_unfocused_text: stackbar_unfocused_text
-                                .or(d_stackbar_unfocused_text),
-                            stackbar_background: stackbar_background.or(d_stackbar_background),
-                            bar_accent: bar_accent.or(d_bar_accent),
-                        }
-                    } else {
-                        KomorebiTheme::Catppuccin {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        }
-                    }
-                }
-                KomorebiTheme::Base16 {
-                    name,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => {
-                    if let KomorebiTheme::Base16 {
-                        name: _,
-                        single_border: d_single_border,
-                        stack_border: d_stack_border,
-                        monocle_border: d_monocle_border,
-                        floating_border: d_floating_border,
-                        unfocused_border: d_unfocused_border,
-                        unfocused_locked_border: d_unfocused_locked_border,
-                        stackbar_focused_text: d_stackbar_focused_text,
-                        stackbar_unfocused_text: d_stackbar_unfocused_text,
-                        stackbar_background: d_stackbar_background,
-                        bar_accent: d_bar_accent,
-                    } = *DEFAULT_BASE16_THEME
-                    {
-                        KomorebiTheme::Base16 {
-                            name,
-                            single_border: single_border.or(d_single_border),
-                            stack_border: stack_border.or(d_stack_border),
-                            monocle_border: monocle_border.or(d_monocle_border),
-                            floating_border: floating_border.or(d_floating_border),
-                            unfocused_border: unfocused_border.or(d_unfocused_border),
-                            unfocused_locked_border: unfocused_border.or(d_unfocused_locked_border),
-                            stackbar_focused_text: stackbar_focused_text
-                                .or(d_stackbar_focused_text),
-                            stackbar_unfocused_text: stackbar_unfocused_text
-                                .or(d_stackbar_unfocused_text),
-                            stackbar_background: stackbar_background.or(d_stackbar_background),
-                            bar_accent: bar_accent.or(d_bar_accent),
-                        }
-                    } else {
-                        KomorebiTheme::Base16 {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        }
-                    }
-                }
-                KomorebiTheme::Custom {
-                    colours,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => KomorebiTheme::Custom {
-                    colours,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                },
-            })
-            .or(DEFAULT_CONFIG.theme.clone()),
+        theme: config.theme.or(DEFAULT_CONFIG.theme.clone()),
         slow_application_identifiers: config
             .slow_application_identifiers
             .or(DEFAULT_CONFIG.slow_application_identifiers.clone()),
@@ -1076,165 +951,6 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         }),
         theme: config
             .theme
-            .map(|v| match v {
-                KomorebiTheme::Catppuccin {
-                    name,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => {
-                    if let KomorebiTheme::Catppuccin {
-                        name: _,
-                        single_border: d_single_border,
-                        stack_border: d_stack_border,
-                        monocle_border: d_monocle_border,
-                        floating_border: d_floating_border,
-                        unfocused_border: d_unfocused_border,
-                        unfocused_locked_border: d_unfocused_locked_border,
-                        stackbar_focused_text: d_stackbar_focused_text,
-                        stackbar_unfocused_text: d_stackbar_unfocused_text,
-                        stackbar_background: d_stackbar_background,
-                        bar_accent: d_bar_accent,
-                    } = *DEFAULT_CATPPUCCIN_THEME
-                    {
-                        KomorebiTheme::Catppuccin {
-                            name,
-                            single_border: single_border
-                                .and_then(|v| (Some(v) != d_single_border).then_some(v)),
-                            stack_border: stack_border
-                                .and_then(|v| (Some(v) != d_stack_border).then_some(v)),
-                            monocle_border: monocle_border
-                                .and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
-                            floating_border: floating_border
-                                .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
-                            unfocused_border: unfocused_border
-                                .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
-                            unfocused_locked_border: unfocused_locked_border
-                                .and_then(|v| (Some(v) != d_unfocused_locked_border).then_some(v)),
-                            stackbar_focused_text: stackbar_focused_text
-                                .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
-                            stackbar_unfocused_text: stackbar_unfocused_text
-                                .and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
-                            stackbar_background: stackbar_background
-                                .and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
-                            bar_accent: bar_accent
-                                .and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
-                        }
-                    } else {
-                        KomorebiTheme::Catppuccin {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        }
-                    }
-                }
-                KomorebiTheme::Base16 {
-                    name,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => {
-                    if let KomorebiTheme::Base16 {
-                        name: _,
-                        single_border: d_single_border,
-                        stack_border: d_stack_border,
-                        monocle_border: d_monocle_border,
-                        floating_border: d_floating_border,
-                        unfocused_border: d_unfocused_border,
-                        unfocused_locked_border: d_unfocused_locked_border,
-                        stackbar_focused_text: d_stackbar_focused_text,
-                        stackbar_unfocused_text: d_stackbar_unfocused_text,
-                        stackbar_background: d_stackbar_background,
-                        bar_accent: d_bar_accent,
-                    } = *DEFAULT_BASE16_THEME
-                    {
-                        KomorebiTheme::Base16 {
-                            name,
-                            single_border: single_border
-                                .and_then(|v| (Some(v) != d_single_border).then_some(v)),
-                            stack_border: stack_border
-                                .and_then(|v| (Some(v) != d_stack_border).then_some(v)),
-                            monocle_border: monocle_border
-                                .and_then(|v| (Some(v) != d_monocle_border).then_some(v)),
-                            floating_border: floating_border
-                                .and_then(|v| (Some(v) != d_floating_border).then_some(v)),
-                            unfocused_border: unfocused_border
-                                .and_then(|v| (Some(v) != d_unfocused_border).then_some(v)),
-                            unfocused_locked_border: unfocused_locked_border
-                                .and_then(|v| (Some(v) != d_unfocused_locked_border).then_some(v)),
-                            stackbar_focused_text: stackbar_focused_text
-                                .and_then(|v| (Some(v) != d_stackbar_focused_text).then_some(v)),
-                            stackbar_unfocused_text: stackbar_unfocused_text
-                                .and_then(|v| (Some(v) != d_stackbar_unfocused_text).then_some(v)),
-                            stackbar_background: stackbar_background
-                                .and_then(|v| (Some(v) != d_stackbar_background).then_some(v)),
-                            bar_accent: bar_accent
-                                .and_then(|v| (Some(v) != d_bar_accent).then_some(v)),
-                        }
-                    } else {
-                        KomorebiTheme::Base16 {
-                            name,
-                            single_border,
-                            stack_border,
-                            monocle_border,
-                            floating_border,
-                            unfocused_border,
-                            unfocused_locked_border,
-                            stackbar_focused_text,
-                            stackbar_unfocused_text,
-                            stackbar_background,
-                            bar_accent,
-                        }
-                    }
-                }
-                KomorebiTheme::Custom {
-                    colours,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                } => KomorebiTheme::Custom {
-                    colours,
-                    single_border,
-                    stack_border,
-                    monocle_border,
-                    floating_border,
-                    unfocused_border,
-                    unfocused_locked_border,
-                    stackbar_focused_text,
-                    stackbar_unfocused_text,
-                    stackbar_background,
-                    bar_accent,
-                },
-            })
             .and_then(|v| (DEFAULT_CONFIG.theme.as_ref() != Some(&v)).then_some(v)),
         slow_application_identifiers: config.slow_application_identifiers.and_then(|v| {
             (DEFAULT_CONFIG.slow_application_identifiers.as_ref() != Some(&v)).then_some(v)
@@ -1255,6 +971,18 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
             .window_handling_behaviour
             .and_then(|v| (DEFAULT_CONFIG.window_handling_behaviour != Some(v)).then_some(v)),
     }
+}
+
+#[allow(dead_code)]
+/// It checks the value against the default config value. If the value is the default value, then
+/// we change value to `None` so that it doesn't show on the final config file. Otherwise, we keep
+/// value as it was.
+pub fn sanitize_value<T: Clone + PartialEq>(
+    value: Option<T>,
+    getter: impl Fn(&StaticConfig) -> &Option<T>,
+) -> Option<T> {
+    let default_value = getter(&DEFAULT_CONFIG);
+    if value == *default_value { None } else { value }
 }
 
 #[allow(dead_code)]

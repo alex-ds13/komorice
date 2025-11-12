@@ -15,7 +15,7 @@ use iced::{
     Background, Center, Color, Element, Fill, border, padding,
     widget::{
         Button, Column, Container, Row, Text, button, checkbox, column, combo_box, container,
-        mouse_area, pick_list, row, rule, space, scrollable, text, toggler,
+        mouse_area, pick_list, row, rule, scrollable, space, text, toggler,
     },
 };
 use num_traits::{Bounded, Num, NumAssignOps};
@@ -24,6 +24,29 @@ pub struct DisableArgs<'a, Message> {
     pub disable: bool,
     pub label: Option<&'a str>,
     pub on_toggle: fn(bool) -> Message,
+}
+
+pub struct PickerOptions<Message> {
+    pub color: Color,
+    pub show: bool,
+    pub on_picker_toggle: Box<dyn Fn(bool) -> Message>,
+    pub on_submit: Box<dyn Fn(Color) -> Message>,
+}
+
+impl<'a, Message: Clone + 'a> PickerOptions<Message> {
+    pub fn picker(self) -> Element<'a, Message> {
+        let underlay = button(icons::edit())
+            .style(button::subtle)
+            .on_press((self.on_picker_toggle)(true))
+            .into();
+        color_picker_simple(
+            self.show,
+            self.color,
+            underlay,
+            (self.on_picker_toggle)(false),
+            self.on_submit,
+        )
+    }
 }
 
 pub fn opt_box_style(theme: &iced::Theme) -> container::Style {
@@ -925,6 +948,7 @@ pub fn choose_with_disable_default_bg<'a, T, V, L, Message: Clone + 'a>(
     default_value: Option<V>,
     disable_args: Option<DisableArgs<'a, Message>>,
     bg_color: Color,
+    color_picker: Option<PickerOptions<Message>>,
 ) -> Element<'a, Message>
 where
     T: ToString + PartialEq + Clone + 'a,
@@ -968,7 +992,8 @@ where
             .spacing(10)
             .into()
     });
-    let element = pick_list(options, selected, move |v| on_selected(Some(v)))
+    let color_el = color_picker.map(|picker| picker.picker());
+    let pick = pick_list(options, selected, move |v| on_selected(Some(v)))
         .font(ICONS)
         .style(move |t, s| pick_list::Style {
             background: bg_color.into(),
@@ -976,6 +1001,7 @@ where
             ..pick_list::default(t, s)
         })
         .text_shaping(text::Shaping::Advanced);
+    let element = row![color_el, pick].spacing(10);
 
     opt_custom_el_disable_default(
         name,
