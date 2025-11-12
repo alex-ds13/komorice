@@ -1,6 +1,6 @@
 // Generated automatically by iced_fontello at build time.
 // Do not edit manually. Source: ../../assets/icons.toml
-// 3e6d8a31b7c7e16ce6072135f43307a17cf6a6ea0289f5ee5431d92d65518a90
+// 211066532d29b1b03e5a7ce3f6f98d93b64abe14c4bbadba548faf209e91391f
 use iced::widget::{text, Text};
 use iced::Font;
 
@@ -78,16 +78,20 @@ pub fn rows<'a>() -> Text<'a> {
     icon("\u{E805}")
 }
 
+pub fn scrolling<'a>() -> Text<'a> {
+    icon("\u{E806}")
+}
+
 pub fn up_chevron<'a>() -> Text<'a> {
     icon("\u{F106}")
 }
 
 pub fn uwvstack<'a>() -> Text<'a> {
-    icon("\u{E806}")
+    icon("\u{E807}")
 }
 
 pub fn vstack<'a>() -> Text<'a> {
-    icon("\u{E807}")
+    icon("\u{E808}")
 }
 
 pub fn warning<'a>() -> Text<'a> {
