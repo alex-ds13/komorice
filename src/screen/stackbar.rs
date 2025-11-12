@@ -158,16 +158,16 @@ impl Stackbar {
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Label",
-                    Some("Stackbar label. (default: \"Process\")"),
+                    Some("Stackbar label. (default: \"Title\")"),
                     vec![],
                     [StackbarLabel::Process, StackbarLabel::Title],
-                    Some(config.label.unwrap_or(StackbarLabel::Process)),
+                    Some(config.label.unwrap_or(StackbarLabel::Title)),
                     |selected| {
                         Message::ConfigChange(ConfigChange::Label(
-                            selected.unwrap_or(StackbarLabel::Process),
+                            selected.unwrap_or(StackbarLabel::Title),
                         ))
                     },
-                    Some(StackbarLabel::Process),
+                    Some(StackbarLabel::Title),
                     None,
                 ),
                 opt_helpers::choose_with_disable_default(
