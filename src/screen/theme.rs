@@ -1,9 +1,11 @@
-use crate::config::{DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME};
+use crate::config::{DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME, DEFAULT_CUSTOM_THEME};
 use crate::widget::opt_helpers;
+
+use std::collections::HashMap;
 
 use iced::{Element, Task, widget::combo_box};
 use komorebi_client::{KomorebiTheme, StaticConfig};
-use komorebi_themes::{Base16, Base16Wrapper, Base16Value, Catppuccin, CatppuccinValue};
+use komorebi_themes::{Base16, Base16Value, Base16Wrapper, Catppuccin, CatppuccinValue};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -351,6 +353,20 @@ impl std::fmt::Display for ThemeType {
     }
 }
 
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub enum ColoredType {
+    SingleBorder,
+    StackBorder,
+    MonocleBorder,
+    FloatingBorder,
+    UnfocusedBorder,
+    UnfocusedLockedBorder,
+    StackbarFocusedText,
+    StackbarUnfocusedText,
+    StackbarBackground,
+    BarAccent,
+}
+
 #[derive(Clone, Debug)]
 pub enum Message {
     ChangeThemeType(Option<ThemeType>),
@@ -376,6 +392,19 @@ pub enum Message {
     ChangeBase16ThemeStackbarUnfocusedText(Option<Base16Value>),
     ChangeBase16ThemeStackbarBackground(Option<Base16Value>),
     ChangeBase16ThemeBarAccent(Option<Base16Value>),
+    ChangeCustomThemeColor(ColoredType, Base16Value, iced::Color),
+    ToggleCustomThemePicker(ColoredType, bool),
+    ChangeCustomThemeSingleBorder(Option<Base16Value>),
+    ChangeCustomThemeStackBorder(Option<Base16Value>),
+    ChangeCustomThemeMonocleBorder(Option<Base16Value>),
+    ChangeCustomThemeFloatingBorder(Option<Base16Value>),
+    ChangeCustomThemeUnfocusedBorder(Option<Base16Value>),
+    ChangeCustomThemeUnfocusedLockedBorder(Option<Base16Value>),
+    ChangeCustomThemeStackbarFocusedText(Option<Base16Value>),
+    ChangeCustomThemeStackbarUnfocusedText(Option<Base16Value>),
+    ChangeCustomThemeStackbarBackground(Option<Base16Value>),
+    ChangeCustomThemeBarAccent(Option<Base16Value>),
+    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -386,17 +415,41 @@ pub enum Action {
 #[derive(Debug)]
 pub struct Theme {
     base16_state: combo_box::State<Base16>,
+    custom_pickers_show: HashMap<ColoredType, bool>,
 }
 
 impl Default for Theme {
     fn default() -> Self {
         Self {
             base16_state: combo_box::State::new(BASE16_OPTIONS.to_vec()),
+            custom_pickers_show: HashMap::from([
+                (ColoredType::SingleBorder, false),
+                (ColoredType::StackBorder, false),
+                (ColoredType::MonocleBorder, false),
+                (ColoredType::FloatingBorder, false),
+                (ColoredType::UnfocusedBorder, false),
+                (ColoredType::UnfocusedLockedBorder, false),
+                (ColoredType::StackbarFocusedText, false),
+                (ColoredType::StackbarUnfocusedText, false),
+                (ColoredType::StackbarBackground, false),
+                (ColoredType::BarAccent, false),
+            ]),
         }
     }
 }
 
 impl Theme {
+    pub fn show_color(&self, colored_type: ColoredType) -> bool {
+        self.custom_pickers_show
+            .get(&colored_type)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn show_color_mut(&mut self, colored_type: ColoredType) -> Option<&mut bool> {
+        self.custom_pickers_show.get_mut(&colored_type)
+    }
+
     pub fn update(
         &mut self,
         message: Message,
@@ -406,10 +459,11 @@ impl Theme {
             Message::ChangeThemeType(theme_type) => {
                 if let Some(theme_type) = theme_type {
                     match theme_type {
-                        ThemeType::Catppuccin => config.theme = Some(DEFAULT_CATPPUCCIN_THEME.clone()),
+                        ThemeType::Catppuccin => {
+                            config.theme = Some(DEFAULT_CATPPUCCIN_THEME.clone())
+                        }
                         ThemeType::Base16 => config.theme = Some(DEFAULT_BASE16_THEME.clone()),
-                        //TODO: what should custom be here?
-                        ThemeType::Custom => config.theme = Some(DEFAULT_BASE16_THEME.clone()),
+                        ThemeType::Custom => config.theme = Some(DEFAULT_CUSTOM_THEME.clone()),
                         ThemeType::None => config.theme = None,
                     }
                 } else {
@@ -1078,6 +1132,369 @@ impl Theme {
                     });
                 }
             }
+            Message::ChangeCustomThemeColor(colored_type, base, color) => {
+                if let Some(KomorebiTheme::Custom {
+                    mut colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    let rgba8 = color.into_rgba8();
+                    let colour = komorebi_client::Colour::Rgb(komorebi_client::Rgb {
+                        r: rgba8[0] as u32,
+                        g: rgba8[1] as u32,
+                        b: rgba8[2] as u32,
+                    });
+                    match base {
+                        Base16Value::Base00 => colours.base_00 = colour,
+                        Base16Value::Base01 => colours.base_01 = colour,
+                        Base16Value::Base02 => colours.base_02 = colour,
+                        Base16Value::Base03 => colours.base_03 = colour,
+                        Base16Value::Base04 => colours.base_04 = colour,
+                        Base16Value::Base05 => colours.base_05 = colour,
+                        Base16Value::Base06 => colours.base_06 = colour,
+                        Base16Value::Base07 => colours.base_07 = colour,
+                        Base16Value::Base08 => colours.base_08 = colour,
+                        Base16Value::Base09 => colours.base_09 = colour,
+                        Base16Value::Base0A => colours.base_0a = colour,
+                        Base16Value::Base0B => colours.base_0b = colour,
+                        Base16Value::Base0C => colours.base_0c = colour,
+                        Base16Value::Base0D => colours.base_0d = colour,
+                        Base16Value::Base0E => colours.base_0e = colour,
+                        Base16Value::Base0F => colours.base_0f = colour,
+                    }
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+                if let Some(show_picker) = self.show_color_mut(colored_type) {
+                    *show_picker = false;
+                }
+            }
+            Message::ToggleCustomThemePicker(colored_type, show) => {
+                if let Some(show_picker) = self.show_color_mut(colored_type) {
+                    *show_picker = show;
+                }
+            }
+            Message::ChangeCustomThemeSingleBorder(single_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border: _,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeStackBorder(stack_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border: _,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeMonocleBorder(monocle_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border: _,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeFloatingBorder(floating_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border: _,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeUnfocusedBorder(unfocused_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border: _,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeUnfocusedLockedBorder(unfocused_locked_border) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border: _,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeStackbarFocusedText(stackbar_focused_text) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text: _,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeStackbarUnfocusedText(stackbar_unfocused_text) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text: _,
+                    stackbar_background,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeStackbarBackground(stackbar_background) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background: _,
+                    bar_accent,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::ChangeCustomThemeBarAccent(bar_accent) => {
+                if let Some(KomorebiTheme::Custom {
+                    colours,
+                    single_border,
+                    stack_border,
+                    monocle_border,
+                    floating_border,
+                    unfocused_border,
+                    unfocused_locked_border,
+                    stackbar_focused_text,
+                    stackbar_unfocused_text,
+                    stackbar_background,
+                    bar_accent: _,
+                }) = config.theme.clone()
+                {
+                    config.theme = Some(KomorebiTheme::Custom {
+                        colours,
+                        single_border,
+                        stack_border,
+                        monocle_border,
+                        floating_border,
+                        unfocused_border,
+                        unfocused_locked_border,
+                        stackbar_focused_text,
+                        stackbar_unfocused_text,
+                        stackbar_background,
+                        bar_accent,
+                    });
+                }
+            }
+            Message::Nothing => {}
         }
         (Action::None, Task::none())
     }
@@ -1162,6 +1579,7 @@ impl Theme {
                             *d_single_border,
                             None,
                             single_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stack Border",
@@ -1175,6 +1593,7 @@ impl Theme {
                             *d_stack_border,
                             None,
                             stack_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Monocle Border",
@@ -1188,6 +1607,7 @@ impl Theme {
                             *d_monocle_border,
                             None,
                             monocle_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Floating Border",
@@ -1199,6 +1619,7 @@ impl Theme {
                             *d_floating_border,
                             None,
                             floating_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Border",
@@ -1210,6 +1631,7 @@ impl Theme {
                             *d_unfocused_border,
                             None,
                             unfocused_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Locked Border",
@@ -1223,6 +1645,7 @@ impl Theme {
                             *d_unfocused_locked_border,
                             None,
                             unfocused_locked_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Focused Text",
@@ -1234,6 +1657,7 @@ impl Theme {
                             *d_stackbar_focused_text,
                             None,
                             stackbar_focused_text_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Unfocused Text",
@@ -1245,6 +1669,7 @@ impl Theme {
                             *d_stackbar_unfocused_text,
                             None,
                             stackbar_unfocused_text_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Background",
@@ -1256,6 +1681,7 @@ impl Theme {
                             *d_stackbar_background,
                             None,
                             stackbar_background_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Bar Accent",
@@ -1267,6 +1693,7 @@ impl Theme {
                             *d_bar_accent,
                             None,
                             bar_accent_color,
+                            None,
                         ),
                     ]
                 } else {
@@ -1305,7 +1732,10 @@ impl Theme {
                 {
                     let get_color = |c: &Option<Base16Value>, d_c: &Option<Base16Value>| {
                         iced::Color::from(
-                            c.or(*d_c).unwrap().color32(Base16Wrapper::Base16(*name)).to_normalized_gamma_f32(),
+                            c.or(*d_c)
+                                .unwrap()
+                                .color32(Base16Wrapper::Base16(*name))
+                                .to_normalized_gamma_f32(),
                         )
                     };
                     let single_border_color = get_color(single_border, d_single_border);
@@ -1346,6 +1776,7 @@ impl Theme {
                             *d_single_border,
                             None,
                             single_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stack Border",
@@ -1359,6 +1790,7 @@ impl Theme {
                             *d_stack_border,
                             None,
                             stack_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Monocle Border",
@@ -1372,6 +1804,7 @@ impl Theme {
                             *d_monocle_border,
                             None,
                             monocle_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Floating Border",
@@ -1383,6 +1816,7 @@ impl Theme {
                             *d_floating_border,
                             None,
                             floating_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Border",
@@ -1394,6 +1828,7 @@ impl Theme {
                             *d_unfocused_border,
                             None,
                             unfocused_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Locked Border",
@@ -1407,6 +1842,7 @@ impl Theme {
                             *d_unfocused_locked_border,
                             None,
                             unfocused_locked_border_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Focused Text",
@@ -1418,6 +1854,7 @@ impl Theme {
                             *d_stackbar_focused_text,
                             None,
                             stackbar_focused_text_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Unfocused Text",
@@ -1429,6 +1866,7 @@ impl Theme {
                             *d_stackbar_unfocused_text,
                             None,
                             stackbar_unfocused_text_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Background",
@@ -1440,6 +1878,7 @@ impl Theme {
                             *d_stackbar_background,
                             None,
                             stackbar_background_color,
+                            None,
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Bar Accent",
@@ -1451,6 +1890,7 @@ impl Theme {
                             *d_bar_accent,
                             None,
                             bar_accent_color,
+                            None,
                         ),
                     ]
                 } else {
@@ -1458,10 +1898,9 @@ impl Theme {
                 }
             }
             ThemeType::Custom => {
-                //TODO: actually use custom theme
                 if let (
-                    Some(KomorebiTheme::Base16 {
-                        name,
+                    Some(KomorebiTheme::Custom {
+                        colours,
                         single_border,
                         stack_border,
                         monocle_border,
@@ -1473,8 +1912,8 @@ impl Theme {
                         stackbar_background,
                         bar_accent,
                     }),
-                    KomorebiTheme::Base16 {
-                        name: d_name,
+                    KomorebiTheme::Custom {
+                        colours: _,
                         single_border: d_single_border,
                         stack_border: d_stack_border,
                         monocle_border: d_monocle_border,
@@ -1486,11 +1925,14 @@ impl Theme {
                         stackbar_background: d_stackbar_background,
                         bar_accent: d_bar_accent,
                     },
-                ) = (&config.theme, &*DEFAULT_BASE16_THEME)
+                ) = (config.theme.clone(), DEFAULT_CUSTOM_THEME.clone())
                 {
-                    let get_color = |c: &Option<Base16Value>, d_c: &Option<Base16Value>| {
+                    let get_color = |c: Option<Base16Value>, d_c: Option<Base16Value>| {
                         iced::Color::from(
-                            c.or(*d_c).unwrap().color32(Base16Wrapper::Base16(*name)).to_normalized_gamma_f32(),
+                            c.or(d_c)
+                                .unwrap()
+                                .color32(Base16Wrapper::Custom(colours.clone()))
+                                .to_normalized_gamma_f32(),
                         )
                     };
                     let single_border_color = get_color(single_border, d_single_border);
@@ -1508,17 +1950,6 @@ impl Theme {
                         get_color(stackbar_background, d_stackbar_background);
                     let bar_accent_color = get_color(bar_accent, d_bar_accent);
                     vec![
-                        opt_helpers::combo_with_disable_default(
-                            "Theme Name",
-                            "",
-                            Some("The Theme variant to use"),
-                            Vec::new(),
-                            &self.base16_state,
-                            Some(*name),
-                            Message::ChangeBase16ThemeName,
-                            Some(*d_name),
-                            None,
-                        ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Single Border",
                             Some(
@@ -1526,11 +1957,29 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            single_border.or(*d_single_border),
-                            Message::ChangeBase16ThemeSingleBorder,
-                            *d_single_border,
+                            single_border.or(d_single_border),
+                            Message::ChangeCustomThemeSingleBorder,
+                            d_single_border,
                             None,
                             single_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: single_border_color,
+                                show: self.show_color(ColoredType::SingleBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(ColoredType::SingleBorder, v)
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    single_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::SingleBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stack Border",
@@ -1539,11 +1988,29 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stack_border.or(*d_stack_border),
-                            Message::ChangeBase16ThemeStackBorder,
-                            *d_stack_border,
+                            stack_border.or(d_stack_border),
+                            Message::ChangeCustomThemeStackBorder,
+                            d_stack_border,
                             None,
                             stack_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: stack_border_color,
+                                show: self.show_color(ColoredType::StackBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(ColoredType::StackBorder, v)
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    stack_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::StackBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Monocle Border",
@@ -1552,33 +2019,90 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            monocle_border.or(*d_monocle_border),
-                            Message::ChangeBase16ThemeMonocleBorder,
-                            *d_monocle_border,
+                            monocle_border.or(d_monocle_border),
+                            Message::ChangeCustomThemeMonocleBorder,
+                            d_monocle_border,
                             None,
                             monocle_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: monocle_border_color,
+                                show: self.show_color(ColoredType::MonocleBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(ColoredType::MonocleBorder, v)
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    monocle_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::MonocleBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Floating Border",
                             Some("Border colour when the window is floating (default: Base09)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            floating_border.or(*d_floating_border),
-                            Message::ChangeBase16ThemeFloatingBorder,
-                            *d_floating_border,
+                            floating_border.or(d_floating_border),
+                            Message::ChangeCustomThemeFloatingBorder,
+                            d_floating_border,
                             None,
                             floating_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: floating_border_color,
+                                show: self.show_color(ColoredType::FloatingBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(ColoredType::FloatingBorder, v)
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    floating_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::FloatingBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Border",
                             Some("Border colour when the container is unfocused (default: Base01)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            unfocused_border.or(*d_unfocused_border),
-                            Message::ChangeBase16ThemeUnfocusedBorder,
-                            *d_unfocused_border,
+                            unfocused_border.or(d_unfocused_border),
+                            Message::ChangeCustomThemeUnfocusedBorder,
+                            d_unfocused_border,
                             None,
                             unfocused_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: unfocused_border_color,
+                                show: self.show_color(ColoredType::UnfocusedBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(
+                                        ColoredType::UnfocusedBorder,
+                                        v,
+                                    )
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    unfocused_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::UnfocusedBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Unfocused Locked Border",
@@ -1587,55 +2111,157 @@ impl Theme {
                             ),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            unfocused_locked_border.or(*d_unfocused_locked_border),
-                            Message::ChangeBase16ThemeUnfocusedLockedBorder,
-                            *d_unfocused_locked_border,
+                            unfocused_locked_border.or(d_unfocused_locked_border),
+                            Message::ChangeCustomThemeUnfocusedLockedBorder,
+                            d_unfocused_locked_border,
                             None,
                             unfocused_locked_border_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: unfocused_locked_border_color,
+                                show: self.show_color(ColoredType::UnfocusedLockedBorder),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(
+                                        ColoredType::UnfocusedLockedBorder,
+                                        v,
+                                    )
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    unfocused_locked_border
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::UnfocusedLockedBorder,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Focused Text",
                             Some("Stackbar focused tab text colour (default: Base0B)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_focused_text.or(*d_stackbar_focused_text),
-                            Message::ChangeBase16ThemeStackbarFocusedText,
-                            *d_stackbar_focused_text,
+                            stackbar_focused_text.or(d_stackbar_focused_text),
+                            Message::ChangeCustomThemeStackbarFocusedText,
+                            d_stackbar_focused_text,
                             None,
                             stackbar_focused_text_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: stackbar_focused_text_color,
+                                show: self.show_color(ColoredType::StackbarFocusedText),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(
+                                        ColoredType::StackbarFocusedText,
+                                        v,
+                                    )
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    stackbar_focused_text
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::StackbarFocusedText,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Unfocused Text",
                             Some("Stackbar unfocused tab text colour (default: Base05)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_unfocused_text.or(*d_stackbar_unfocused_text),
-                            Message::ChangeBase16ThemeStackbarUnfocusedText,
-                            *d_stackbar_unfocused_text,
+                            stackbar_unfocused_text.or(d_stackbar_unfocused_text),
+                            Message::ChangeCustomThemeStackbarUnfocusedText,
+                            d_stackbar_unfocused_text,
                             None,
                             stackbar_unfocused_text_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: stackbar_unfocused_text_color,
+                                show: self.show_color(ColoredType::StackbarUnfocusedText),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(
+                                        ColoredType::StackbarUnfocusedText,
+                                        v,
+                                    )
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    stackbar_unfocused_text
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::StackbarUnfocusedText,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Stackbar Background",
                             Some("Stackbar tab background colour (default: Base01)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            stackbar_background.or(*d_stackbar_background),
-                            Message::ChangeBase16ThemeStackbarBackground,
-                            *d_stackbar_background,
+                            stackbar_background.or(d_stackbar_background),
+                            Message::ChangeCustomThemeStackbarBackground,
+                            d_stackbar_background,
                             None,
                             stackbar_background_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: stackbar_background_color,
+                                show: self.show_color(ColoredType::StackbarBackground),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(
+                                        ColoredType::StackbarBackground,
+                                        v,
+                                    )
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    stackbar_background
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::StackbarBackground,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                         opt_helpers::choose_with_disable_default_bg(
                             "Bar Accent",
                             Some("Komorebi status bar accent (default: Base0D)"),
                             Vec::new(),
                             &BASE16_VALUE_OPTIONS[..],
-                            bar_accent.or(*d_bar_accent),
-                            Message::ChangeBase16ThemeBarAccent,
-                            *d_bar_accent,
+                            bar_accent.or(d_bar_accent),
+                            Message::ChangeCustomThemeBarAccent,
+                            d_bar_accent,
                             None,
                             bar_accent_color,
+                            Some(opt_helpers::PickerOptions {
+                                color: bar_accent_color,
+                                show: self.show_color(ColoredType::BarAccent),
+                                on_picker_toggle: Box::new(move |v| {
+                                    Message::ToggleCustomThemePicker(ColoredType::BarAccent, v)
+                                }),
+                                on_submit: Box::new(move |c| {
+                                    bar_accent
+                                        .map(|b| {
+                                            Message::ChangeCustomThemeColor(
+                                                ColoredType::BarAccent,
+                                                b,
+                                                c,
+                                            )
+                                        })
+                                        .unwrap_or(Message::Nothing)
+                                }),
+                            }),
                         ),
                     ]
                 } else {
@@ -1653,7 +2279,12 @@ impl Theme {
                     configs and use the ones from the selected theme.",
                 ),
                 Vec::new(),
-                [ThemeType::None, ThemeType::Catppuccin, ThemeType::Base16],
+                [
+                    ThemeType::None,
+                    ThemeType::Catppuccin,
+                    ThemeType::Base16,
+                    ThemeType::Custom,
+                ],
                 Some(theme_type),
                 Message::ChangeThemeType,
                 Some(ThemeType::None),
