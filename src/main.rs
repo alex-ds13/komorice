@@ -170,13 +170,14 @@ impl Komorice {
         let loaded_config = Arc::new(config.clone());
         let display_info = monitors::get_display_information(&config.display_index_preferences);
         config::fill_monitors(&mut config, &display_info);
-        let mut init = Komorice {
+        let monitors = monitors::Monitors::new(&config);
+        let init = Komorice {
             display_info,
             config,
             loaded_config,
+            monitors,
             ..Default::default()
         };
-        init.populate_monitors();
         (
             init,
             Task::batch([
