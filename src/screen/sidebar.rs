@@ -136,7 +136,7 @@ fn screen_button(screen: Screen, selected: &Screen) -> Container<'_, Message> {
                 if is_selected {
                     button::primary(t, s)
                 } else {
-                    button::secondary(t, s)
+                    button::subtle(t, s)
                 }
             })
             .width(Fill),
