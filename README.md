@@ -150,7 +150,7 @@ To get started with Komorice, follow these steps:
 
 1. Install from cargo:
    ```
-   cargo install --git https://github.com/alex-ds13/komorice.git
+   cargo install --locked --git https://github.com/alex-ds13/komorice.git
    ```
 2. Run the application:
    ```
