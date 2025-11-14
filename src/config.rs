@@ -83,7 +83,7 @@ lazy_static! {
         display_index_preferences: None,
         stackbar: Some(StackbarConfig {
             height: Some(40),
-            label: Some(StackbarLabel::Process),
+            label: Some(StackbarLabel::Title),
             mode: Some(StackbarMode::OnStack),
             tabs: Some(TabsConfig {
                 width: Some(200),
