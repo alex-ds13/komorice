@@ -60,8 +60,7 @@ pub fn connect() -> Subscription<Message> {
                                         &notification_string,
                                     ) {
                                         Ok(notification) => {
-                                            println!("received notification from komorebi");
-
+                                            // println!("received notification from komorebi");
                                             smol::block_on(async {
                                                 if let Err(error) = output.send(Message::KomorebiNotification(Arc::new(notification))).await {
                                                     println!("could not send komorebi notification update to gui thread: {error}")

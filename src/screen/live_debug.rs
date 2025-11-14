@@ -53,13 +53,15 @@ impl LiveDebug {
             Message::ConfigMonitor(idx) => {
                 if self.monitor_to_config == Some(idx) {
                     self.monitor_to_config = None;
-                } else if let Some(DisplayInfo { device_id, .. }) =
-                    self.actual_display_info.get(&idx)
+                } else if let Some(DisplayInfo {
+                    device_id: _device_id,
+                    ..
+                }) = self.actual_display_info.get(&idx)
                 {
-                    println!(
-                        "Go to ConfigMonitor screen for monitor {idx} with id: {}",
-                        device_id
-                    );
+                    // println!(
+                    //     "Go to ConfigMonitor screen for monitor {idx} with id: {}",
+                    //     _device_id
+                    // );
                     self.monitor_to_config = Some(idx);
                 }
             }
