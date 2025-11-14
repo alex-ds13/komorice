@@ -479,6 +479,7 @@ impl Komorice {
                 .into(),
             button("Discard Changes")
                 .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
+                .style(button::secondary)
                 .into(),
         ]);
         let right_col = column![
