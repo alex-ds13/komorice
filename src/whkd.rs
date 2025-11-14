@@ -91,10 +91,8 @@ impl Whkd {
             Message::WhkdrcFileWatcherTx(sender) => self.whkdrc_watcher_tx = Some(sender),
             Message::LoadedWhkdrc(whkdrc) => {
                 if let Some(whkdrc) = Arc::into_inner(whkdrc) {
-                    println!("Whkdrc Loaded: {whkdrc:#?}");
-                    // let whkdrc = whkdrc::merge_default(whkdrc);
+                    // println!("Whkdrc Loaded: {whkdrc:#?}");
                     self.whkdrc = whkdrc.clone();
-                    // self.home.has_loaded_whkdrc = true;
                     self.loaded_whkdrc = Arc::new(whkdrc);
                     //TODO: show message on app to load external changes
                     return (Action::LoadedWhkdrc, Task::none());
@@ -149,7 +147,7 @@ impl Whkd {
                 println!("WHKD -> Failed to load commands: {error}");
             }
             Message::LoadedCommandDescription(command, description) => {
-                println!("received description for command: {command}");
+                // println!("received description for command: {command}");
                 let md = markdown::parse(&description).collect();
                 self.commands_desc.insert(command, md);
             }
@@ -198,8 +196,7 @@ impl Whkd {
             static APP_USER_AGENT: &str =
                 concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
-            println!("Running GET request: {}", APP_USER_AGENT);
-
+            // println!("Running GET request: {}", APP_USER_AGENT);
             let client = reqwest::Client::builder()
                 .user_agent(APP_USER_AGENT)
                 .build()?;
@@ -239,11 +236,10 @@ impl Whkd {
                 static APP_USER_AGENT: &str =
                     concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
-                println!(
-                    "Running GET request for command {} description: {}",
-                    &command_c1, APP_USER_AGENT
-                );
-
+                // println!(
+                //     "Running GET request for command {} description: {}",
+                //     &command_c1, APP_USER_AGENT
+                // );
                 let client = reqwest::Client::builder()
                     .user_agent(APP_USER_AGENT)
                     .build()?;

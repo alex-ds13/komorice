@@ -124,13 +124,11 @@ impl Bindings {
                             );
                         }
                     } else {
-                        println!("Adding/Updating a key");
                         if keys_count == 1 {
                             let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
                             if kk.len() > 1 {
                                 binding.keys.truncate(mods_count);
                                 kk.into_iter().for_each(|k| {
-                                    println!("Adding key {k}...");
                                     binding.keys.push(k);
                                 });
                             } else if let Some(k) = binding.keys.last_mut() {
@@ -145,7 +143,6 @@ impl Bindings {
                             // println!("Failed to add key {key} to binding since key count is {}, should be <=1", keys_count);
                             binding.keys.truncate(binding.keys.len() - keys_count);
                             key.split(SEPARATOR).map(String::from).for_each(|k| {
-                                println!("Adding key {k}...");
                                 binding.keys.push(k);
                             });
                         }
@@ -216,13 +213,11 @@ impl Bindings {
                         );
                     }
                 } else {
-                    println!("Adding/Updating a key");
                     if keys_count == 1 {
                         let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
                         if kk.len() > 1 {
                             self.new_binding.keys.truncate(mods_count);
                             kk.into_iter().for_each(|k| {
-                                println!("Adding key {k}...");
                                 self.new_binding.keys.push(k);
                             });
                         } else if let Some(k) = self.new_binding.keys.last_mut() {
@@ -239,7 +234,6 @@ impl Bindings {
                             .keys
                             .truncate(self.new_binding.keys.len() - keys_count);
                         key.split(SEPARATOR).map(String::from).for_each(|k| {
-                            println!("Adding key {k}...");
                             self.new_binding.keys.push(k);
                         });
                     }

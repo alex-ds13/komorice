@@ -353,7 +353,7 @@ impl Komorice {
             }
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
-                    println!("Config Loaded: {config:#?}");
+                    // println!("Config Loaded: {config:#?}");
                     let config = config::merge_default(config);
                     self.config = config.clone();
                     self.is_dirty = self.populate_monitors();
@@ -611,7 +611,7 @@ impl Komorice {
     }
 
     fn add_error(&mut self, apperror: AppError) {
-        println!("Received AppError: {apperror:#?}");
+        // println!("Received AppError: {apperror:#?}");
         if matches!(apperror.kind, AppErrorKind::Error) {
             self.show_errors_modal = true;
         }
