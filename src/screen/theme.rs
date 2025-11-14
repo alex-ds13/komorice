@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use iced::{Element, Task, widget::combo_box};
 use komorebi_client::{KomorebiTheme, StaticConfig};
-use komorebi_themes::{Base16, Base16Value, Base16Wrapper, Catppuccin, CatppuccinValue};
+use komorebi_themes::{
+    Base16, Base16ColourPalette, Base16Value, Base16Wrapper, Catppuccin, CatppuccinValue,
+};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -463,7 +465,61 @@ impl Theme {
                             config.theme = Some(DEFAULT_CATPPUCCIN_THEME.clone())
                         }
                         ThemeType::Base16 => config.theme = Some(DEFAULT_BASE16_THEME.clone()),
-                        ThemeType::Custom => config.theme = Some(DEFAULT_CUSTOM_THEME.clone()),
+                        ThemeType::Custom => {
+                            if let Some(KomorebiTheme::Base16 {
+                                name,
+                                single_border,
+                                stack_border,
+                                monocle_border,
+                                floating_border,
+                                unfocused_border,
+                                unfocused_locked_border,
+                                stackbar_focused_text,
+                                stackbar_unfocused_text,
+                                stackbar_background,
+                                bar_accent,
+                            }) = config.theme
+                            {
+                                // If there was a Base16 theme previously selected when changing to
+                                // `Custom`, use that previous Base16 theme as the base for the
+                                // `Custom` theme. Otherwise it will use `Base16::Ashes` by
+                                // default.
+                                let colours = Box::new(Base16ColourPalette {
+                                    base_00: name.base00().into(),
+                                    base_01: name.base01().into(),
+                                    base_02: name.base02().into(),
+                                    base_03: name.base03().into(),
+                                    base_04: name.base04().into(),
+                                    base_05: name.base05().into(),
+                                    base_06: name.base06().into(),
+                                    base_07: name.base07().into(),
+                                    base_08: name.base08().into(),
+                                    base_09: name.base09().into(),
+                                    base_0a: name.base0a().into(),
+                                    base_0b: name.base0b().into(),
+                                    base_0c: name.base0c().into(),
+                                    base_0d: name.base0d().into(),
+                                    base_0e: name.base0e().into(),
+                                    base_0f: name.base0f().into(),
+                                });
+                                let t = KomorebiTheme::Custom {
+                                    colours,
+                                    single_border,
+                                    stack_border,
+                                    monocle_border,
+                                    floating_border,
+                                    unfocused_border,
+                                    unfocused_locked_border,
+                                    stackbar_focused_text,
+                                    stackbar_unfocused_text,
+                                    stackbar_background,
+                                    bar_accent,
+                                };
+                                config.theme = Some(t);
+                            } else {
+                                config.theme = Some(DEFAULT_CUSTOM_THEME.clone());
+                            }
+                        }
                         ThemeType::None => config.theme = None,
                     }
                 } else {
