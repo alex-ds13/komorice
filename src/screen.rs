@@ -51,7 +51,7 @@ impl Display for Screen {
             Screen::LiveDebug => write!(f, "Live Debug"),
             Screen::Settings => write!(f, "Settings"),
             Screen::Whkd => write!(f, "Whkd"),
-            Screen::WhkdBinding => write!(f, "Whkd Binding"),
+            Screen::WhkdBinding => write!(f, "Bindings"),
         }
     }
 }
