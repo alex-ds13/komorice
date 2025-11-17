@@ -14,8 +14,8 @@ mod widget;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    ConfigType, Screen, animation, border, general, home, live_debug, monitors, rules, sidebar,
-    stackbar, theme, transparency,
+    ConfigState, ConfigType, Configuration, Screen, animation, border, general, home, live_debug,
+    monitors, rules, sidebar, stackbar, theme, transparency,
 };
 use crate::widget::{button_with_icon, icons};
 
@@ -25,8 +25,7 @@ use std::sync::Arc;
 use iced::{
     Center, Element, Fill, Font, Right, Subscription, Task, Theme, padding,
     widget::{
-        button, checkbox, column, container, rule, space, rich_text, row,
-        scrollable, span, text,
+        button, checkbox, column, container, rich_text, row, rule, scrollable, space, span, text,
     },
 };
 use lazy_static::lazy_static;
@@ -110,7 +109,7 @@ enum Message {
 
 struct Komorice {
     main_screen: Screen,
-    config_type: ConfigType,
+    configuration: Configuration,
     display_info: HashMap<usize, monitors::DisplayInfo>,
     sidebar: sidebar::Sidebar,
     home: home::Home,
@@ -138,7 +137,7 @@ impl Default for Komorice {
     fn default() -> Self {
         Self {
             main_screen: Default::default(),
-            config_type: Default::default(),
+            configuration: Default::default(),
             sidebar: Default::default(),
             display_info: Default::default(),
             home: Default::default(),
@@ -182,8 +181,8 @@ impl Komorice {
             init,
             Task::batch([
                 settings::load_task().map(Message::Settings),
-                config::load_task(),
-                whkd::load_task().map(Message::Whkd),
+                config::load_task(config::config_path()),
+                whkd::load_task(whkd::config_path()).map(Message::Whkd),
             ]),
         )
     }
@@ -198,19 +197,53 @@ impl Komorice {
                 self.show_errors_modal = false;
             }
             Message::Home(message) => {
-                let (action, task) = self.home.update(message);
+                let (action, task) = self.home.update(message, &mut self.configuration);
                 let action_task = match action {
                     home::Action::None => Task::none(),
-                    home::Action::ChangeConfigType(config_type) => {
-                        self.config_type = config_type;
-                        self.main_screen = self.sidebar.selected_screen(&self.config_type);
-                        if matches!(self.config_type, screen::ConfigType::Whkd)
+                    home::Action::ContinueEditConfigType => {
+                        self.main_screen = self
+                            .sidebar
+                            .selected_screen(&self.configuration.config_type);
+                        if matches!(self.configuration.config_type, screen::ConfigType::Whkd)
                             && !self.whkd.loaded_commands
                         {
                             self.whkd.load_commands().map(Message::Whkd)
                         } else {
                             Task::none()
                         }
+                    }
+                    home::Action::LoadConfigType => {
+                        self.main_screen = self
+                            .sidebar
+                            .selected_screen(&self.configuration.config_type);
+                        match self.configuration.config_type {
+                            ConfigType::Komorebi => config::load_task(self.configuration.path()),
+                            ConfigType::Whkd => {
+                                whkd::load_task(self.configuration.path()).map(Message::Whkd)
+                            }
+                        }
+                    }
+                    home::Action::NewConfigType => {
+                        self.main_screen = self
+                            .sidebar
+                            .selected_screen(&self.configuration.config_type);
+                        match self.configuration.config_type {
+                            ConfigType::Komorebi => {
+                                let mut config = DEFAULT_CONFIG.clone();
+                                self.display_info = monitors::get_display_information(
+                                    &config.display_index_preferences,
+                                );
+                                config::fill_monitors(&mut config, &self.display_info);
+                                self.config = config;
+                                self.loaded_config = Arc::new(self.config.clone());
+                                self.monitors = monitors::Monitors::new(&self.config);
+                                self.is_dirty = false;
+                            }
+                            ConfigType::Whkd => {
+                                self.whkd.load_default();
+                            }
+                        }
+                        Task::none()
                     }
                 };
                 return Task::batch([task.map(Message::Home), action_task]);
@@ -293,8 +326,12 @@ impl Komorice {
                 let (action, task) = self.whkd.update(message);
                 let action_task = match action {
                     whkd::Action::None => Task::none(),
+                    whkd::Action::SavedWhkdrc => {
+                        self.configuration.saved_new_whkd = true;
+                        Task::none()
+                    }
                     whkd::Action::LoadedWhkdrc => {
-                        self.home.has_loaded_whkdrc = true;
+                        self.configuration.has_loaded_whkd = true;
                         Task::none()
                     }
                     whkd::Action::AppError(app_error) => {
@@ -334,7 +371,9 @@ impl Komorice {
                 return Task::batch([task.map(Message::Rules), action_task]);
             }
             Message::Sidebar(message) => {
-                let (action, task) = self.sidebar.update(message, &self.config_type);
+                let (action, task) = self
+                    .sidebar
+                    .update(message, &self.configuration.config_type);
                 let action_task = match action {
                     sidebar::Action::None => Task::none(),
                     sidebar::Action::SetHomeScreen => {
@@ -342,7 +381,7 @@ impl Komorice {
                         Task::none()
                     }
                     sidebar::Action::UpdateMainScreen(screen) => {
-                        if matches!(self.config_type, ConfigType::Whkd) {
+                        if matches!(self.configuration.config_type, ConfigType::Whkd) {
                             self.whkd.screen = screen.clone();
                         }
                         self.main_screen = screen;
@@ -358,7 +397,7 @@ impl Komorice {
                     let config = config::merge_default(config);
                     self.config = config.clone();
                     self.is_dirty = self.populate_monitors();
-                    self.home.has_loaded_config = true;
+                    self.configuration.has_loaded_komorebi = true;
                     self.loaded_config = Arc::new(config);
                     //TODO: show message on app to load external changes
                 }
@@ -371,12 +410,21 @@ impl Komorice {
                 if self.settings.show_save_warning {
                     self.show_save_modal = true;
                 } else {
-                    match self.config_type {
+                    match self.configuration.config_type {
                         ConfigType::Komorebi => {
-                            return config::save_task(self.config.clone());
+                            self.configuration.saved_new_komorebi = true;
+                            return config::save_task(
+                                self.config.clone(),
+                                self.configuration.path(),
+                            );
                         }
                         ConfigType::Whkd => {
-                            return whkd::save_task(self.whkd.whkdrc.clone()).map(Message::Whkd);
+                            self.configuration.saved_new_whkd = true;
+                            return whkd::save_task(
+                                self.whkd.whkdrc.clone(),
+                                self.configuration.path(),
+                            )
+                            .map(Message::Whkd);
                         }
                     }
                 }
@@ -386,12 +434,16 @@ impl Komorice {
             }
             Message::Save => {
                 self.show_save_modal = false;
-                match self.config_type {
+                match self.configuration.config_type {
                     ConfigType::Komorebi => {
-                        return config::save_task(self.config.clone());
+                        return config::save_task(self.config.clone(), self.configuration.path());
                     }
                     ConfigType::Whkd => {
-                        return whkd::save_task(self.whkd.whkdrc.clone()).map(Message::Whkd);
+                        return whkd::save_task(
+                            self.whkd.whkdrc.clone(),
+                            self.configuration.path(),
+                        )
+                        .map(Message::Whkd);
                     }
                 }
             }
@@ -401,8 +453,9 @@ impl Komorice {
                 }
                 self.loaded_config = Arc::new(self.config.clone());
                 self.is_dirty = false;
+                self.configuration.saved_new_komorebi = true;
             }
-            Message::DiscardChanges => match self.config_type {
+            Message::DiscardChanges => match self.configuration.config_type {
                 ConfigType::Komorebi => {
                     let update_display_info = self.config.display_index_preferences
                         != self.loaded_config.display_index_preferences;
@@ -422,7 +475,7 @@ impl Komorice {
 
     pub fn view(&self) -> Element<'_, Message> {
         let main_screen: Element<Message> = match self.main_screen {
-            Screen::Home => self.home.view().map(Message::Home),
+            Screen::Home => self.home.view(&self.configuration).map(Message::Home),
             Screen::General => self.general.view(&self.config).map(Message::General),
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
@@ -466,7 +519,10 @@ impl Komorice {
             return main_screen;
         }
 
-        let sidebar = self.sidebar.view(&self.config_type).map(Message::Sidebar);
+        let sidebar = self
+            .sidebar
+            .view(&self.configuration.config_type)
+            .map(Message::Sidebar);
         let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
         save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
             button("Errors")
@@ -476,7 +532,7 @@ impl Komorice {
         save_buttons = save_buttons.extend([
             space::horizontal().into(),
             button("Save")
-                .on_press_maybe(self.is_dirty().then_some(Message::TrySave))
+                .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
                 .into(),
             button("Discard Changes")
                 .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
@@ -506,17 +562,30 @@ impl Komorice {
             | Screen::Animations
             | Screen::Theme
             | Screen::LiveDebug
-            | Screen::Settings
-            | Screen::WhkdBinding => Subscription::none(),
+            | Screen::Settings => Subscription::none(),
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
             Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
             Screen::Rules => self.rules.subscription().map(Message::Rules),
-            Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
+            Screen::Whkd | Screen::WhkdBinding => self
+                .whkd
+                .subscription(&self.configuration)
+                .map(Message::Whkd),
+        };
+
+        let worker = if matches!(self.configuration.config_type, ConfigType::Komorebi)
+            && (!matches!(self.configuration.komorebi_state, ConfigState::New(_))
+                || self.configuration.saved_new_komorebi)
+        {
+            // Only start the worker if has the config_type as `Komorebi` and in case the komorebi state is
+            // `New` the worker should only run if it has already been saved once at least.
+            config::worker(self.configuration.path())
+        } else {
+            Subscription::none()
         };
 
         Subscription::batch([
             komo_interop::connect().map(Message::LiveDebug),
-            config::worker(),
+            worker,
             settings::worker().map(Message::Settings),
             screen_subscription,
         ])
@@ -541,8 +610,21 @@ impl Komorice {
         self.is_dirty = self.config != *self.loaded_config;
     }
 
+    fn is_unsaved(&self) -> bool {
+        match self.configuration.config_type {
+            ConfigType::Komorebi => match self.configuration.komorebi_state {
+                ConfigState::Active | ConfigState::Loaded(_) => self.is_dirty,
+                ConfigState::New(_) => self.is_dirty || !self.configuration.saved_new_komorebi,
+            },
+            ConfigType::Whkd => match self.configuration.whkd_state {
+                ConfigState::Active | ConfigState::Loaded(_) => self.whkd.is_dirty,
+                ConfigState::New(_) => self.whkd.is_dirty || !self.configuration.saved_new_whkd,
+            },
+        }
+    }
+
     fn is_dirty(&self) -> bool {
-        match self.config_type {
+        match self.configuration.config_type {
             ConfigType::Komorebi => self.is_dirty,
             ConfigType::Whkd => self.whkd.is_dirty,
         }
@@ -575,7 +657,7 @@ impl Komorice {
     }
 
     fn save_warning(&self) -> container::Container<'_, Message> {
-        let save = button("Save").on_press_maybe(self.is_dirty.then_some(Message::Save));
+        let save = button("Save").on_press_maybe(self.is_unsaved().then_some(Message::Save));
         let cancel = button("Cancel")
             .on_press(Message::ToggleSaveModal)
             .style(button::secondary);

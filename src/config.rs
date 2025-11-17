@@ -1147,9 +1147,10 @@ pub enum Input {
     DebouncerRes(DebounceEventResult),
 }
 
-pub fn worker() -> Subscription<Message> {
-    Subscription::run(|| {
-        iced::stream::channel(10, |mut output: mpsc::Sender<Message>| async move {
+pub fn worker(path: PathBuf) -> Subscription<Message> {
+    Subscription::run_with(path, |path| {
+        let path = path.clone();
+        iced::stream::channel(10, move |mut output: mpsc::Sender<Message>| async move {
             let mut state = State::Starting;
 
             loop {
@@ -1187,7 +1188,7 @@ pub fn worker() -> Subscription<Message> {
 
                         debouncer
                             .watcher()
-                            .watch(&config_path(), RecursiveMode::NonRecursive)
+                            .watch(&path, RecursiveMode::NonRecursive)
                             .unwrap();
 
                         state = State::Ready(Data {
@@ -1218,7 +1219,12 @@ pub fn worker() -> Subscription<Message> {
                                 match res {
                                     Ok(events) => {
                                         events.iter().for_each(|event| {
-                                            handle_event(event, &mut ignore_event, &mut output);
+                                            handle_event(
+                                                event,
+                                                &mut ignore_event,
+                                                &mut output,
+                                                path.clone(),
+                                            );
                                         });
                                     }
                                     Err(error) => {
@@ -1253,13 +1259,14 @@ fn handle_event(
     event: &DebouncedEvent,
     ignore_event: &mut usize,
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
+    path: PathBuf,
 ) {
     // println!("FileWatcher event: {event:?}");
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading options");
             smol::block_on(async {
-                match load().await {
+                match load(path).await {
                     Ok(loaded_options) => {
                         let _ = output
                             .send(Message::LoadedConfig(Arc::new(loaded_options)))
@@ -1277,19 +1284,19 @@ fn handle_event(
     }
 }
 
-pub fn load_task() -> Task<Message> {
-    Task::perform(load(), |res| match res {
+pub fn load_task(path: PathBuf) -> Task<Message> {
+    Task::perform(load(path), |res| match res {
         Ok(config) => Message::LoadedConfig(Arc::new(config)),
         Err(apperror) => Message::FailedToLoadConfig(apperror),
     })
 }
 
-async fn load() -> Result<StaticConfig, AppError> {
+async fn load(path: PathBuf) -> Result<StaticConfig, AppError> {
     use smol::prelude::*;
 
     let mut contents = String::new();
 
-    let file_open_res = smol::fs::File::open(config_path()).await;
+    let file_open_res = smol::fs::File::open(path).await;
 
     let mut file = match file_open_res {
         Ok(file) => file,
@@ -1318,14 +1325,14 @@ async fn load() -> Result<StaticConfig, AppError> {
     })
 }
 
-pub fn save_task(config: StaticConfig) -> Task<Message> {
-    Task::future(save(config)).map(|res| match res {
+pub fn save_task(config: StaticConfig, path: PathBuf) -> Task<Message> {
+    Task::future(save(config, path)).map(|res| match res {
         Ok(_) => Message::Saved,
         Err(apperror) => Message::AppError(apperror),
     })
 }
 
-async fn save(config: StaticConfig) -> Result<(), AppError> {
+async fn save(config: StaticConfig, path: PathBuf) -> Result<(), AppError> {
     use smol::prelude::*;
 
     let unmerged_config = unmerge_default(config);
@@ -1339,8 +1346,6 @@ async fn save(config: StaticConfig) -> Result<(), AppError> {
         *KOMOREBI_VERSION,
     );
     let json = [schema.as_bytes(), &json.as_bytes()[2..]].concat();
-
-    let path = config_path();
 
     // if let Some(dir) = path.parent() {
     //     smol::fs::create_dir_all(dir)
@@ -1360,6 +1365,12 @@ async fn save(config: StaticConfig) -> Result<(), AppError> {
 
     file.write_all(&json).await.map_err(|e| AppError {
         title: "Error saving 'komorebi.json' file".into(),
+        description: Some(e.to_string()),
+        kind: AppErrorKind::Error,
+    })?;
+
+    file.close().await.map_err(|e| AppError {
+        title: "Error closing 'komorebi.json' file".into(),
         description: Some(e.to_string()),
         kind: AppErrorKind::Error,
     })?;
