@@ -183,6 +183,7 @@ impl Komorice {
                 settings::load_task().map(Message::Settings),
                 config::load_task(config::config_path()),
                 whkd::load_task(whkd::config_path()).map(Message::Whkd),
+                whkd::load_commands().map(Message::Whkd)
             ]),
         )
     }
@@ -204,13 +205,7 @@ impl Komorice {
                         self.main_screen = self
                             .sidebar
                             .selected_screen(&self.configuration.config_type);
-                        if matches!(self.configuration.config_type, screen::ConfigType::Whkd)
-                            && !self.whkd.loaded_commands
-                        {
-                            self.whkd.load_commands().map(Message::Whkd)
-                        } else {
-                            Task::none()
-                        }
+                        Task::none()
                     }
                     home::Action::LoadConfigType => {
                         self.main_screen = self
