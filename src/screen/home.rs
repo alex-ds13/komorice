@@ -1,8 +1,6 @@
 use super::{ConfigState, ConfigType, Configuration};
 use crate::{EMOJI_FONT, config, whkd};
 
-use std::path::PathBuf;
-
 use iced::{
     Center, Element, Fill, Shrink, Task,
     widget::{button, center, column, container, image, opaque, row, space, stack, text},
@@ -10,24 +8,18 @@ use iced::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    EditCurrentConfig,
-    LoadConfig,
-    LoadConfigResult(Option<PathBuf>),
-    NewConfig,
-    NewConfigResult(Option<PathBuf>),
-    EditCurrentWhkdrc,
-    LoadWhkdrc,
-    LoadWhkdrcResult(Option<PathBuf>),
-    NewWhkdrc,
-    NewWhkdrcResult(Option<PathBuf>),
+    EditCurrent(ConfigType),
+    Load(ConfigType),
+    New(ConfigType),
+    ChangeConfiguration(ConfigType, ConfigState),
+    ClosedDialog,
 }
 
 #[derive(Debug, Clone)]
 pub enum Action {
     None,
-    ContinueEditConfigType,
-    LoadConfigType,
-    NewConfigType,
+    ContinueEdit,
+    ChangedConfiguration,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -42,117 +34,57 @@ impl Home {
         configuration: &mut Configuration,
     ) -> (Action, Task<Message>) {
         match message {
-            Message::EditCurrentConfig => {
-                configuration.config_type = ConfigType::Komorebi;
-                return (Action::ContinueEditConfigType, Task::none());
+            Message::EditCurrent(config_type) => {
+                configuration.config_type = config_type;
+                return (Action::ContinueEdit, Task::none());
             }
-            Message::LoadConfig => {
-                let (home_dir, _) = config::home_path();
+            Message::Load(config_type) => {
                 self.dialog_opened = true;
-                return (
-                    Action::None,
-                    Task::perform(
-                        async move {
-                            rfd::FileDialog::new()
-                                .add_filter("json", &["json"])
-                                .set_directory(home_dir.as_path())
-                                .pick_file()
-                        },
-                        Message::LoadConfigResult,
-                    ),
-                );
-            }
-            Message::LoadConfigResult(file) => {
-                self.dialog_opened = false;
-                if let Some(file) = file {
-                    println!("Loading config from '{}'", file.display());
-                    configuration.komorebi_state = ConfigState::Loaded(file);
-                    configuration.config_type = ConfigType::Komorebi;
-                    configuration.has_loaded_komorebi = false;
-                    return (Action::LoadConfigType, Task::none());
+                match config_type {
+                    ConfigType::Komorebi => return (Action::None, load_komorebi()),
+                    ConfigType::Whkd => return (Action::None, load_whkd()),
                 }
             }
-            Message::NewConfig => {
-                let (home_dir, _) = config::home_path();
+            Message::New(config_type) => {
                 self.dialog_opened = true;
-                return (
-                    Action::None,
-                    Task::perform(
-                        async move {
-                            rfd::FileDialog::new()
-                                .add_filter("json", &["json"])
-                                .set_directory(home_dir.as_path())
-                                .save_file()
-                        },
-                        Message::NewConfigResult,
-                    ),
-                );
-            }
-            Message::NewConfigResult(file) => {
-                self.dialog_opened = false;
-                if let Some(file) = file {
-                    println!("Saving new config to '{}'", file.display());
-                    configuration.komorebi_state = ConfigState::New(file);
-                    configuration.config_type = ConfigType::Komorebi;
-                    configuration.saved_new_komorebi = false;
-                    return (Action::NewConfigType, Task::none());
+                match config_type {
+                    ConfigType::Komorebi => return (Action::None, new_komorebi()),
+                    ConfigType::Whkd => return (Action::None, new_whkd()),
                 }
             }
-            Message::EditCurrentWhkdrc => {
-                configuration.config_type = ConfigType::Whkd;
-                return (Action::ContinueEditConfigType, Task::none());
-            }
-            Message::LoadWhkdrc => {
-                let home_dir = whkd::home_path();
-                self.dialog_opened = true;
-                return (
-                    Action::None,
-                    Task::perform(
-                        async move {
-                            rfd::FileDialog::new()
-                                .set_directory(home_dir.as_path())
-                                .pick_file()
-                        },
-                        Message::LoadWhkdrcResult,
-                    ),
-                );
-            }
-            Message::LoadWhkdrcResult(file) => {
+            Message::ChangeConfiguration(config_type, state) => {
                 self.dialog_opened = false;
-                if let Some(file) = file {
-                    println!("Loading whkdrc from '{}'", file.display());
-                    configuration.whkd_state = ConfigState::Loaded(file);
-                    configuration.config_type = ConfigType::Whkd;
-                    configuration.has_loaded_whkd = false;
-                    return (Action::LoadConfigType, Task::none());
+                configuration.config_type = config_type;
+                match state {
+                    ConfigState::Active => {
+                        println!(
+                            "Got 'Active' state on a configuration change, it shouldn't happen!"
+                        );
+                    }
+                    ConfigState::Loaded(_) => match configuration.config_type {
+                        ConfigType::Komorebi => {
+                            configuration.komorebi_state = state;
+                            configuration.has_loaded_komorebi = false;
+                        }
+                        ConfigType::Whkd => {
+                            configuration.whkd_state = state;
+                            configuration.has_loaded_whkd = false;
+                        }
+                    },
+                    ConfigState::New(_) => match configuration.config_type {
+                        ConfigType::Komorebi => {
+                            configuration.komorebi_state = state;
+                            configuration.saved_new_komorebi = false;
+                        }
+                        ConfigType::Whkd => {
+                            configuration.whkd_state = state;
+                            configuration.saved_new_whkd = false;
+                        }
+                    },
                 }
+                return (Action::ChangedConfiguration, Task::none());
             }
-            Message::NewWhkdrc => {
-                let home_dir = whkd::home_path();
-                println!("Using Start dir as: {}", home_dir.display());
-                self.dialog_opened = true;
-                return (
-                    Action::None,
-                    Task::perform(
-                        async move {
-                            rfd::FileDialog::new()
-                                .set_directory(home_dir.as_path())
-                                .save_file()
-                        },
-                        Message::NewWhkdrcResult,
-                    ),
-                );
-            }
-            Message::NewWhkdrcResult(file) => {
-                self.dialog_opened = false;
-                if let Some(file) = file {
-                    println!("Saving new whkdrc to '{}'", file.display());
-                    configuration.whkd_state = ConfigState::New(file);
-                    configuration.config_type = ConfigType::Whkd;
-                    configuration.saved_new_whkd = false;
-                    return (Action::NewConfigType, Task::none());
-                }
-            }
+            Message::ClosedDialog => self.dialog_opened = false,
         }
         (Action::None, Task::none())
     }
@@ -172,21 +104,21 @@ impl Home {
             .size(20)
             .width(Fill)
             .align_x(Center);
-        let config_buttons = self.button_col(
+        let komorebi_buttons = self.button_col(
             ConfigType::Komorebi,
             configuration,
-            Message::EditCurrentConfig,
-            Message::LoadConfig,
-            Message::NewConfig,
+            Message::EditCurrent(ConfigType::Komorebi),
+            Message::Load(ConfigType::Komorebi),
+            Message::New(ConfigType::Komorebi),
         );
         let whkd_buttons = self.button_col(
             ConfigType::Whkd,
             configuration,
-            Message::EditCurrentWhkdrc,
-            Message::LoadWhkdrc,
-            Message::NewWhkdrc,
+            Message::EditCurrent(ConfigType::Whkd),
+            Message::Load(ConfigType::Whkd),
+            Message::New(ConfigType::Whkd),
         );
-        let buttons_row = row![config_buttons, whkd_buttons]
+        let buttons_row = row![komorebi_buttons, whkd_buttons]
             .spacing(50)
             .height(Shrink);
         let col = column![title, subtitle, image, buttons_row]
@@ -256,4 +188,58 @@ impl Home {
         .spacing(10)
         .into()
     }
+}
+
+fn load_komorebi() -> Task<Message> {
+    let (home_dir, _) = config::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .add_filter("json", &["json"])
+            .set_directory(home_dir.as_path())
+            .pick_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::ChangeConfiguration(ConfigType::Komorebi, ConfigState::Loaded(file)),
+        None => Message::ClosedDialog,
+    })
+}
+
+fn new_komorebi() -> Task<Message> {
+    let (home_dir, _) = config::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .add_filter("json", &["json"])
+            .set_directory(home_dir.as_path())
+            .save_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::ChangeConfiguration(ConfigType::Komorebi, ConfigState::New(file)),
+        None => Message::ClosedDialog,
+    })
+}
+
+fn load_whkd() -> Task<Message> {
+    let home_dir = whkd::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .set_directory(home_dir.as_path())
+            .pick_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::ChangeConfiguration(ConfigType::Whkd, ConfigState::Loaded(file)),
+        None => Message::ClosedDialog,
+    })
+}
+
+fn new_whkd() -> Task<Message> {
+    let home_dir = whkd::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .set_directory(home_dir.as_path())
+            .save_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::ChangeConfiguration(ConfigType::Whkd, ConfigState::New(file)),
+        None => Message::ClosedDialog,
+    })
 }

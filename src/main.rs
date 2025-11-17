@@ -183,7 +183,7 @@ impl Komorice {
                 settings::load_task().map(Message::Settings),
                 config::load_task(config::config_path()),
                 whkd::load_task(whkd::config_path()).map(Message::Whkd),
-                whkd::load_commands().map(Message::Whkd)
+                whkd::load_commands().map(Message::Whkd),
             ]),
         )
     }
@@ -201,44 +201,46 @@ impl Komorice {
                 let (action, task) = self.home.update(message, &mut self.configuration);
                 let action_task = match action {
                     home::Action::None => Task::none(),
-                    home::Action::ContinueEditConfigType => {
+                    home::Action::ContinueEdit => {
                         self.main_screen = self
                             .sidebar
                             .selected_screen(&self.configuration.config_type);
                         Task::none()
                     }
-                    home::Action::LoadConfigType => {
+                    home::Action::ChangedConfiguration => {
                         self.main_screen = self
                             .sidebar
                             .selected_screen(&self.configuration.config_type);
                         match self.configuration.config_type {
-                            ConfigType::Komorebi => config::load_task(self.configuration.path()),
-                            ConfigType::Whkd => {
-                                whkd::load_task(self.configuration.path()).map(Message::Whkd)
-                            }
+                            ConfigType::Komorebi => match self.configuration.komorebi_state {
+                                ConfigState::Active => Task::none(),
+                                ConfigState::Loaded(_) => {
+                                    config::load_task(self.configuration.path())
+                                }
+                                ConfigState::New(_) => {
+                                    let mut config = DEFAULT_CONFIG.clone();
+                                    self.display_info = monitors::get_display_information(
+                                        &config.display_index_preferences,
+                                    );
+                                    config::fill_monitors(&mut config, &self.display_info);
+                                    self.config = config;
+                                    self.loaded_config = Arc::new(self.config.clone());
+                                    self.monitors = monitors::Monitors::new(&self.config);
+                                    self.is_dirty = false;
+                                    Task::none()
+                                }
+                            },
+                            ConfigType::Whkd => match self.configuration.whkd_state {
+                                ConfigState::Active => Task::none(),
+                                ConfigState::Loaded(_) => {
+                                    whkd::load_task(self.configuration.path()).map(Message::Whkd)
+                                }
+                                ConfigState::New(_) => {
+                                    self.whkd.load_default();
+                                    Task::none()
+                                }
+                            },
                         }
-                    }
-                    home::Action::NewConfigType => {
-                        self.main_screen = self
-                            .sidebar
-                            .selected_screen(&self.configuration.config_type);
-                        match self.configuration.config_type {
-                            ConfigType::Komorebi => {
-                                let mut config = DEFAULT_CONFIG.clone();
-                                self.display_info = monitors::get_display_information(
-                                    &config.display_index_preferences,
-                                );
-                                config::fill_monitors(&mut config, &self.display_info);
-                                self.config = config;
-                                self.loaded_config = Arc::new(self.config.clone());
-                                self.monitors = monitors::Monitors::new(&self.config);
-                                self.is_dirty = false;
-                            }
-                            ConfigType::Whkd => {
-                                self.whkd.load_default();
-                            }
-                        }
-                        Task::none()
                     }
                 };
                 return Task::batch([task.map(Message::Home), action_task]);
