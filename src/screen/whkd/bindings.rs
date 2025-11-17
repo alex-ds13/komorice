@@ -449,6 +449,11 @@ impl Bindings {
     pub fn load_new_commands(&mut self, commands: &[String]) {
         self.new_binding_state = combo_box::State::new(commands.to_vec());
     }
+    
+    pub fn clear_editing(&mut self) {
+        self.editing.clear();
+        self.editing_states.clear();
+    }
 }
 
 fn is_mod(key: &str) -> bool {

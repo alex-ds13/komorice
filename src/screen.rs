@@ -15,6 +15,7 @@ pub mod whkd;
 pub mod workspace;
 
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 
 use iced::{Element, widget::value};
 
@@ -69,6 +70,50 @@ impl<Message> From<&Screen> for Element<'_, Message> {
 }
 
 #[derive(Debug, Default, Clone)]
+pub struct Configuration {
+    pub config_type: ConfigType,
+    pub komorebi_state: ConfigState,
+    pub whkd_state: ConfigState,
+    pub has_loaded_komorebi: bool,
+    pub has_loaded_whkd: bool,
+    pub saved_new_komorebi: bool,
+    pub saved_new_whkd: bool,
+}
+
+impl Configuration {
+    pub fn path(&self) -> PathBuf {
+        match self.config_type {
+            ConfigType::Komorebi => match &self.komorebi_state {
+                ConfigState::Active => crate::config::config_path(),
+                ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf.clone(),
+            },
+            ConfigType::Whkd => match &self.whkd_state {
+                ConfigState::Active => crate::whkd::config_path(),
+                ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf.clone(),
+            },
+        }
+    }
+
+    pub fn title(&self) -> &'static str {
+        self.config_type.title()
+    }
+
+    pub fn state_str(&self, config_type: ConfigType) -> &'static str {
+        match config_type {
+            ConfigType::Komorebi => self.komorebi_state.as_str(),
+            ConfigType::Whkd => self.whkd_state.as_str(),
+        }
+    }
+
+    pub fn has_loaded_active(&self, config_type: ConfigType) -> bool {
+        match config_type {
+            ConfigType::Komorebi => self.has_loaded_komorebi,
+            ConfigType::Whkd => self.has_loaded_whkd,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ConfigType {
     #[default]
     Komorebi,
@@ -76,19 +121,41 @@ pub enum ConfigType {
 }
 
 impl ConfigType {
-    pub fn file_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             ConfigType::Komorebi => "config",
             ConfigType::Whkd => "whkdrc",
+        }
+    }
+
+    pub fn title(&self) -> &'static str {
+        match self {
+            ConfigType::Komorebi => "Komorebi",
+            ConfigType::Whkd =>  "Whkd",
         }
     }
 }
 
 impl std::fmt::Display for ConfigType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.title())
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum ConfigState {
+    #[default]
+    Active,
+    Loaded(PathBuf),
+    New(PathBuf),
+}
+
+impl ConfigState {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            ConfigType::Komorebi => write!(f, "Komorebi"),
-            ConfigType::Whkd => write!(f, "Whkd"),
+            ConfigState::Active => "active",
+            ConfigState::Loaded(_) => "loaded",
+            ConfigState::New(_) => "new",
         }
     }
 }

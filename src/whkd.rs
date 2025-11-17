@@ -2,7 +2,7 @@ pub mod unparser;
 
 use crate::{
     apperror::{AppError, AppErrorKind},
-    screen::{self, Screen},
+    screen::{self, ConfigState, ConfigType, Configuration, Screen},
 };
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
@@ -50,6 +50,7 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub enum Action {
     None,
+    SavedWhkdrc,
     LoadedWhkdrc,
     AppError(AppError),
 }
@@ -107,6 +108,7 @@ impl Whkd {
                 }
                 self.loaded_whkdrc = Arc::new(self.whkdrc.clone());
                 self.is_dirty = false;
+                return (Action::SavedWhkdrc, Task::none());
             }
             Message::AppError(app_error) => {
                 return (Action::AppError(app_error), Task::none());
@@ -172,14 +174,25 @@ impl Whkd {
         }
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    pub fn subscription(&self, configuration: &Configuration) -> Subscription<Message> {
         let screen_subscription = match self.screen {
             Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
             Screen::WhkdBinding => self.bindings.subscription().map(Message::Bindings),
             _ => Subscription::none(),
         };
 
-        Subscription::batch([worker(), screen_subscription])
+        let worker = if matches!(configuration.config_type, ConfigType::Whkd)
+            && (!matches!(configuration.whkd_state, ConfigState::New(_))
+                || configuration.saved_new_whkd)
+        {
+            // Only start the worker if has the config_type as `Whkd` and in case the whkd state is
+            // `New` the worker should only run if it has already been saved once at least.
+            worker(configuration.path())
+        } else {
+            Subscription::none()
+        };
+
+        Subscription::batch([worker, screen_subscription])
     }
 
     pub fn discard_changes(&mut self) {
@@ -189,6 +202,16 @@ impl Whkd {
 
     fn check_changes(&mut self) {
         self.is_dirty = self.whkdrc != *self.loaded_whkdrc;
+    }
+
+    pub fn load_default(&mut self) {
+        // Clear any editing states from bindings
+        self.bindings.clear_editing();
+
+        // Set whkdrc to default
+        self.whkdrc = DEFAULT_WHKDRC.clone();
+        self.loaded_whkdrc = Arc::new(DEFAULT_WHKDRC.clone());
+        self.is_dirty = false;
     }
 
     pub fn load_commands(&self) -> Task<Message> {
@@ -291,8 +314,9 @@ pub enum Input {
     DebouncerRes(DebounceEventResult),
 }
 
-pub fn worker() -> Subscription<Message> {
-    Subscription::run(|| {
+pub fn worker(path: PathBuf) -> Subscription<Message> {
+    Subscription::run_with(path, |path| {
+        let path = path.clone();
         iced::stream::channel(10, move |mut output: mpsc::Sender<Message>| async move {
             let mut state = State::Starting;
 
@@ -329,10 +353,10 @@ pub fn worker() -> Subscription<Message> {
                         })
                         .unwrap();
 
-                        let path = config_path();
-                        if matches!(std::fs::exists(&path), Ok(false) | Err(_)) {
-                            // If the path doesn't exist, we save the default version to create it
-                            if let Err(apperror) = save(DEFAULT_WHKDRC.clone()).await {
+                        if matches!(std::fs::exists(config_path()), Ok(false) | Err(_)) {
+                            // If the default path doesn't exist, we save the default version to create it
+                            if let Err(apperror) = save(DEFAULT_WHKDRC.clone(), config_path()).await
+                            {
                                 match output.send(Message::AppError(apperror)).await {
                                     Ok(_) => {}
                                     Err(e) => {
@@ -373,7 +397,12 @@ pub fn worker() -> Subscription<Message> {
                                 match res {
                                     Ok(events) => {
                                         events.iter().for_each(|event| {
-                                            handle_event(event, &mut ignore_event, &mut output);
+                                            handle_event(
+                                                event,
+                                                &mut ignore_event,
+                                                &mut output,
+                                                path.clone(),
+                                            );
                                         });
                                     }
                                     Err(error) => {
@@ -408,13 +437,14 @@ fn handle_event(
     event: &DebouncedEvent,
     ignore_event: &mut usize,
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
+    path: PathBuf,
 ) {
     // println!("FileWatcher event: {event:?}");
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading whkdrc");
             smol::block_on(async {
-                match load().await {
+                match load(path).await {
                     Ok(loaded_whkdrc) => {
                         let _ = output
                             .send(Message::LoadedWhkdrc(Arc::new(loaded_whkdrc)))
@@ -432,16 +462,16 @@ fn handle_event(
     }
 }
 
-pub fn load_task() -> Task<Message> {
-    Task::perform(load(), |res| match res {
+pub fn load_task(path: PathBuf) -> Task<Message> {
+    Task::perform(load(path), |res| match res {
         Ok(whkdrc) => Message::LoadedWhkdrc(Arc::new(whkdrc)),
         Err(apperror) => Message::FailedToLoadWhkdrc(apperror),
     })
 }
 
-pub async fn load() -> Result<Whkdrc, AppError> {
-    smol::unblock(|| {
-        whkd_parser::load(&config_path()).map_err(|e| AppError {
+pub async fn load(path: PathBuf) -> Result<Whkdrc, AppError> {
+    smol::unblock(move || {
+        whkd_parser::load(&path).map_err(|e| AppError {
             title: "Error reading 'whkdrc' file.".into(),
             description: Some(format!("{e:#?}")),
             kind: AppErrorKind::Error,
@@ -450,19 +480,17 @@ pub async fn load() -> Result<Whkdrc, AppError> {
     .await
 }
 
-pub fn save_task(whkdrc: Whkdrc) -> Task<Message> {
-    Task::future(save(whkdrc)).map(|res| match res {
+pub fn save_task(whkdrc: Whkdrc, path: PathBuf) -> Task<Message> {
+    Task::future(save(whkdrc, path)).map(|res| match res {
         Ok(_) => Message::SavedWhkdrc,
         Err(apperror) => Message::AppError(apperror),
     })
 }
 
-pub async fn save(whkdrc: Whkdrc) -> Result<(), AppError> {
+pub async fn save(whkdrc: Whkdrc, path: PathBuf) -> Result<(), AppError> {
     use smol::prelude::*;
 
     let str = smol::unblock(move || unparser::unparse_whkdrc(&whkdrc)).await;
-
-    let path = config_path();
 
     if let Some(dir) = path.parent() {
         smol::fs::create_dir_all(dir).await.map_err(|e| AppError {
@@ -480,6 +508,12 @@ pub async fn save(whkdrc: Whkdrc) -> Result<(), AppError> {
 
     file.write_all(str.as_bytes()).await.map_err(|e| AppError {
         title: "Error saving 'whkdrc' file".into(),
+        description: Some(e.to_string()),
+        kind: AppErrorKind::Error,
+    })?;
+
+    file.close().await.map_err(|e| AppError {
+        title: "Error closing 'whkdrc' file".into(),
         description: Some(e.to_string()),
         kind: AppErrorKind::Error,
     })?;
