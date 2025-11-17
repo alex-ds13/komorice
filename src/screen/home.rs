@@ -146,7 +146,9 @@ impl Home {
         new_file: Message,
     ) -> Element<'_, Message> {
         let fixed_width = space().width(180);
-        let edit = configuration.has_loaded_active(config_type).then_some(edit);
+        let edit = configuration
+            .has_loaded_or_is_new(config_type)
+            .then_some(edit);
 
         column![
             fixed_width,

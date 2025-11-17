@@ -105,10 +105,14 @@ impl Configuration {
         }
     }
 
-    pub fn has_loaded_active(&self, config_type: ConfigType) -> bool {
+    pub fn has_loaded_or_is_new(&self, config_type: ConfigType) -> bool {
         match config_type {
-            ConfigType::Komorebi => self.has_loaded_komorebi,
-            ConfigType::Whkd => self.has_loaded_whkd,
+            ConfigType::Komorebi => {
+                self.has_loaded_komorebi || matches!(self.komorebi_state, ConfigState::New(_))
+            }
+            ConfigType::Whkd => {
+                self.has_loaded_whkd || matches!(self.whkd_state, ConfigState::New(_))
+            }
         }
     }
 }
@@ -131,7 +135,7 @@ impl ConfigType {
     pub fn title(&self) -> &'static str {
         match self {
             ConfigType::Komorebi => "Komorebi",
-            ConfigType::Whkd =>  "Whkd",
+            ConfigType::Whkd => "Whkd",
         }
     }
 }
