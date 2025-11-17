@@ -58,7 +58,6 @@ pub fn unparse_whkdrc(whkdrc: &Whkdrc) -> String {
         contents.push('\n');
     }
 
-    println!("{contents}");
     contents
 }
 
