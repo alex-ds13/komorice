@@ -94,10 +94,6 @@ impl Configuration {
         }
     }
 
-    pub fn title(&self) -> &'static str {
-        self.config_type.title()
-    }
-
     pub fn state_str(&self, config_type: ConfigType) -> &'static str {
         match config_type {
             ConfigType::Komorebi => self.komorebi_state.as_str(),
