@@ -724,18 +724,16 @@ impl Komorice {
         errors_column = errors_column.push(errors);
 
         errors_column = errors_column.push(
-            column![button_with_icon(icons::delete(), "Clear").on_press(Message::ClearErrors),]
+            column![button_with_icon(icons::delete(), "Clear").on_press(Message::ClearErrors)]
                 .width(Fill)
                 .align_x(Right),
         );
 
-        container(
-            container(errors_column)
-                .padding(20)
-                .max_width(850.0)
-                .center(iced::Shrink)
-                .style(widget::modal::red),
-        )
-        .padding(20)
+        container(errors_column)
+            .padding(20)
+            .max_width(850.0)
+            .center(iced::Fill)
+            .height(iced::Shrink)
+            .style(widget::modal::red)
     }
 }
