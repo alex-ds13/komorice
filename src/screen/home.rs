@@ -152,7 +152,7 @@ impl Home {
 
         column![
             fixed_width,
-            text(configuration.title().to_uppercase()).size(18),
+            text(config_type.title().to_uppercase()).size(18),
             container(
                 button(
                     text!(
