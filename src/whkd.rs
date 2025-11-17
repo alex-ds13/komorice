@@ -214,43 +214,6 @@ impl Whkd {
         self.is_dirty = false;
     }
 
-    pub fn load_commands(&self) -> Task<Message> {
-        Task::future(Compat::new(async {
-            static APP_USER_AGENT: &str =
-                concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
-
-            // println!("Running GET request: {}", APP_USER_AGENT);
-            let client = reqwest::Client::builder()
-                .user_agent(APP_USER_AGENT)
-                .build()?;
-            client
-                .get("https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli")
-                .send()
-                .await
-        }))
-        .then(|res| match res {
-            Ok(response) => Task::perform(
-                Compat::new(async {
-                    #[derive(serde::Deserialize)]
-                    struct Command {
-                        name: String,
-                    }
-                    response.json::<Vec<Command>>().await
-                }),
-                |res| match res {
-                    Ok(commands) => Message::LoadedCommands(
-                        commands
-                            .into_iter()
-                            .flat_map(|c| c.name.strip_suffix(".md").map(|v| v.to_string()))
-                            .collect(),
-                    ),
-                    Err(error) => Message::FailedToLoadCommands(error.to_string()),
-                },
-            ),
-            Err(error) => Task::done(Message::FailedToLoadCommands(error.to_string())),
-        })
-    }
-
     pub fn load_commands_description(&self) -> Task<Message> {
         Task::batch(self.commands.iter().map(|command| {
             let command_c = command.clone();
@@ -296,6 +259,43 @@ impl Whkd {
             })
         }))
     }
+}
+
+pub fn load_commands() -> Task<Message> {
+    Task::future(Compat::new(async {
+        static APP_USER_AGENT: &str =
+            concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+
+        // println!("Running GET request: {}", APP_USER_AGENT);
+        let client = reqwest::Client::builder()
+            .user_agent(APP_USER_AGENT)
+            .build()?;
+        client
+            .get("https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli")
+            .send()
+            .await
+    }))
+    .then(|res| match res {
+        Ok(response) => Task::perform(
+            Compat::new(async {
+                #[derive(serde::Deserialize)]
+                struct Command {
+                    name: String,
+                }
+                response.json::<Vec<Command>>().await
+            }),
+            |res| match res {
+                Ok(commands) => Message::LoadedCommands(
+                    commands
+                        .into_iter()
+                        .flat_map(|c| c.name.strip_suffix(".md").map(|v| v.to_string()))
+                        .collect(),
+                ),
+                Err(error) => Message::FailedToLoadCommands(error.to_string()),
+            },
+        ),
+        Err(error) => Task::done(Message::FailedToLoadCommands(error.to_string())),
+    })
 }
 
 enum State {
