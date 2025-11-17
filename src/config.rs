@@ -327,32 +327,35 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         border_width: config.border_width.or(DEFAULT_CONFIG.border_width),
         border_offset: config.border_offset.or(DEFAULT_CONFIG.border_offset),
         border: config.border.or(DEFAULT_CONFIG.border),
-        border_colours: config.border_colours.map(|bc| BorderColours {
-            single: bc.single.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.single)),
-            stack: bc.stack.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.stack)),
-            monocle: bc.monocle.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.monocle)),
-            floating: bc.floating.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.floating)),
-            unfocused: bc.unfocused.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.unfocused)),
-            unfocused_locked: bc.unfocused_locked.or(DEFAULT_CONFIG
-                .border_colours
-                .as_ref()
-                .and_then(|bc| bc.unfocused_locked)),
-        }),
+        border_colours: config
+            .border_colours
+            .map(|bc| BorderColours {
+                single: bc.single.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.single)),
+                stack: bc.stack.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.stack)),
+                monocle: bc.monocle.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.monocle)),
+                floating: bc.floating.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.floating)),
+                unfocused: bc.unfocused.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.unfocused)),
+                unfocused_locked: bc.unfocused_locked.or(DEFAULT_CONFIG
+                    .border_colours
+                    .as_ref()
+                    .and_then(|bc| bc.unfocused_locked)),
+            })
+            .or_else(|| DEFAULT_CONFIG.border_colours.clone()),
         border_style: config.border_style.or(DEFAULT_CONFIG.border_style),
         border_z_order: config.border_z_order.or(DEFAULT_CONFIG.border_z_order),
         border_implementation: config
@@ -483,57 +486,71 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
         display_index_preferences: config
             .display_index_preferences
             .or(DEFAULT_CONFIG.display_index_preferences.clone()),
-        stackbar: config.stackbar.map(|s| StackbarConfig {
-            height: s
-                .height
-                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height)),
-            label: s
-                .label
-                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label)),
-            mode: s
-                .mode
-                .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode)),
-            tabs: s.tabs.map(|t| TabsConfig {
-                width: t.width.or(DEFAULT_CONFIG
-                    .stackbar
+        stackbar: config
+            .stackbar
+            .map(|s| StackbarConfig {
+                height: s
+                    .height
+                    .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height)),
+                label: s
+                    .label
+                    .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label)),
+                mode: s
+                    .mode
+                    .or(DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode)),
+                tabs: s
+                    .tabs
+                    .map(|t| TabsConfig {
+                        width: t.width.or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))),
+                        focused_text: t.focused_text.or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))),
+                        unfocused_text: t.unfocused_text.or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))),
+                        background: t.background.or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))),
+                        font_family: t.font_family.as_ref().cloned().or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.clone()))),
+                        font_size: t.font_size.or(DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))),
+                    })
+                    .or_else(|| {
+                        DEFAULT_CONFIG
+                            .stackbar
+                            .as_ref()
+                            .and_then(|s| s.tabs.clone())
+                    }),
+            })
+            .or_else(|| DEFAULT_CONFIG.stackbar.clone()),
+        animation: config
+            .animation
+            .map(|a| AnimationsConfig {
+                enabled: a.enabled,
+                duration: a.duration.or(DEFAULT_CONFIG
+                    .animation
                     .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))),
-                focused_text: t.focused_text.or(DEFAULT_CONFIG
-                    .stackbar
+                    .and_then(|a| a.duration.clone())),
+                style: a.style.or(DEFAULT_CONFIG
+                    .animation
                     .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))),
-                unfocused_text: t.unfocused_text.or(DEFAULT_CONFIG
-                    .stackbar
-                    .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))),
-                background: t.background.or(DEFAULT_CONFIG
-                    .stackbar
-                    .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))),
-                font_family: t.font_family.as_ref().cloned().or(DEFAULT_CONFIG
-                    .stackbar
-                    .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.clone()))),
-                font_size: t.font_size.or(DEFAULT_CONFIG
-                    .stackbar
-                    .as_ref()
-                    .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))),
-            }),
-        }),
-        animation: config.animation.map(|a| AnimationsConfig {
-            enabled: a.enabled,
-            duration: a.duration.or(DEFAULT_CONFIG
-                .animation
-                .as_ref()
-                .and_then(|a| a.duration.clone())),
-            style: a.style.or(DEFAULT_CONFIG
-                .animation
-                .as_ref()
-                .and_then(|a| a.style.clone())),
-            fps: a
-                .fps
-                .or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
-        }),
+                    .and_then(|a| a.style.clone())),
+                fps: a
+                    .fps
+                    .or(DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps)),
+            })
+            .or_else(|| DEFAULT_CONFIG.animation.clone()),
         theme: config.theme.or(DEFAULT_CONFIG.theme.clone()),
         slow_application_identifiers: config
             .slow_application_identifiers
@@ -632,55 +649,57 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         border: config
             .border
             .and_then(|v| (DEFAULT_CONFIG.border != Some(v)).then_some(v)),
-        border_colours: config.border_colours.map(|bc| BorderColours {
-            single: bc.single.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.single)
-                    != Some(v))
-                .then_some(v)
-            }),
-            stack: bc.stack.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.stack)
-                    != Some(v))
-                .then_some(v)
-            }),
-            monocle: bc.monocle.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.monocle)
-                    != Some(v))
-                .then_some(v)
-            }),
-            floating: bc.floating.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.floating)
-                    != Some(v))
-                .then_some(v)
-            }),
-            unfocused: bc.unfocused.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.unfocused)
-                    != Some(v))
-                .then_some(v)
-            }),
-            unfocused_locked: bc.unfocused_locked.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .border_colours
-                    .as_ref()
-                    .and_then(|bc| bc.unfocused_locked)
-                    != Some(v))
-                .then_some(v)
-            }),
+        border_colours: config.border_colours.as_ref().and_then(|bc| {
+            (DEFAULT_CONFIG.border_colours.as_ref() != Some(bc)).then(|| BorderColours {
+                single: bc.single.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.single)
+                        != Some(v))
+                    .then_some(v)
+                }),
+                stack: bc.stack.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.stack)
+                        != Some(v))
+                    .then_some(v)
+                }),
+                monocle: bc.monocle.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.monocle)
+                        != Some(v))
+                    .then_some(v)
+                }),
+                floating: bc.floating.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.floating)
+                        != Some(v))
+                    .then_some(v)
+                }),
+                unfocused: bc.unfocused.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.unfocused)
+                        != Some(v))
+                    .then_some(v)
+                }),
+                unfocused_locked: bc.unfocused_locked.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .border_colours
+                        .as_ref()
+                        .and_then(|bc| bc.unfocused_locked)
+                        != Some(v))
+                    .then_some(v)
+                }),
+            })
         }),
         border_style: config
             .border_style
@@ -861,93 +880,105 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
         display_index_preferences: config.display_index_preferences.and_then(|v| {
             (DEFAULT_CONFIG.display_index_preferences.as_ref() != Some(&v)).then_some(v)
         }),
-        stackbar: config.stackbar.map(|s| StackbarConfig {
-            height: s.height.and_then(|v| {
-                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height) != Some(v)).then_some(v)
-            }),
-            label: s.label.and_then(|v| {
-                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label) != Some(v)).then_some(v)
-            }),
-            mode: s.mode.and_then(|v| {
-                (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode) != Some(v)).then_some(v)
-            }),
-            tabs: s.tabs.map(|t| TabsConfig {
-                width: t.width.and_then(|v| {
-                    (DEFAULT_CONFIG
-                        .stackbar
-                        .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))
-                        != Some(v))
-                    .then_some(v)
+        stackbar: config.stackbar.as_ref().and_then(|s| {
+            (DEFAULT_CONFIG.stackbar.as_ref() != Some(s)).then(|| StackbarConfig {
+                height: s.height.and_then(|v| {
+                    (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.height) != Some(v))
+                        .then_some(v)
                 }),
-                focused_text: t.focused_text.and_then(|v| {
-                    (DEFAULT_CONFIG
-                        .stackbar
-                        .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))
-                        != Some(v))
-                    .then_some(v)
+                label: s.label.and_then(|v| {
+                    (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.label) != Some(v)).then_some(v)
                 }),
-                unfocused_text: t.unfocused_text.and_then(|v| {
-                    (DEFAULT_CONFIG
-                        .stackbar
-                        .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))
-                        != Some(v))
-                    .then_some(v)
+                mode: s.mode.and_then(|v| {
+                    (DEFAULT_CONFIG.stackbar.as_ref().and_then(|s| s.mode) != Some(v)).then_some(v)
                 }),
-                background: t.background.and_then(|v| {
+                tabs: s.tabs.as_ref().and_then(|t| {
                     (DEFAULT_CONFIG
                         .stackbar
                         .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))
-                        != Some(v))
-                    .then_some(v)
+                        .and_then(|ds| ds.tabs.as_ref())
+                        != Some(t))
+                    .then(|| TabsConfig {
+                        width: t.width.and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.width))
+                                != Some(v))
+                            .then_some(v)
+                        }),
+                        focused_text: t.focused_text.and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.focused_text))
+                                != Some(v))
+                            .then_some(v)
+                        }),
+                        unfocused_text: t.unfocused_text.and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.unfocused_text))
+                                != Some(v))
+                            .then_some(v)
+                        }),
+                        background: t.background.and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.background))
+                                != Some(v))
+                            .then_some(v)
+                        }),
+                        font_family: t.font_family.as_ref().and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.as_ref()))
+                                != Some(v))
+                            .then(|| v.clone())
+                        }),
+                        font_size: t.font_size.and_then(|v| {
+                            (DEFAULT_CONFIG
+                                .stackbar
+                                .as_ref()
+                                .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))
+                                != Some(v))
+                            .then_some(v)
+                        }),
+                    })
                 }),
-                font_family: t.font_family.and_then(|v| {
+            })
+        }),
+        animation: config.animation.as_ref().and_then(|a| {
+            (DEFAULT_CONFIG.animation.as_ref() != Some(a)).then(|| AnimationsConfig {
+                enabled: a.enabled.clone(),
+                duration: a.duration.as_ref().and_then(|v| {
                     (DEFAULT_CONFIG
-                        .stackbar
+                        .animation
                         .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_family.as_ref()))
+                        .and_then(|a| a.duration.as_ref())
+                        != Some(v))
+                    .then(|| v.clone())
+                }),
+                style: a.style.as_ref().and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .animation
+                        .as_ref()
+                        .and_then(|a| a.style.as_ref())
+                        != Some(v))
+                    .then(|| v.clone())
+                }),
+                fps: a.fps.and_then(|v| {
+                    (DEFAULT_CONFIG
+                        .animation
+                        .as_ref()
+                        .and_then(|a| a.fps.as_ref())
                         != Some(&v))
                     .then_some(v)
                 }),
-                font_size: t.font_size.and_then(|v| {
-                    (DEFAULT_CONFIG
-                        .stackbar
-                        .as_ref()
-                        .and_then(|s| s.tabs.as_ref().and_then(|t| t.font_size))
-                        != Some(v))
-                    .then_some(v)
-                }),
-            }),
-        }),
-        animation: config.animation.map(|a| AnimationsConfig {
-            enabled: a.enabled,
-            duration: a.duration.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .animation
-                    .as_ref()
-                    .and_then(|a| a.duration.as_ref())
-                    != Some(&v))
-                .then_some(v)
-            }),
-            style: a.style.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .animation
-                    .as_ref()
-                    .and_then(|a| a.style.as_ref())
-                    != Some(&v))
-                .then_some(v)
-            }),
-            fps: a.fps.and_then(|v| {
-                (DEFAULT_CONFIG
-                    .animation
-                    .as_ref()
-                    .and_then(|a| a.fps.as_ref())
-                    != Some(&v))
-                .then_some(v)
-            }),
+            })
         }),
         theme: config
             .theme
