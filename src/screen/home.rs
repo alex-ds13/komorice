@@ -25,6 +25,7 @@ pub enum Action {
 #[derive(Debug, Default, Clone)]
 pub struct Home {
     dialog_opened: bool,
+    pub loading: Option<ConfigType>,
 }
 
 impl Home {
@@ -63,10 +64,12 @@ impl Home {
                     }
                     ConfigState::Loaded(_) => match configuration.config_type {
                         ConfigType::Komorebi => {
+                            self.loading = Some(config_type);
                             configuration.komorebi_state = state;
                             configuration.has_loaded_komorebi = false;
                         }
                         ConfigType::Whkd => {
+                            self.loading = Some(config_type);
                             configuration.whkd_state = state;
                             configuration.has_loaded_whkd = false;
                         }
@@ -146,13 +149,26 @@ impl Home {
         new_file: Message,
     ) -> Element<'_, Message> {
         let fixed_width = space().width(180);
-        let edit = configuration
-            .has_loaded_or_is_new(config_type)
-            .then_some(edit);
+        let title = if self.loading.is_none_or(|ct| ct != config_type) {
+            config_type.title().to_uppercase()
+        } else {
+            "Loading...".into()
+        };
+        let edit = (configuration.has_loaded_or_is_new(config_type)
+            && self.loading.is_none_or(|ct| ct != config_type))
+        .then_some(edit);
+        let load = self
+            .loading
+            .is_none_or(|ct| ct != config_type)
+            .then_some(load);
+        let new_file = self
+            .loading
+            .is_none_or(|ct| ct != config_type)
+            .then_some(new_file);
 
         column![
             fixed_width,
-            text(config_type.title().to_uppercase()).size(18),
+            text(title).size(18),
             container(
                 button(
                     text!(
@@ -172,7 +188,7 @@ impl Home {
                         .width(Fill)
                         .align_x(Center)
                 )
-                .on_press(load)
+                .on_press_maybe(load)
                 .style(button::secondary)
             ),
             container(
@@ -181,7 +197,7 @@ impl Home {
                         .width(Fill)
                         .align_x(Center)
                 )
-                .on_press(new_file)
+                .on_press_maybe(new_file)
                 .style(button::secondary)
             ),
         ]
