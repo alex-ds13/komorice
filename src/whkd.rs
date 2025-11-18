@@ -52,6 +52,7 @@ pub enum Action {
     None,
     SavedWhkdrc,
     LoadedWhkdrc,
+    FailedToLoadWhkdrc(AppError),
     AppError(AppError),
 }
 
@@ -100,7 +101,7 @@ impl Whkd {
                 }
             }
             Message::FailedToLoadWhkdrc(app_error) => {
-                return (Action::AppError(app_error), Task::none());
+                return (Action::FailedToLoadWhkdrc(app_error), Task::none());
             }
             Message::SavedWhkdrc => {
                 if let Some(sender) = &self.whkdrc_watcher_tx {

@@ -208,9 +208,16 @@ impl Komorice {
                         Task::none()
                     }
                     home::Action::ChangedConfiguration => {
-                        self.main_screen = self
-                            .sidebar
-                            .selected_screen(&self.configuration.config_type);
+                        if !matches!(
+                            self.configuration.state(self.configuration.config_type),
+                            ConfigState::Loaded(_)
+                        ) {
+                            // When loading we don't want to update the screen until we
+                            // successfully load the file.
+                            self.main_screen = self
+                                .sidebar
+                                .selected_screen(&self.configuration.config_type);
+                        }
                         match self.configuration.config_type {
                             ConfigType::Komorebi => match self.configuration.komorebi_state {
                                 ConfigState::Active => Task::none(),
@@ -329,6 +336,19 @@ impl Komorice {
                     }
                     whkd::Action::LoadedWhkdrc => {
                         self.configuration.has_loaded_whkd = true;
+                        if self.home.loading.is_some() {
+                            self.home.loading = None;
+                            self.main_screen = self
+                                .sidebar
+                                .selected_screen(&self.configuration.config_type);
+                        }
+                        Task::none()
+                    }
+                    whkd::Action::FailedToLoadWhkdrc(app_error) => {
+                        self.add_error(app_error);
+                        if self.home.loading.is_some() {
+                            self.home.loading = None;
+                        }
                         Task::none()
                     }
                     whkd::Action::AppError(app_error) => {
@@ -395,11 +415,22 @@ impl Komorice {
                     self.config = config.clone();
                     self.is_dirty = self.populate_monitors();
                     self.configuration.has_loaded_komorebi = true;
+                    if self.home.loading.is_some() {
+                        self.home.loading = None;
+                        self.main_screen = self
+                            .sidebar
+                            .selected_screen(&self.configuration.config_type);
+                    }
                     self.loaded_config = Arc::new(config);
                     //TODO: show message on app to load external changes
                 }
             }
-            Message::FailedToLoadConfig(apperror) => self.add_error(apperror),
+            Message::FailedToLoadConfig(apperror) => {
+                self.add_error(apperror);
+                if self.home.loading.is_some() {
+                    self.home.loading = None;
+                }
+            }
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }

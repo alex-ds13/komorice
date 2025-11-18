@@ -94,6 +94,13 @@ impl Configuration {
         }
     }
 
+    pub fn state(&self, config_type: ConfigType) -> &ConfigState {
+        match config_type {
+            ConfigType::Komorebi => &self.komorebi_state,
+            ConfigType::Whkd => &self.whkd_state,
+        }
+    }
+
     pub fn state_str(&self, config_type: ConfigType) -> &'static str {
         match config_type {
             ConfigType::Komorebi => self.komorebi_state.as_str(),
@@ -113,7 +120,7 @@ impl Configuration {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum ConfigType {
     #[default]
     Komorebi,
