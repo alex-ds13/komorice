@@ -47,8 +47,7 @@ pub fn default(theme: &Theme) -> container::Style {
             width: 1.5,
             radius: 10.0.into(),
         },
-        shadow: iced::Shadow::default(),
-        snap: false,
+        ..container::Style::default()
     }
 }
 
@@ -57,21 +56,20 @@ pub fn red(theme: &Theme) -> container::Style {
 
     let background = Some(
         Color {
-            a: 0.95,
-            ..palette.danger.base.color
+            a: 0.975,
+            ..palette.background.base.color
         }
         .into(),
     );
 
     container::Style {
-        text_color: Some(palette.danger.base.text),
+        text_color: None,
         background,
         border: Border {
-            color: palette.danger.base.color,
-            width: 2.0,
+            color: palette.danger.strong.color,
+            width: 1.5,
             radius: 10.0.into(),
         },
-        shadow: iced::Shadow::default(),
-        snap: false,
+        ..container::Style::default()
     }
 }

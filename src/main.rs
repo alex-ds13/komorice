@@ -755,9 +755,13 @@ impl Komorice {
         errors_column = errors_column.push(errors);
 
         errors_column = errors_column.push(
-            column![button_with_icon(icons::delete(), "Clear").on_press(Message::ClearErrors)]
-                .width(Fill)
-                .align_x(Right),
+            column![
+                button_with_icon(icons::delete(), "Clear")
+                    .on_press(Message::ClearErrors)
+                    .style(button::danger)
+            ]
+            .width(Fill)
+            .align_x(Right),
         );
 
         container(errors_column)
