@@ -219,11 +219,9 @@ impl Komorice {
                                 .selected_screen(&self.configuration.config_type);
                         }
                         match self.configuration.config_type {
-                            ConfigType::Komorebi => match self.configuration.komorebi_state {
+                            ConfigType::Komorebi => match &self.configuration.komorebi_state {
                                 ConfigState::Active => Task::none(),
-                                ConfigState::Loaded(_) => {
-                                    config::load_task(self.configuration.path())
-                                }
+                                ConfigState::Loaded(path) => config::load_task(path.clone()),
                                 ConfigState::New(_) => {
                                     let mut config = DEFAULT_CONFIG.clone();
                                     self.display_info = monitors::get_display_information(
@@ -237,10 +235,10 @@ impl Komorice {
                                     Task::none()
                                 }
                             },
-                            ConfigType::Whkd => match self.configuration.whkd_state {
+                            ConfigType::Whkd => match &self.configuration.whkd_state {
                                 ConfigState::Active => Task::none(),
-                                ConfigState::Loaded(_) => {
-                                    whkd::load_task(self.configuration.path()).map(Message::Whkd)
+                                ConfigState::Loaded(path) => {
+                                    whkd::load_task(path.clone()).map(Message::Whkd)
                                 }
                                 ConfigState::New(_) => {
                                     self.whkd.load_default();
