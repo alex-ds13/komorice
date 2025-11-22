@@ -3,15 +3,19 @@ pub mod bindings;
 pub use bindings::Bindings;
 
 use crate::{
-    whkd::{DEFAULT_WHKDRC, Shell, Whkdrc},
+    whkd::{DEFAULT_WHKDRC, Shell, WhkdBinary, Whkdrc},
     widget::{self, hover, icons, opt_helpers},
 };
 
 use std::collections::HashMap;
 
 use iced::{
-    Element, Subscription, Task, Theme, padding,
+    Element, Subscription, Task, Theme, keyboard, padding,
     widget::{bottom_center, column, combo_box, container, markdown, pick_list, row, text},
+};
+use windows_sys::Win32::UI::{
+    Input::KeyboardAndMouse::{GetKeyboardLayout, VkKeyScanExW},
+    WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
 };
 
 static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
@@ -29,20 +33,23 @@ pub enum Message {
     // ChangeAppBindingKeys(usize, Vec<String>),
     // ChangeAppBindingProcessName(usize, String),
     // ChangeAppBindingCommand(usize, String),
-    KeyPress(Option<String>, String),
-    KeyRelease,
+    KeyPress(String, String),
+    KeyRelease(String, String),
     Navigate(NavMessage),
     UrlClicked(markdown::Url),
+    ToggleWhkd,
 }
 
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
+    ToggleWhkd,
 }
 
 #[derive(Debug, Default)]
 pub struct Whkd {
-    pressed_key: String,
+    pressed_keys: Vec<String>,
+    pressed_keys_temp: Vec<String>,
     pressed_mod: String,
     pause_hook_state: iced::widget::combo_box::State<String>,
 }
@@ -51,14 +58,20 @@ impl Whkd {
     pub fn update(&mut self, message: Message, whkdrc: &mut Whkdrc) -> (Action, Task<Message>) {
         match message {
             Message::Shell(shell) => whkdrc.shell = shell,
-            Message::KeyPress(Some(k), m) => {
-                self.pressed_key = k;
+            Message::KeyPress(k, m) => {
+                if self.pressed_keys_temp.is_empty() {
+                    self.pressed_keys = vec![k.clone()];
+                    self.pressed_keys_temp.push(k);
+                } else if !self.pressed_keys_temp.contains(&k) {
+                    self.pressed_keys_temp.push(k);
+                    self.pressed_keys = self.pressed_keys_temp.clone();
+                }
                 self.pressed_mod = m;
             }
-            Message::KeyPress(None, _m) => {}
-            Message::KeyRelease => {
-                // self.pressed_key = String::new();
-                // self.pressed_mod = String::new();
+            Message::KeyRelease(key, _m) => {
+                if let Some(pos) = self.pressed_keys_temp.iter().position(|k| k == &key) {
+                    self.pressed_keys_temp.remove(pos);
+                }
             }
             Message::PBMod(i, mod1) => {
                 let sb = split_binding(&whkdrc.pause_binding);
@@ -129,6 +142,9 @@ impl Whkd {
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
+            Message::ToggleWhkd => {
+                return (Action::ToggleWhkd, Task::none());
+            }
         }
         (Action::None, Task::none())
     }
@@ -136,6 +152,7 @@ impl Whkd {
     pub fn view<'a>(
         &'a self,
         whkdrc: &'a Whkdrc,
+        whkd_bin: &'a WhkdBinary,
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
@@ -166,50 +183,556 @@ impl Whkd {
             theme,
         );
 
-        opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook])
+        let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
+
+        key_pressed = key_pressed.push(
+            (!self.pressed_mod.is_empty() && !self.pressed_keys.is_empty()).then_some(text(" + ")),
+        );
+        key_pressed = key_pressed.push(text!(
+            "{}",
+            self.pressed_keys.iter().fold(String::new(), |mut str, k| {
+                if !str.is_empty() {
+                    str.push_str(" + ");
+                }
+                str.push_str(k);
+                str
+            })
+        ));
+
+        let toggle_whkd_but = if whkd_bin.found {
+            iced::widget::button(if whkd_bin.is_running() {
+                "Stop Whkd"
+            } else {
+                "Start Whkd"
+            })
+            .on_press(Message::ToggleWhkd)
+            .into()
+        } else {
+            iced::widget::space().into()
+        };
+
+        opt_helpers::section_view(
+            "Whkd:",
+            [
+                shell,
+                pause_binding,
+                pause_hook,
+                key_pressed.into(),
+                toggle_whkd_but,
+            ],
+        )
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        use iced::keyboard::{
-            self,
-            key::{Key, Named},
-        };
-
-        let press = keyboard::on_key_press(|key, modifiers| {
-            let k = match key {
-                Key::Named(named) => match named {
-                    Named::Alt
-                    | Named::AltGraph
-                    | Named::Shift
-                    | Named::Control
-                    | Named::Meta
-                    | Named::Hyper
-                    | Named::Super => None,
-                    _ => Some(format!("{:?}", named)),
-                },
-                Key::Character(c) => Some(format!("{}", c)),
-                Key::Unidentified => None,
-            };
-            let m = modifiers
-                .iter_names()
-                .fold(String::new(), |mut s, (n, _m)| {
-                    if !s.is_empty() {
-                        s.push_str(" + ");
+        let keys = iced::event::listen_with(|event, status, _id| {
+            if matches!(status, iced::event::Status::Captured) {
+                return None;
+            }
+            match event {
+                iced::Event::Keyboard(event) => match event {
+                    keyboard::Event::KeyPressed {
+                        key,
+                        modified_key: _,
+                        physical_key,
+                        location,
+                        modifiers,
+                        text: _,
+                    } => {
+                        println!("Physical Pressed: {physical_key:#?}");
+                        let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                        if !k.is_empty() {
+                            Some(Message::KeyPress(k, m))
+                        } else {
+                            None
+                        }
                     }
-                    s.push_str(n);
-                    s
-                });
-            Some(Message::KeyPress(k, m))
+                    keyboard::Event::KeyReleased {
+                        key,
+                        modified_key: _,
+                        physical_key,
+                        location,
+                        modifiers,
+                    } => {
+                        let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                        if !k.is_empty() {
+                            Some(Message::KeyRelease(k, m))
+                        } else {
+                            None
+                        }
+                    }
+                    keyboard::Event::ModifiersChanged(_modifiers) => None,
+                },
+                _ => None,
+            }
         });
-        let release = keyboard::on_key_release(|_, _| Some(Message::KeyRelease));
+        // let press = keyboard::on_key_press(|k, m| {
+        //     let (k, m) = get_vk_key_mods(k, m);
+        //     if !k.is_empty() {
+        //         Some(Message::KeyPress(k, m))
+        //     } else {
+        //         None
+        //     }
+        // });
+        // let release = keyboard::on_key_release(|k, m| {
+        //     let (k, m) = get_vk_key_mods(k, m);
+        //     if !k.is_empty() {
+        //         Some(Message::KeyRelease(k, m))
+        //     } else {
+        //         None
+        //     }
+        // });
         let navigation = navigation_sub().map(Message::Navigate);
 
-        Subscription::batch([press, release, navigation])
+        Subscription::batch([
+            // press,
+            // release,
+            navigation,
+            keys,
+        ])
     }
 
     pub fn load_new_commands(&mut self, commands: &[String]) {
         self.pause_hook_state = combo_box::State::new(commands.to_vec());
     }
+}
+
+fn get_vk_key_mods(
+    key: keyboard::key::Key,
+    physical: keyboard::key::Physical,
+    location: keyboard::Location,
+    modifiers: keyboard::Modifiers,
+) -> (String, String) {
+    use keyboard::key::{Code, Key, Named, Physical};
+
+    /// Return the first codepoint of a string.
+    ///
+    /// # Panics
+    /// Panics if the string is empty.
+    fn first_char(s: &str) -> char {
+        s.chars().next().expect("empty string")
+    }
+
+    /// Determine a *keyCode* value for a key.
+    ///
+    /// The *keyCode* is an implementation specific legacy property of DOM keyboard events.
+    ///
+    /// Specification: <https://w3c.github.io/uievents/#dom-keyboardevent-keycode>
+    pub fn keycode(key: Key) -> Option<win_hotkeys::VKey> {
+        use win_hotkeys::VKey;
+        let vkey = match key {
+            Key::Named(named) => match named {
+                Named::Backspace => VKey::Back,
+                Named::Tab => VKey::Tab,
+                Named::Enter => VKey::Return,
+                Named::Shift => VKey::Shift,
+                Named::Control => VKey::Control,
+                Named::Alt => VKey::Menu,
+                Named::CapsLock => VKey::Capital,
+                Named::Escape => VKey::Escape,
+                Named::PageUp => VKey::Prior,
+                Named::PageDown => VKey::Next,
+                Named::End => VKey::End,
+                Named::Home => VKey::Home,
+                Named::ArrowLeft => VKey::Left,
+                Named::ArrowUp => VKey::Up,
+                Named::ArrowRight => VKey::Right,
+                Named::ArrowDown => VKey::Down,
+                Named::Delete => VKey::Delete,
+                Named::Insert => VKey::Insert,
+                Named::AltGraph => VKey::RMenu,
+                Named::NumLock => VKey::Numlock,
+                Named::ScrollLock => VKey::Scroll,
+                Named::Meta => VKey::LWin,
+                Named::Hyper => VKey::LWin,
+                Named::Super => VKey::LWin,
+                Named::Space => VKey::Space,
+                Named::Clear => VKey::Clear,
+                Named::CrSel => VKey::Crsel,
+                Named::ExSel => VKey::Exsel,
+                Named::Attn => VKey::Attn,
+                Named::ContextMenu => VKey::Apps,
+                Named::Execute => VKey::Execute,
+                Named::Help => VKey::Help,
+                Named::Pause => VKey::Pause,
+                Named::Play => VKey::Play,
+                Named::Select => VKey::Select,
+                Named::ZoomIn => VKey::Zoom,
+                Named::ZoomOut => VKey::Zoom,
+                Named::PrintScreen => VKey::Print,
+                Named::Convert => VKey::CustomKeyCode(0x1C),
+                Named::ModeChange => VKey::CustomKeyCode(0x1F),
+                Named::NonConvert => VKey::CustomKeyCode(0x1D),
+                Named::Process => VKey::CustomKeyCode(0xE5),
+                Named::HangulMode => VKey::CustomKeyCode(0x15),
+                Named::HanjaMode => VKey::CustomKeyCode(0x19),
+                Named::JunjaMode => VKey::CustomKeyCode(0x17),
+                Named::KanaMode => VKey::CustomKeyCode(0x15),
+                Named::KanjiMode => VKey::CustomKeyCode(0x19),
+                Named::MediaPlayPause => VKey::MediaPlayPause,
+                Named::MediaStop => VKey::MediaStop,
+                Named::MediaTrackNext => VKey::MediaPrevTrack,
+                Named::MediaTrackPrevious => VKey::MediaNextTrack,
+                Named::Print => VKey::Print,
+                Named::AudioVolumeDown => VKey::VolumeDown,
+                Named::AudioVolumeUp => VKey::VolumeUp,
+                Named::AudioVolumeMute => VKey::VolumeMute,
+                Named::LaunchApplication1 => VKey::LaunchApp1,
+                Named::LaunchApplication2 => VKey::LaunchApp1,
+                Named::LaunchMail => VKey::LaunchMail,
+                Named::LaunchMediaPlayer => VKey::LaunchMediaSelect,
+                Named::BrowserBack => VKey::BrowserBack,
+                Named::BrowserFavorites => VKey::BrowserFavorites,
+                Named::BrowserForward => VKey::BrowserForward,
+                Named::BrowserHome => VKey::BrowserHome,
+                Named::BrowserRefresh => VKey::BrowserRefresh,
+                Named::BrowserSearch => VKey::BrowserSearch,
+                Named::BrowserStop => VKey::BrowserStop,
+                Named::ZoomToggle => VKey::Zoom,
+                Named::F1 => VKey::F1,
+                Named::F2 => VKey::F2,
+                Named::F3 => VKey::F3,
+                Named::F4 => VKey::F4,
+                Named::F5 => VKey::F5,
+                Named::F6 => VKey::F6,
+                Named::F7 => VKey::F7,
+                Named::F8 => VKey::F8,
+                Named::F9 => VKey::F9,
+                Named::F10 => VKey::F10,
+                Named::F11 => VKey::F11,
+                Named::F12 => VKey::F12,
+                Named::F13 => VKey::F13,
+                Named::F14 => VKey::F14,
+                Named::F15 => VKey::F15,
+                Named::F16 => VKey::F16,
+                Named::F17 => VKey::F17,
+                Named::F18 => VKey::F18,
+                Named::F19 => VKey::F19,
+                Named::F20 => VKey::F20,
+                Named::F21 => VKey::F21,
+                Named::F22 => VKey::F22,
+                Named::F23 => VKey::F23,
+                Named::F24 => VKey::F24,
+                _ => return None,
+            },
+            Key::Unidentified => return None,
+            Key::Character(ref c) => {
+                let x = c.encode_utf16();
+                let count = x.count();
+                println!("Count: {}", count);
+                let mut x = c.encode_utf16();
+                if count == 1
+                    && let Some(x) = x.next()
+                {
+                    let current_window_thread_id = unsafe {
+                        GetWindowThreadProcessId(GetForegroundWindow(), std::ptr::null_mut())
+                    };
+                    let locale_id = unsafe { GetKeyboardLayout(current_window_thread_id) };
+                    let res = unsafe { VkKeyScanExW(x as _, locale_id) };
+                    let vk = res & 0x00FF;
+                    let m_state = res >> 8;
+                    println!("m_state: {m_state}");
+                    VKey::from_vk_code(vk as u16)
+                } else {
+                    println!("Key: {key:?}");
+                    return None;
+                }
+            }
+        };
+        Some(vkey)
+    }
+
+    fn physical_to_vkey(key: Physical) -> win_hotkeys::VKey {
+        use win_hotkeys::VKey;
+        match key {
+            Physical::Code(code) => match code {
+                Code::Backquote => todo!(),
+                Code::Backslash => todo!(),
+                Code::BracketLeft => todo!(),
+                Code::BracketRight => todo!(),
+                Code::Comma => todo!(),
+                Code::Digit0 => todo!(),
+                Code::Digit1 => todo!(),
+                Code::Digit2 => todo!(),
+                Code::Digit3 => todo!(),
+                Code::Digit4 => todo!(),
+                Code::Digit5 => todo!(),
+                Code::Digit6 => todo!(),
+                Code::Digit7 => todo!(),
+                Code::Digit8 => todo!(),
+                Code::Digit9 => todo!(),
+                Code::Equal => todo!(),
+                Code::IntlBackslash => todo!(),
+                Code::IntlRo => todo!(),
+                Code::IntlYen => todo!(),
+                Code::KeyA => todo!(),
+                Code::KeyB => todo!(),
+                Code::KeyC => todo!(),
+                Code::KeyD => todo!(),
+                Code::KeyE => todo!(),
+                Code::KeyF => todo!(),
+                Code::KeyG => todo!(),
+                Code::KeyH => todo!(),
+                Code::KeyI => todo!(),
+                Code::KeyJ => todo!(),
+                Code::KeyK => todo!(),
+                Code::KeyL => todo!(),
+                Code::KeyM => todo!(),
+                Code::KeyN => todo!(),
+                Code::KeyO => todo!(),
+                Code::KeyP => todo!(),
+                Code::KeyQ => todo!(),
+                Code::KeyR => todo!(),
+                Code::KeyS => todo!(),
+                Code::KeyT => todo!(),
+                Code::KeyU => todo!(),
+                Code::KeyV => todo!(),
+                Code::KeyW => todo!(),
+                Code::KeyX => todo!(),
+                Code::KeyY => todo!(),
+                Code::KeyZ => todo!(),
+                Code::Minus => todo!(),
+                Code::Period => todo!(),
+                Code::Quote => todo!(),
+                Code::Semicolon => todo!(),
+                Code::Slash => todo!(),
+                Code::AltLeft => todo!(),
+                Code::AltRight => todo!(),
+                Code::Backspace => todo!(),
+                Code::CapsLock => todo!(),
+                Code::ContextMenu => todo!(),
+                Code::ControlLeft => todo!(),
+                Code::ControlRight => todo!(),
+                Code::Enter => todo!(),
+                Code::SuperLeft => todo!(),
+                Code::SuperRight => todo!(),
+                Code::ShiftLeft => todo!(),
+                Code::ShiftRight => todo!(),
+                Code::Space => todo!(),
+                Code::Tab => todo!(),
+                Code::Convert => todo!(),
+                Code::KanaMode => todo!(),
+                Code::Lang1 => todo!(),
+                Code::Lang2 => todo!(),
+                Code::Lang3 => todo!(),
+                Code::Lang4 => todo!(),
+                Code::Lang5 => todo!(),
+                Code::NonConvert => todo!(),
+                Code::Delete => todo!(),
+                Code::End => todo!(),
+                Code::Help => todo!(),
+                Code::Home => todo!(),
+                Code::Insert => todo!(),
+                Code::PageDown => todo!(),
+                Code::PageUp => todo!(),
+                Code::ArrowDown => todo!(),
+                Code::ArrowLeft => todo!(),
+                Code::ArrowRight => todo!(),
+                Code::ArrowUp => todo!(),
+                Code::NumLock => VKey::Numlock,
+                Code::Numpad0 => VKey::Numpad0,
+                Code::Numpad1 => VKey::Numpad1,
+                Code::Numpad2 => VKey::Numpad2,
+                Code::Numpad3 => VKey::Numpad3,
+                Code::Numpad4 => VKey::Numpad4,
+                Code::Numpad5 => VKey::Numpad5,
+                Code::Numpad6 => VKey::Numpad6,
+                Code::Numpad7 => VKey::Numpad7,
+                Code::Numpad8 => VKey::Numpad8,
+                Code::Numpad9 => VKey::Numpad9,
+                Code::NumpadAdd => VKey::Add,
+                Code::NumpadBackspace => VKey::Back,
+                Code::NumpadClear => VKey::Clear,
+                Code::NumpadClearEntry => VKey::Clear,
+                Code::NumpadComma => VKey::OemComma,
+                Code::NumpadDecimal => VKey::Decimal,
+                Code::NumpadDivide => VKey::Divide,
+                Code::NumpadEnter => VKey::Return,
+                Code::NumpadEqual => VKey::Return,
+                Code::NumpadHash => todo!(),
+                Code::NumpadMemoryAdd => todo!(),
+                Code::NumpadMemoryClear => todo!(),
+                Code::NumpadMemoryRecall => todo!(),
+                Code::NumpadMemoryStore => todo!(),
+                Code::NumpadMemorySubtract => todo!(),
+                Code::NumpadMultiply => VKey::Multiply,
+                Code::NumpadParenLeft => todo!(),
+                Code::NumpadParenRight => todo!(),
+                Code::NumpadStar => VKey::Multiply,
+                Code::NumpadSubtract => VKey::Subtract,
+                Code::Escape => todo!(),
+                Code::Fn => todo!(),
+                Code::FnLock => todo!(),
+                Code::PrintScreen => todo!(),
+                Code::ScrollLock => todo!(),
+                Code::Pause => todo!(),
+                Code::BrowserBack => todo!(),
+                Code::BrowserFavorites => todo!(),
+                Code::BrowserForward => todo!(),
+                Code::BrowserHome => todo!(),
+                Code::BrowserRefresh => todo!(),
+                Code::BrowserSearch => todo!(),
+                Code::BrowserStop => todo!(),
+                Code::Eject => todo!(),
+                Code::LaunchApp1 => todo!(),
+                Code::LaunchApp2 => todo!(),
+                Code::LaunchMail => todo!(),
+                Code::MediaPlayPause => todo!(),
+                Code::MediaSelect => todo!(),
+                Code::MediaStop => todo!(),
+                Code::MediaTrackNext => todo!(),
+                Code::MediaTrackPrevious => todo!(),
+                Code::Power => todo!(),
+                Code::Sleep => todo!(),
+                Code::AudioVolumeDown => todo!(),
+                Code::AudioVolumeMute => todo!(),
+                Code::AudioVolumeUp => todo!(),
+                Code::WakeUp => todo!(),
+                Code::Meta => todo!(),
+                Code::Hyper => todo!(),
+                Code::Turbo => todo!(),
+                Code::Abort => todo!(),
+                Code::Resume => todo!(),
+                Code::Suspend => todo!(),
+                Code::Again => todo!(),
+                Code::Copy => todo!(),
+                Code::Cut => todo!(),
+                Code::Find => todo!(),
+                Code::Open => todo!(),
+                Code::Paste => todo!(),
+                Code::Props => todo!(),
+                Code::Select => todo!(),
+                Code::Undo => todo!(),
+                Code::Hiragana => todo!(),
+                Code::Katakana => todo!(),
+                Code::F1 => todo!(),
+                Code::F2 => todo!(),
+                Code::F3 => todo!(),
+                Code::F4 => todo!(),
+                Code::F5 => todo!(),
+                Code::F6 => todo!(),
+                Code::F7 => todo!(),
+                Code::F8 => todo!(),
+                Code::F9 => todo!(),
+                Code::F10 => todo!(),
+                Code::F11 => todo!(),
+                Code::F12 => todo!(),
+                Code::F13 => todo!(),
+                Code::F14 => todo!(),
+                Code::F15 => todo!(),
+                Code::F16 => todo!(),
+                Code::F17 => todo!(),
+                Code::F18 => todo!(),
+                Code::F19 => todo!(),
+                Code::F20 => todo!(),
+                Code::F21 => todo!(),
+                Code::F22 => todo!(),
+                Code::F23 => todo!(),
+                Code::F24 => todo!(),
+                Code::F25 => todo!(),
+                Code::F26 => todo!(),
+                Code::F27 => todo!(),
+                Code::F28 => todo!(),
+                Code::F29 => todo!(),
+                Code::F30 => todo!(),
+                Code::F31 => todo!(),
+                Code::F32 => todo!(),
+                Code::F33 => todo!(),
+                Code::F34 => todo!(),
+                Code::F35 => todo!(),
+                _ => todo!(),
+            },
+            Physical::Unidentified(_native_code) => todo!(),
+        }
+    }
+
+    let k = match key {
+        Key::Named(named) => match named {
+            Named::Alt
+            | Named::AltGraph
+            | Named::Shift
+            | Named::Control
+            | Named::Meta
+            | Named::Hyper
+            | Named::Super => String::new(),
+            _ => {
+                if location == keyboard::Location::Numpad {
+                    physical_to_vkey(physical)
+                        .to_string()
+                        .trim_start_matches("VK_")
+                        .to_lowercase()
+                } else {
+                    keycode(key)
+                        .map(|k| k.to_string())
+                        .unwrap_or_default()
+                        .trim_start_matches("VK_")
+                        .to_lowercase()
+                }
+            }
+        },
+        Key::Character(_) => {
+            if location == keyboard::Location::Numpad {
+                physical_to_vkey(physical)
+                    .to_string()
+                    .trim_start_matches("VK_")
+                    .to_lowercase()
+            } else {
+                keycode(key)
+                    .map(|k| k.to_string())
+                    .unwrap_or_default()
+                    .trim_start_matches("VK_")
+                    .to_lowercase()
+            }
+        }
+        Key::Unidentified => String::new(),
+    };
+    // let k = keycode(key)
+    //     .map(|k| k.to_string())
+    //     .unwrap_or_default()
+    //     .trim_start_matches("VK_")
+    //     .to_lowercase();
+    let m = modifiers
+        .iter_names()
+        .fold(String::new(), |mut s, (n, _m)| {
+            if !s.is_empty() {
+                s.push_str(" + ");
+            }
+            if n.to_lowercase() == "logo" {
+                s.push_str("win");
+            } else {
+                s.push_str(n);
+            }
+            s
+        });
+    (k, m)
+}
+
+fn get_key_mods(key: keyboard::Key, modifiers: keyboard::Modifiers) -> (String, String) {
+    use keyboard::key::{Key, Named};
+
+    let k = match key {
+        Key::Named(named) => match named {
+            Named::Alt
+            | Named::AltGraph
+            | Named::Shift
+            | Named::Control
+            | Named::Meta
+            | Named::Hyper
+            | Named::Super => String::new(),
+            _ => format!("{:?}", named),
+        },
+        Key::Character(c) => format!("{}", c),
+        Key::Unidentified => String::new(),
+    };
+    let m = modifiers
+        .iter_names()
+        .fold(String::new(), |mut s, (n, _m)| {
+            if !s.is_empty() {
+                s.push_str(" + ");
+            }
+            s.push_str(n);
+            s
+        });
+    (k, m)
 }
 
 fn is_mod(key: &str) -> bool {

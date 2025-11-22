@@ -45,6 +45,15 @@ pub enum Message {
     // Messages related to screens
     Whkd(screen::whkd::Message),
     Bindings(screen::whkd::bindings::Message),
+
+    // Messages related to whkd binary
+    WhkdFoundOnPath,
+    WhkdNotFoundOnPath,
+    StoppedWhkd,
+    FailedToStopWhkd,
+    StartedWhkd,
+    FailedToStartWhkd,
+    WhkdStatus(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +77,7 @@ pub struct Whkd {
     pub loaded_commands: bool,
     commands: Vec<String>,
     commands_desc: HashMap<String, Vec<markdown::Item>>,
+    whkd_bin: WhkdBinary,
 }
 
 impl Default for Whkd {
@@ -83,11 +93,16 @@ impl Default for Whkd {
             loaded_commands: false,
             commands: Default::default(),
             commands_desc: Default::default(),
+            whkd_bin: Default::default(),
         }
     }
 }
 
 impl Whkd {
+    pub fn init() -> (Self, Task<Message>) {
+        (Self::default(), Task::batch([find_whkd(), whkd_status()]))
+    }
+
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::WhkdrcFileWatcherTx(sender) => self.whkdrc_watcher_tx = Some(sender),
@@ -118,11 +133,26 @@ impl Whkd {
                 let (action, task) = self.whkd.update(message, &mut self.whkdrc);
                 let action_task = match action {
                     screen::whkd::Action::None => Task::none(),
+                    screen::whkd::Action::ToggleWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running
+                            && self.whkd_bin.running_current
+                        {
+                            stop_whkd()
+                        } else if self.whkd_bin.found
+                            && self.whkd_bin.running
+                            && !self.whkd_bin.running_current
+                        {
+                            restart_whkd()
+                        } else {
+                            Task::none()
+                        }
+                    }
                 };
                 self.check_changes();
                 return (
                     Action::None,
-                    Task::batch([task, action_task]).map(Message::Whkd),
+                    Task::batch([task.map(Message::Whkd), action_task]),
                 );
             }
             Message::Bindings(message) => {
@@ -157,6 +187,16 @@ impl Whkd {
             Message::FailedToLoadCommandsDescription(error) => {
                 println!("WHKD -> Failed to load commands: {error}");
             }
+            Message::WhkdFoundOnPath => self.whkd_bin.found = true,
+            Message::WhkdNotFoundOnPath => self.whkd_bin.found = false,
+            Message::StoppedWhkd => self.whkd_bin.running_current = false,
+            Message::FailedToStopWhkd => {}
+            Message::StartedWhkd => self.whkd_bin.running_current = true,
+            Message::FailedToStartWhkd => {}
+            Message::WhkdStatus(running) => {
+                self.whkd_bin.running = running;
+                self.whkd_bin.running_current = running;
+            }
         }
         (Action::None, Task::none())
     }
@@ -165,7 +205,13 @@ impl Whkd {
         match self.screen {
             Screen::Whkd => self
                 .whkd
-                .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
+                .view(
+                    &self.whkdrc,
+                    &self.whkd_bin,
+                    &self.commands,
+                    &self.commands_desc,
+                    theme,
+                )
                 .map(Message::Whkd),
             Screen::WhkdBinding => self
                 .bindings
@@ -260,6 +306,148 @@ impl Whkd {
             })
         }))
     }
+}
+
+#[derive(Debug, Default)]
+pub struct WhkdBinary {
+    pub found: bool,
+    pub running: bool,
+    pub running_current: bool,
+}
+
+impl WhkdBinary {
+    pub fn is_running(&self) -> bool {
+        self.running && self.running_current
+    }
+}
+
+fn find_whkd() -> Task<Message> {
+    Task::perform(
+        async {
+            smol::process::Command::new("whkd.exe")
+                .arg("--version")
+                .stdout(smol::process::Stdio::piped())
+                .stderr(smol::process::Stdio::piped())
+                .output()
+                .await
+        },
+        |res| match res {
+            Ok(output) => {
+                if output.status.success() {
+                    Message::WhkdFoundOnPath
+                } else {
+                    Message::WhkdNotFoundOnPath
+                }
+            }
+            _ => Message::WhkdNotFoundOnPath,
+        },
+    )
+}
+
+fn whkd_status() -> Task<Message> {
+    use std::os::windows::process::CommandExt;
+
+    Task::future(async {
+        smol::unblock(|| {
+            std::process::Command::new("tasklist")
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .arg("/fi")
+                .raw_arg(r#""imagename eq whkd.exe""#)
+                .spawn()
+        })
+        .await
+    })
+    .then(|output| match output {
+        Ok(output) => Task::perform(
+            async {
+                smol::unblock(|| {
+                    if let Some(stdout) = output.stdout {
+                        std::process::Command::new("find")
+                            .args(["/I", "/N", "/C"])
+                            .raw_arg(r#""whkd.exe""#)
+                            .stdin(std::process::Stdio::from(stdout))
+                            .stdout(std::process::Stdio::piped())
+                            .stderr(std::process::Stdio::piped())
+                            .output()
+                    } else {
+                        Ok(std::process::Output {
+                            status: std::process::ExitStatus::default(),
+                            stdout: Vec::new(),
+                            stderr: Vec::new(),
+                        })
+                    }
+                })
+                .await
+            },
+            |res| match res {
+                Ok(output) => {
+                    if output.status.success()
+                        && String::from_utf8_lossy(&output.stdout).trim() == "1"
+                    {
+                        Message::WhkdStatus(true)
+                    } else {
+                        Message::WhkdStatus(false)
+                    }
+                }
+                _ => Message::WhkdStatus(false),
+            },
+        ),
+        Err(_e) => Task::done(Message::WhkdStatus(false)),
+    })
+}
+
+fn stop_whkd() -> Task<Message> {
+    Task::perform(
+        async {
+            smol::process::Command::new("taskkill")
+                .args(["/f", "/im", "whkd.exe"])
+                .stdout(smol::process::Stdio::piped())
+                .stderr(smol::process::Stdio::piped())
+                .status()
+                .await
+        },
+        |res| match res {
+            Ok(status) if status.success() => Message::StoppedWhkd,
+            _ => Message::FailedToStopWhkd,
+        },
+    )
+}
+
+fn restart_whkd() -> Task<Message> {
+    Task::perform(
+        async move {
+            smol::process::Command::new("cmd")
+                .args([
+                    "/b",
+                    "/c",
+                    "start",
+                    "/b",
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-NoLogo",
+                    "-C",
+                    "Start-Process",
+                    "whkd.exe",
+                    "-WindowStyle",
+                    "Hidden",
+                ])
+                .stdout(smol::process::Stdio::piped())
+                .stderr(smol::process::Stdio::piped())
+                .status()
+                .await
+        },
+        |res| match res {
+            Ok(output) => {
+                if output.success() {
+                    Message::StartedWhkd
+                } else {
+                    Message::FailedToStartWhkd
+                }
+            }
+            _ => Message::FailedToStartWhkd,
+        },
+    )
 }
 
 pub fn load_commands() -> Task<Message> {
