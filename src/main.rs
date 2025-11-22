@@ -170,11 +170,13 @@ impl Komorice {
         let display_info = monitors::get_display_information(&config.display_index_preferences);
         config::fill_monitors(&mut config, &display_info);
         let monitors = monitors::Monitors::new(&config);
+        let (whkd, whkd_task) = whkd::Whkd::init();
         let init = Komorice {
             display_info,
             config,
             loaded_config,
             monitors,
+            whkd,
             ..Default::default()
         };
         (
@@ -184,6 +186,7 @@ impl Komorice {
                 config::load_task(config::config_path()),
                 whkd::load_task(whkd::config_path()).map(Message::Whkd),
                 whkd::load_commands().map(Message::Whkd),
+                whkd_task.map(Message::Whkd),
             ]),
         )
     }
