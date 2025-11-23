@@ -358,7 +358,7 @@ fn get_vk_key_mods(
                 Named::Select => VKey::Select,
                 Named::ZoomIn => VKey::Zoom,
                 Named::ZoomOut => VKey::Zoom,
-                Named::PrintScreen => VKey::Print,
+                Named::PrintScreen => VKey::Snapshot,
                 Named::Convert => VKey::CustomKeyCode(0x1C),
                 Named::ModeChange => VKey::CustomKeyCode(0x1F),
                 Named::NonConvert => VKey::CustomKeyCode(0x1D),
@@ -443,6 +443,10 @@ fn get_vk_key_mods(
 
     fn physical_to_vkey(key: Physical) -> win_hotkeys::VKey {
         use win_hotkeys::VKey;
+        let current_window_thread_id = unsafe { GetWindowThreadProcessId(GetForegroundWindow(), std::ptr::null_mut()) };
+        let locale_id = unsafe { GetKeyboardLayout(current_window_thread_id) } as u64;
+        let lang_id = locale_id & 0xFFFF;
+        let is_brazil = lang_id == 0x416;
         match key {
             Physical::Code(code) => match code {
                 Code::Backquote => todo!(),
@@ -543,7 +547,7 @@ fn get_vk_key_mods(
                 Code::NumpadBackspace => VKey::Back,
                 Code::NumpadClear => VKey::Clear,
                 Code::NumpadClearEntry => VKey::Clear,
-                Code::NumpadComma => VKey::OemComma,
+                Code::NumpadComma => if is_brazil { VKey::CustomKeyCode(0xC2) } else { VKey::Separator },
                 Code::NumpadDecimal => VKey::Decimal,
                 Code::NumpadDivide => VKey::Divide,
                 Code::NumpadEnter => VKey::Return,
@@ -656,35 +660,25 @@ fn get_vk_key_mods(
             | Named::Super => String::new(),
             _ => {
                 if location == keyboard::Location::Numpad {
-                    physical_to_vkey(physical)
-                        .to_string()
-                        .trim_start_matches("VK_")
-                        .to_lowercase()
+                    physical_to_vkey(physical).to_string()
                 } else {
-                    keycode(key)
-                        .map(|k| k.to_string())
-                        .unwrap_or_default()
-                        .trim_start_matches("VK_")
-                        .to_lowercase()
+                    keycode(key).map(|k| k.to_string()).unwrap_or_default()
                 }
             }
         },
         Key::Character(_) => {
             if location == keyboard::Location::Numpad {
-                physical_to_vkey(physical)
-                    .to_string()
-                    .trim_start_matches("VK_")
-                    .to_lowercase()
+                physical_to_vkey(physical).to_string()
             } else {
-                keycode(key)
-                    .map(|k| k.to_string())
-                    .unwrap_or_default()
-                    .trim_start_matches("VK_")
-                    .to_lowercase()
+                keycode(key).map(|k| k.to_string()).unwrap_or_default()
             }
         }
         Key::Unidentified => String::new(),
     };
+    let k = k.trim_start_matches("VK_")
+            .trim_start_matches("Custom(")
+            .trim_end_matches(")")
+            .to_lowercase();
     // let k = keycode(key)
     //     .map(|k| k.to_string())
     //     .unwrap_or_default()
