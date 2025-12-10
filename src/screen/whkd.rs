@@ -1,9 +1,11 @@
 pub mod bindings;
+pub mod helpers;
 
 pub use bindings::Bindings;
+pub use helpers::keybind_modal;
 
 use crate::{
-    whkd::{DEFAULT_WHKDRC, Shell, WhkdBinary, Whkdrc},
+    whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, WhkdBinary, Whkdrc},
     widget::{self, hover, icons, opt_helpers},
 };
 
@@ -11,14 +13,12 @@ use std::collections::HashMap;
 
 use iced::{
     Element, Subscription, Task, Theme, keyboard, padding,
-    widget::{bottom_center, column, combo_box, container, markdown, pick_list, row, text},
+    widget::{bottom_center, button, column, combo_box, container, markdown, pick_list, row, text},
 };
 use windows_sys::Win32::UI::{
     Input::KeyboardAndMouse::{GetKeyboardLayout, VkKeyScanExW},
     WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
 };
-
-static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -33,6 +33,8 @@ pub enum Message {
     // ChangeAppBindingKeys(usize, Vec<String>),
     // ChangeAppBindingProcessName(usize, String),
     // ChangeAppBindingCommand(usize, String),
+    BindKey,
+    CloseModal(bool),
     KeyPress(String, String),
     KeyRelease(String, String),
     Navigate(NavMessage),
@@ -52,12 +54,30 @@ pub struct Whkd {
     pressed_keys_temp: Vec<String>,
     pressed_mod: String,
     pause_hook_state: iced::widget::combo_box::State<String>,
+    bind_key: bool,
 }
 
 impl Whkd {
     pub fn update(&mut self, message: Message, whkdrc: &mut Whkdrc) -> (Action, Task<Message>) {
         match message {
             Message::Shell(shell) => whkdrc.shell = shell,
+            Message::BindKey => {
+                self.bind_key = true;
+                self.pressed_mod = String::new();
+                self.pressed_keys = Vec::new();
+                self.pressed_keys_temp = Vec::new();
+            }
+            Message::CloseModal(save) => {
+                self.bind_key = false;
+                if save && (!self.pressed_mod.is_empty() || !self.pressed_keys.is_empty()) {
+                    let modifiers = std::mem::take(&mut self.pressed_mod);
+                    let mut mods: Vec<_> =
+                        modifiers.split(&SEPARATOR).map(|s| s.to_string()).collect();
+                    let mut keys: Vec<_> = self.pressed_keys.drain(..).collect();
+                    mods.append(&mut keys);
+                    whkdrc.pause_binding = Some(mods);
+                }
+            }
             Message::KeyPress(k, m) => {
                 if self.pressed_keys_temp.is_empty() {
                     self.pressed_keys = vec![k.clone()];
@@ -167,10 +187,13 @@ impl Whkd {
             Some(DEFAULT_WHKDRC.shell),
             None,
         );
+        let bind_button = button(widget::icons::edit())
+            .style(button::subtle)
+            .on_press(Message::BindKey);
         let pause_binding = opt_helpers::opt_custom_el_disable_default(
             "Pause Binding",
             Some("Can be any hotkey combo to toggle all other hotkeys on/off. (default: None)"),
-            keys(&whkdrc.pause_binding),
+            row![bind_button, keys(&whkdrc.pause_binding)].spacing(10),
             whkdrc.pause_binding.is_some(),
             Some(Message::PauseBinding(None)),
             None,
@@ -183,88 +206,77 @@ impl Whkd {
             theme,
         );
 
-        let mut key_pressed = row![text("PRESSED: "), text!("{}", self.pressed_mod),];
-
-        key_pressed = key_pressed.push(
-            (!self.pressed_mod.is_empty() && !self.pressed_keys.is_empty()).then_some(text(" + ")),
-        );
-        key_pressed = key_pressed.push(text!(
-            "{}",
-            self.pressed_keys.iter().fold(String::new(), |mut str, k| {
-                if !str.is_empty() {
-                    str.push_str(" + ");
-                }
-                str.push_str(k);
-                str
-            })
-        ));
-
         let toggle_whkd_but = if whkd_bin.found {
-            iced::widget::button(if whkd_bin.is_running() {
-                "Stop Whkd"
-            } else {
-                "Start Whkd"
-            })
-            .on_press(Message::ToggleWhkd)
-            .into()
+            iced::widget::space().into()
+            // iced::widget::button(if whkd_bin.is_running() {
+            //     "Stop Whkd"
+            // } else {
+            //     "Start Whkd"
+            // })
+            // .on_press(Message::ToggleWhkd)
+            // .into()
         } else {
             iced::widget::space().into()
         };
 
-        opt_helpers::section_view(
-            "Whkd:",
-            [
-                shell,
-                pause_binding,
-                pause_hook,
-                key_pressed.into(),
-                toggle_whkd_but,
-            ],
+        let content =
+            opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook, toggle_whkd_but]);
+
+        keybind_modal(
+            content,
+            self.bind_key,
+            &self.pressed_mod,
+            &self.pressed_keys,
+            Message::CloseModal,
         )
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let keys = iced::event::listen_with(|event, status, _id| {
-            if matches!(status, iced::event::Status::Captured) {
-                return None;
-            }
-            match event {
-                iced::Event::Keyboard(event) => match event {
-                    keyboard::Event::KeyPressed {
-                        key,
-                        modified_key: _,
-                        physical_key,
-                        location,
-                        modifiers,
-                        text: _,
-                    } => {
-                        println!("Physical Pressed: {physical_key:#?}");
-                        let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
-                        if !k.is_empty() {
-                            Some(Message::KeyPress(k, m))
-                        } else {
-                            None
+        let keys = if self.bind_key {
+            iced::event::listen_with(|event, status, _id| {
+                if matches!(status, iced::event::Status::Captured) {
+                    return None;
+                }
+                match event {
+                    iced::Event::Keyboard(event) => match event {
+                        keyboard::Event::KeyPressed {
+                            key,
+                            modified_key: _,
+                            physical_key,
+                            location,
+                            modifiers,
+                            text: _,
+                        } => {
+                            println!("Physical Pressed: {physical_key:#?}");
+                            let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                            if !k.is_empty() {
+                                Some(Message::KeyPress(k, m))
+                            } else {
+                                None
+                            }
                         }
-                    }
-                    keyboard::Event::KeyReleased {
-                        key,
-                        modified_key: _,
-                        physical_key,
-                        location,
-                        modifiers,
-                    } => {
-                        let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
-                        if !k.is_empty() {
-                            Some(Message::KeyRelease(k, m))
-                        } else {
-                            None
+                        keyboard::Event::KeyReleased {
+                            key,
+                            modified_key: _,
+                            physical_key,
+                            location,
+                            modifiers,
+                        } => {
+                            let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                            if !k.is_empty() {
+                                Some(Message::KeyRelease(k, m))
+                            } else {
+                                None
+                            }
                         }
-                    }
-                    keyboard::Event::ModifiersChanged(_modifiers) => None,
-                },
-                _ => None,
-            }
-        });
+                        keyboard::Event::ModifiersChanged(_modifiers) => None,
+                    },
+                    _ => None,
+                }
+            })
+        } else {
+            Subscription::none()
+        };
         // let press = keyboard::on_key_press(|k, m| {
         //     let (k, m) = get_vk_key_mods(k, m);
         //     if !k.is_empty() {
@@ -286,8 +298,7 @@ impl Whkd {
         Subscription::batch([
             // press,
             // release,
-            navigation,
-            keys,
+            navigation, keys,
         ])
     }
 
@@ -304,19 +315,7 @@ fn get_vk_key_mods(
 ) -> (String, String) {
     use keyboard::key::{Code, Key, Named, Physical};
 
-    /// Return the first codepoint of a string.
-    ///
-    /// # Panics
-    /// Panics if the string is empty.
-    fn first_char(s: &str) -> char {
-        s.chars().next().expect("empty string")
-    }
-
-    /// Determine a *keyCode* value for a key.
-    ///
-    /// The *keyCode* is an implementation specific legacy property of DOM keyboard events.
-    ///
-    /// Specification: <https://w3c.github.io/uievents/#dom-keyboardevent-keycode>
+    /// Converts a [`Key`] into a potential [`win_hotkeys::VKey`]
     pub fn keycode(key: Key) -> Option<win_hotkeys::VKey> {
         use win_hotkeys::VKey;
         let vkey = match key {
@@ -441,218 +440,231 @@ fn get_vk_key_mods(
         Some(vkey)
     }
 
-    fn physical_to_vkey(key: Physical) -> win_hotkeys::VKey {
+    /// Converts a [`Physical`] into a potential [`win_hotkeys::VKey`]
+    fn physical_to_vkey(key: Physical) -> Option<win_hotkeys::VKey> {
         use win_hotkeys::VKey;
-        let current_window_thread_id = unsafe { GetWindowThreadProcessId(GetForegroundWindow(), std::ptr::null_mut()) };
+        let current_window_thread_id =
+            unsafe { GetWindowThreadProcessId(GetForegroundWindow(), std::ptr::null_mut()) };
         let locale_id = unsafe { GetKeyboardLayout(current_window_thread_id) } as u64;
         let lang_id = locale_id & 0xFFFF;
         let is_brazil = lang_id == 0x416;
         match key {
             Physical::Code(code) => match code {
-                Code::Backquote => todo!(),
-                Code::Backslash => todo!(),
-                Code::BracketLeft => todo!(),
-                Code::BracketRight => todo!(),
-                Code::Comma => todo!(),
-                Code::Digit0 => todo!(),
-                Code::Digit1 => todo!(),
-                Code::Digit2 => todo!(),
-                Code::Digit3 => todo!(),
-                Code::Digit4 => todo!(),
-                Code::Digit5 => todo!(),
-                Code::Digit6 => todo!(),
-                Code::Digit7 => todo!(),
-                Code::Digit8 => todo!(),
-                Code::Digit9 => todo!(),
-                Code::Equal => todo!(),
-                Code::IntlBackslash => todo!(),
-                Code::IntlRo => todo!(),
-                Code::IntlYen => todo!(),
-                Code::KeyA => todo!(),
-                Code::KeyB => todo!(),
-                Code::KeyC => todo!(),
-                Code::KeyD => todo!(),
-                Code::KeyE => todo!(),
-                Code::KeyF => todo!(),
-                Code::KeyG => todo!(),
-                Code::KeyH => todo!(),
-                Code::KeyI => todo!(),
-                Code::KeyJ => todo!(),
-                Code::KeyK => todo!(),
-                Code::KeyL => todo!(),
-                Code::KeyM => todo!(),
-                Code::KeyN => todo!(),
-                Code::KeyO => todo!(),
-                Code::KeyP => todo!(),
-                Code::KeyQ => todo!(),
-                Code::KeyR => todo!(),
-                Code::KeyS => todo!(),
-                Code::KeyT => todo!(),
-                Code::KeyU => todo!(),
-                Code::KeyV => todo!(),
-                Code::KeyW => todo!(),
-                Code::KeyX => todo!(),
-                Code::KeyY => todo!(),
-                Code::KeyZ => todo!(),
-                Code::Minus => todo!(),
-                Code::Period => todo!(),
-                Code::Quote => todo!(),
-                Code::Semicolon => todo!(),
-                Code::Slash => todo!(),
-                Code::AltLeft => todo!(),
-                Code::AltRight => todo!(),
-                Code::Backspace => todo!(),
-                Code::CapsLock => todo!(),
-                Code::ContextMenu => todo!(),
-                Code::ControlLeft => todo!(),
-                Code::ControlRight => todo!(),
-                Code::Enter => todo!(),
-                Code::SuperLeft => todo!(),
-                Code::SuperRight => todo!(),
-                Code::ShiftLeft => todo!(),
-                Code::ShiftRight => todo!(),
-                Code::Space => todo!(),
-                Code::Tab => todo!(),
-                Code::Convert => todo!(),
-                Code::KanaMode => todo!(),
-                Code::Lang1 => todo!(),
-                Code::Lang2 => todo!(),
-                Code::Lang3 => todo!(),
-                Code::Lang4 => todo!(),
-                Code::Lang5 => todo!(),
-                Code::NonConvert => todo!(),
-                Code::Delete => todo!(),
-                Code::End => todo!(),
-                Code::Help => todo!(),
-                Code::Home => todo!(),
-                Code::Insert => todo!(),
-                Code::PageDown => todo!(),
-                Code::PageUp => todo!(),
-                Code::ArrowDown => todo!(),
-                Code::ArrowLeft => todo!(),
-                Code::ArrowRight => todo!(),
-                Code::ArrowUp => todo!(),
-                Code::NumLock => VKey::Numlock,
-                Code::Numpad0 => VKey::Numpad0,
-                Code::Numpad1 => VKey::Numpad1,
-                Code::Numpad2 => VKey::Numpad2,
-                Code::Numpad3 => VKey::Numpad3,
-                Code::Numpad4 => VKey::Numpad4,
-                Code::Numpad5 => VKey::Numpad5,
-                Code::Numpad6 => VKey::Numpad6,
-                Code::Numpad7 => VKey::Numpad7,
-                Code::Numpad8 => VKey::Numpad8,
-                Code::Numpad9 => VKey::Numpad9,
-                Code::NumpadAdd => VKey::Add,
-                Code::NumpadBackspace => VKey::Back,
-                Code::NumpadClear => VKey::Clear,
-                Code::NumpadClearEntry => VKey::Clear,
-                Code::NumpadComma => if is_brazil { VKey::CustomKeyCode(0xC2) } else { VKey::Separator },
-                Code::NumpadDecimal => VKey::Decimal,
-                Code::NumpadDivide => VKey::Divide,
-                Code::NumpadEnter => VKey::Return,
-                Code::NumpadEqual => VKey::Return,
-                Code::NumpadHash => todo!(),
-                Code::NumpadMemoryAdd => todo!(),
-                Code::NumpadMemoryClear => todo!(),
-                Code::NumpadMemoryRecall => todo!(),
-                Code::NumpadMemoryStore => todo!(),
-                Code::NumpadMemorySubtract => todo!(),
-                Code::NumpadMultiply => VKey::Multiply,
-                Code::NumpadParenLeft => todo!(),
-                Code::NumpadParenRight => todo!(),
-                Code::NumpadStar => VKey::Multiply,
-                Code::NumpadSubtract => VKey::Subtract,
-                Code::Escape => todo!(),
-                Code::Fn => todo!(),
-                Code::FnLock => todo!(),
-                Code::PrintScreen => todo!(),
-                Code::ScrollLock => todo!(),
-                Code::Pause => todo!(),
-                Code::BrowserBack => todo!(),
-                Code::BrowserFavorites => todo!(),
-                Code::BrowserForward => todo!(),
-                Code::BrowserHome => todo!(),
-                Code::BrowserRefresh => todo!(),
-                Code::BrowserSearch => todo!(),
-                Code::BrowserStop => todo!(),
-                Code::Eject => todo!(),
-                Code::LaunchApp1 => todo!(),
-                Code::LaunchApp2 => todo!(),
-                Code::LaunchMail => todo!(),
-                Code::MediaPlayPause => todo!(),
-                Code::MediaSelect => todo!(),
-                Code::MediaStop => todo!(),
-                Code::MediaTrackNext => todo!(),
-                Code::MediaTrackPrevious => todo!(),
-                Code::Power => todo!(),
-                Code::Sleep => todo!(),
-                Code::AudioVolumeDown => todo!(),
-                Code::AudioVolumeMute => todo!(),
-                Code::AudioVolumeUp => todo!(),
-                Code::WakeUp => todo!(),
-                Code::Meta => todo!(),
-                Code::Hyper => todo!(),
-                Code::Turbo => todo!(),
-                Code::Abort => todo!(),
-                Code::Resume => todo!(),
-                Code::Suspend => todo!(),
-                Code::Again => todo!(),
-                Code::Copy => todo!(),
-                Code::Cut => todo!(),
-                Code::Find => todo!(),
-                Code::Open => todo!(),
-                Code::Paste => todo!(),
-                Code::Props => todo!(),
-                Code::Select => todo!(),
-                Code::Undo => todo!(),
-                Code::Hiragana => todo!(),
-                Code::Katakana => todo!(),
-                Code::F1 => todo!(),
-                Code::F2 => todo!(),
-                Code::F3 => todo!(),
-                Code::F4 => todo!(),
-                Code::F5 => todo!(),
-                Code::F6 => todo!(),
-                Code::F7 => todo!(),
-                Code::F8 => todo!(),
-                Code::F9 => todo!(),
-                Code::F10 => todo!(),
-                Code::F11 => todo!(),
-                Code::F12 => todo!(),
-                Code::F13 => todo!(),
-                Code::F14 => todo!(),
-                Code::F15 => todo!(),
-                Code::F16 => todo!(),
-                Code::F17 => todo!(),
-                Code::F18 => todo!(),
-                Code::F19 => todo!(),
-                Code::F20 => todo!(),
-                Code::F21 => todo!(),
-                Code::F22 => todo!(),
-                Code::F23 => todo!(),
-                Code::F24 => todo!(),
-                Code::F25 => todo!(),
-                Code::F26 => todo!(),
-                Code::F27 => todo!(),
-                Code::F28 => todo!(),
-                Code::F29 => todo!(),
-                Code::F30 => todo!(),
-                Code::F31 => todo!(),
-                Code::F32 => todo!(),
-                Code::F33 => todo!(),
-                Code::F34 => todo!(),
-                Code::F35 => todo!(),
-                _ => todo!(),
+                Code::Backquote => None,
+                Code::Backslash => None,
+                Code::BracketLeft => None,
+                Code::BracketRight => None,
+                Code::Comma => None,
+                Code::Digit0 => None,
+                Code::Digit1 => None,
+                Code::Digit2 => None,
+                Code::Digit3 => None,
+                Code::Digit4 => None,
+                Code::Digit5 => None,
+                Code::Digit6 => None,
+                Code::Digit7 => None,
+                Code::Digit8 => None,
+                Code::Digit9 => None,
+                Code::Equal => None,
+                Code::IntlBackslash => None,
+                Code::IntlRo => None,
+                Code::IntlYen => None,
+                Code::KeyA => None,
+                Code::KeyB => None,
+                Code::KeyC => None,
+                Code::KeyD => None,
+                Code::KeyE => None,
+                Code::KeyF => None,
+                Code::KeyG => None,
+                Code::KeyH => None,
+                Code::KeyI => None,
+                Code::KeyJ => None,
+                Code::KeyK => None,
+                Code::KeyL => None,
+                Code::KeyM => None,
+                Code::KeyN => None,
+                Code::KeyO => None,
+                Code::KeyP => None,
+                Code::KeyQ => None,
+                Code::KeyR => None,
+                Code::KeyS => None,
+                Code::KeyT => None,
+                Code::KeyU => None,
+                Code::KeyV => None,
+                Code::KeyW => None,
+                Code::KeyX => None,
+                Code::KeyY => None,
+                Code::KeyZ => None,
+                Code::Minus => None,
+                Code::Period => None,
+                Code::Quote => None,
+                Code::Semicolon => None,
+                Code::Slash => None,
+                Code::AltLeft => None,
+                Code::AltRight => None,
+                Code::Backspace => None,
+                Code::CapsLock => None,
+                Code::ContextMenu => None,
+                Code::ControlLeft => None,
+                Code::ControlRight => None,
+                Code::Enter => None,
+                Code::SuperLeft => None,
+                Code::SuperRight => None,
+                Code::ShiftLeft => None,
+                Code::ShiftRight => None,
+                Code::Space => None,
+                Code::Tab => None,
+                Code::Convert => None,
+                Code::KanaMode => None,
+                Code::Lang1 => None,
+                Code::Lang2 => None,
+                Code::Lang3 => None,
+                Code::Lang4 => None,
+                Code::Lang5 => None,
+                Code::NonConvert => None,
+                Code::Delete => None,
+                Code::End => None,
+                Code::Help => None,
+                Code::Home => None,
+                Code::Insert => None,
+                Code::PageDown => None,
+                Code::PageUp => None,
+                Code::ArrowDown => None,
+                Code::ArrowLeft => None,
+                Code::ArrowRight => None,
+                Code::ArrowUp => None,
+                Code::NumLock => Some(VKey::Numlock),
+                Code::Numpad0 => Some(VKey::Numpad0),
+                Code::Numpad1 => Some(VKey::Numpad1),
+                Code::Numpad2 => Some(VKey::Numpad2),
+                Code::Numpad3 => Some(VKey::Numpad3),
+                Code::Numpad4 => Some(VKey::Numpad4),
+                Code::Numpad5 => Some(VKey::Numpad5),
+                Code::Numpad6 => Some(VKey::Numpad6),
+                Code::Numpad7 => Some(VKey::Numpad7),
+                Code::Numpad8 => Some(VKey::Numpad8),
+                Code::Numpad9 => Some(VKey::Numpad9),
+                Code::NumpadAdd => Some(VKey::Add),
+                Code::NumpadBackspace => Some(VKey::Back),
+                Code::NumpadClear => Some(VKey::Clear),
+                Code::NumpadClearEntry => Some(VKey::Clear),
+                Code::NumpadComma => {
+                    if is_brazil {
+                        Some(VKey::CustomKeyCode(0xC2))
+                    } else {
+                        Some(VKey::Separator)
+                    }
+                }
+                Code::NumpadDecimal => Some(VKey::Decimal),
+                Code::NumpadDivide => Some(VKey::Divide),
+                Code::NumpadEnter => Some(VKey::Return),
+                Code::NumpadEqual => Some(VKey::Return),
+                Code::NumpadHash => None,
+                Code::NumpadMemoryAdd => None,
+                Code::NumpadMemoryClear => None,
+                Code::NumpadMemoryRecall => None,
+                Code::NumpadMemoryStore => None,
+                Code::NumpadMemorySubtract => None,
+                Code::NumpadMultiply => Some(VKey::Multiply),
+                Code::NumpadParenLeft => None,
+                Code::NumpadParenRight => None,
+                Code::NumpadStar => Some(VKey::Multiply),
+                Code::NumpadSubtract => Some(VKey::Subtract),
+                Code::Escape => None,
+                Code::Fn => None,
+                Code::FnLock => None,
+                Code::PrintScreen => None,
+                Code::ScrollLock => None,
+                Code::Pause => None,
+                Code::BrowserBack => None,
+                Code::BrowserFavorites => None,
+                Code::BrowserForward => None,
+                Code::BrowserHome => None,
+                Code::BrowserRefresh => None,
+                Code::BrowserSearch => None,
+                Code::BrowserStop => None,
+                Code::Eject => None,
+                Code::LaunchApp1 => None,
+                Code::LaunchApp2 => None,
+                Code::LaunchMail => None,
+                Code::MediaPlayPause => None,
+                Code::MediaSelect => None,
+                Code::MediaStop => None,
+                Code::MediaTrackNext => None,
+                Code::MediaTrackPrevious => None,
+                Code::Power => None,
+                Code::Sleep => None,
+                Code::AudioVolumeDown => None,
+                Code::AudioVolumeMute => None,
+                Code::AudioVolumeUp => None,
+                Code::WakeUp => None,
+                Code::Meta => None,
+                Code::Hyper => None,
+                Code::Turbo => None,
+                Code::Abort => None,
+                Code::Resume => None,
+                Code::Suspend => None,
+                Code::Again => None,
+                Code::Copy => None,
+                Code::Cut => None,
+                Code::Find => None,
+                Code::Open => None,
+                Code::Paste => None,
+                Code::Props => None,
+                Code::Select => None,
+                Code::Undo => None,
+                Code::Hiragana => None,
+                Code::Katakana => None,
+                Code::F1 => None,
+                Code::F2 => None,
+                Code::F3 => None,
+                Code::F4 => None,
+                Code::F5 => None,
+                Code::F6 => None,
+                Code::F7 => None,
+                Code::F8 => None,
+                Code::F9 => None,
+                Code::F10 => None,
+                Code::F11 => None,
+                Code::F12 => None,
+                Code::F13 => None,
+                Code::F14 => None,
+                Code::F15 => None,
+                Code::F16 => None,
+                Code::F17 => None,
+                Code::F18 => None,
+                Code::F19 => None,
+                Code::F20 => None,
+                Code::F21 => None,
+                Code::F22 => None,
+                Code::F23 => None,
+                Code::F24 => None,
+                Code::F25 => None,
+                Code::F26 => None,
+                Code::F27 => None,
+                Code::F28 => None,
+                Code::F29 => None,
+                Code::F30 => None,
+                Code::F31 => None,
+                Code::F32 => None,
+                Code::F33 => None,
+                Code::F34 => None,
+                Code::F35 => None,
+                _ => None,
             },
-            Physical::Unidentified(_native_code) => todo!(),
+            Physical::Unidentified(_native_code) => match _native_code {
+                keyboard::key::NativeCode::Unidentified => None,
+                keyboard::key::NativeCode::Android(_) => None,
+                keyboard::key::NativeCode::MacOS(_) => None,
+                keyboard::key::NativeCode::Windows(vk) => Some(VKey::CustomKeyCode(vk)),
+                keyboard::key::NativeCode::Xkb(_) => None,
+            },
         }
     }
 
     let k = match key {
         Key::Named(named) => match named {
             Named::Alt
-            | Named::AltGraph
             | Named::Shift
             | Named::Control
             | Named::Meta
@@ -660,7 +672,9 @@ fn get_vk_key_mods(
             | Named::Super => String::new(),
             _ => {
                 if location == keyboard::Location::Numpad {
-                    physical_to_vkey(physical).to_string()
+                    physical_to_vkey(physical)
+                        .map(|k| k.to_string())
+                        .unwrap_or_default()
                 } else {
                     keycode(key).map(|k| k.to_string()).unwrap_or_default()
                 }
@@ -668,22 +682,20 @@ fn get_vk_key_mods(
         },
         Key::Character(_) => {
             if location == keyboard::Location::Numpad {
-                physical_to_vkey(physical).to_string()
+                physical_to_vkey(physical)
+                    .map(|k| k.to_string())
+                    .unwrap_or_default()
             } else {
                 keycode(key).map(|k| k.to_string()).unwrap_or_default()
             }
         }
         Key::Unidentified => String::new(),
     };
-    let k = k.trim_start_matches("VK_")
-            .trim_start_matches("Custom(")
-            .trim_end_matches(")")
-            .to_lowercase();
-    // let k = keycode(key)
-    //     .map(|k| k.to_string())
-    //     .unwrap_or_default()
-    //     .trim_start_matches("VK_")
-    //     .to_lowercase();
+    let k = k
+        .trim_start_matches("VK_")
+        .trim_start_matches("Custom(")
+        .trim_end_matches(")")
+        .to_lowercase();
     let m = modifiers
         .iter_names()
         .fold(String::new(), |mut s, (n, _m)| {
@@ -693,37 +705,8 @@ fn get_vk_key_mods(
             if n.to_lowercase() == "logo" {
                 s.push_str("win");
             } else {
-                s.push_str(n);
+                s.push_str(&n.to_lowercase());
             }
-            s
-        });
-    (k, m)
-}
-
-fn get_key_mods(key: keyboard::Key, modifiers: keyboard::Modifiers) -> (String, String) {
-    use keyboard::key::{Key, Named};
-
-    let k = match key {
-        Key::Named(named) => match named {
-            Named::Alt
-            | Named::AltGraph
-            | Named::Shift
-            | Named::Control
-            | Named::Meta
-            | Named::Hyper
-            | Named::Super => String::new(),
-            _ => format!("{:?}", named),
-        },
-        Key::Character(c) => format!("{}", c),
-        Key::Unidentified => String::new(),
-    };
-    let m = modifiers
-        .iter_names()
-        .fold(String::new(), |mut s, (n, _m)| {
-            if !s.is_empty() {
-                s.push_str(" + ");
-            }
-            s.push_str(n);
             s
         });
     (k, m)
@@ -737,15 +720,15 @@ fn mod_choose<'a>(binding_mods: &[String], pos: usize) -> Option<Element<'a, Mes
     let pl = |k: String| -> Element<Message> {
         let mut options = vec![
             "".into(),
-            "CTRL".into(),
-            "SHIFT".into(),
-            "ALT".into(),
-            "WIN".into(),
+            "ctrl".into(),
+            "shift".into(),
+            "alt".into(),
+            "win".into(),
         ];
         options.retain(|v| {
             !binding_mods
                 .iter()
-                .map(|m| m.to_uppercase())
+                .map(|m| m.to_lowercase())
                 .any(|m| &m == v)
         });
         pick_list(options, Some(k), move |v| Message::PBMod(pos, v)).into()
@@ -765,7 +748,17 @@ fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
     let sb = split_binding(binding);
     let key = widget::input(
         "",
-        sb.key.iter().next_back().map_or("", |s| s.as_str()),
+        sb.key.iter().fold(String::new(), |mut s, k| {
+            if !k.is_empty() {
+                if s.is_empty() {
+                    s.push_str(k);
+                } else {
+                    s.push_str(SEPARATOR);
+                    s.push_str(k);
+                }
+            }
+            s
+        }),
         Message::PBKey,
         None,
     )
