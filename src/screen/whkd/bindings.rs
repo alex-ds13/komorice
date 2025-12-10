@@ -1,3 +1,5 @@
+use super::{MODIFIERS, SEPARATOR};
+
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
     widget::{self, button_with_icon, hover, icons, opt_helpers},
@@ -13,21 +15,19 @@ use iced::{
     },
 };
 
-static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
-
-const SEPARATOR: &str = " + ";
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
     ChangeNewBindingMod(usize, String),
     ChangeNewBindingKey(String),
     ChangeNewBindingCommand(String),
+    ChangeNewBindingContent(iced::widget::text_editor::Action),
     ToggleShowNewBinding,
     AddNewBinding,
     RemoveBinding(usize),
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
     ChangeBindingCommand(usize, String),
+    ChangeBindingContent(usize, iced::widget::text_editor::Action),
     EditBinding(usize),
     FinishEditBinding(usize),
 
@@ -47,9 +47,11 @@ pub struct Bindings {
     pressed_mod: String,
     new_binding: HotkeyBinding,
     new_binding_state: combo_box::State<String>,
+    new_binding_content: iced::widget::text_editor::Content,
     show_new_binding: bool,
     editing: HashSet<usize>,
     editing_states: HashMap<usize, combo_box::State<String>>,
+    editing_contents: HashMap<usize, iced::widget::text_editor::Content>,
 }
 
 impl Default for Bindings {
@@ -63,9 +65,11 @@ impl Default for Bindings {
                 process_name: None,
             },
             new_binding_state: Default::default(),
+            new_binding_content: iced::widget::text_editor::Content::new(),
             show_new_binding: false,
             editing: Default::default(),
             editing_states: Default::default(),
+            editing_contents: Default::default(),
         }
     }
 }
@@ -150,8 +154,15 @@ impl Bindings {
                 }
             }
             Message::ChangeBindingCommand(idx, command) => {
-                if let Some(binding) = whkdrc.bindings.get_mut(idx) {
+                if let Some((binding, content)) = whkdrc.bindings.get_mut(idx).zip(self.editing_contents.get_mut(&idx)) {
+                    *content = iced::widget::text_editor::Content::with_text(&command);
                     binding.command = command;
+                }
+            }
+            Message::ChangeBindingContent(idx, action) => {
+                if let Some((binding, content)) = whkdrc.bindings.get_mut(idx).zip(self.editing_contents.get_mut(&idx)) {
+                    content.perform(action);
+                    binding.command = content.text();
                 }
             }
             Message::AddNewBinding => {
@@ -169,6 +180,7 @@ impl Bindings {
                 }
                 self.editing.remove(&idx);
                 self.editing_states.remove(&idx);
+                self.editing_contents.remove(&idx);
             }
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
@@ -239,16 +251,29 @@ impl Bindings {
                     }
                 }
             }
-            Message::ChangeNewBindingCommand(command) => self.new_binding.command = command,
+            Message::ChangeNewBindingCommand(command) => {
+                self.new_binding_content = iced::widget::text_editor::Content::with_text(&command);
+                self.new_binding.command = command;
+            },
+            Message::ChangeNewBindingContent(action) => {
+                self.new_binding_content.perform(action);
+            }
             Message::ToggleShowNewBinding => self.show_new_binding = !self.show_new_binding,
             Message::EditBinding(idx) => {
                 self.editing.insert(idx);
                 self.editing_states
                     .insert(idx, combo_box::State::new(commands.to_vec()));
+                let content = if let Some(binding) = whkdrc.bindings.get(idx) {
+                    iced::widget::text_editor::Content::with_text(&binding.command)
+                } else {
+                    iced::widget::text_editor::Content::new()
+                };
+                self.editing_contents.insert(idx, content);
             }
             Message::FinishEditBinding(idx) => {
                 self.editing.remove(&idx);
                 self.editing_states.remove(&idx);
+                self.editing_contents.remove(&idx);
             }
         }
         (Action::None, Task::none())
@@ -282,11 +307,13 @@ impl Bindings {
             );
             let command = command_edit(
                 Some(&self.new_binding_state),
+                &self.new_binding_content,
                 &self.new_binding.command,
                 commands,
                 commands_desc,
                 theme,
                 Message::ChangeNewBindingCommand,
+                Message::ChangeNewBindingContent,
             );
 
             let add_binding_button = button_with_icon(icons::plus(), "Add")
@@ -327,11 +354,15 @@ impl Bindings {
                     );
                     let command = command_edit(
                         self.editing_states.get(&idx),
+                        self.editing_contents
+                            .get(&idx)
+                            .expect("should have editing content"),
                         &binding.command,
                         commands,
                         commands_desc,
                         theme,
                         move |c| Message::ChangeBindingCommand(idx, c),
+                        move |a| Message::ChangeBindingContent(idx, a),
                     );
 
                     col.push(
@@ -449,10 +480,11 @@ impl Bindings {
     pub fn load_new_commands(&mut self, commands: &[String]) {
         self.new_binding_state = combo_box::State::new(commands.to_vec());
     }
-    
+
     pub fn clear_editing(&mut self) {
         self.editing.clear();
         self.editing_states.clear();
+        self.editing_contents.clear();
     }
 }
 
@@ -469,10 +501,10 @@ fn mod_choose<'a>(
     let pl = move |k: String| -> Element<Message> {
         let mut options = vec![
             "".into(),
-            "CTRL".into(),
-            "SHIFT".into(),
-            "ALT".into(),
-            "WIN".into(),
+            "ctrl".into(),
+            "shift".into(),
+            "alt".into(),
+            "win".into(),
         ];
         options.retain(|v| {
             !binding_mods
@@ -514,15 +546,18 @@ fn keys<'a>(
 
 fn command_edit<'a>(
     state: Option<&'a combo_box::State<String>>,
-    command: &'a String,
+    content: &'a iced::widget::text_editor::Content,
+    command: &'a str,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
     theme: &'a Theme,
     on_command_change: impl Fn(String) -> Message + Clone + 'static,
+    on_content_change: impl Fn(iced::widget::text_editor::Action) -> Message + Clone + 'static,
 ) -> Element<'a, Message> {
     let (main_cmd, rest) = split_command(command, commands);
+    let on_command_change_clone = on_command_change.clone();
     widget::expandable::expandable(move |hovered, expanded| {
-        let on_command_change_clone = on_command_change.clone();
+        let on_command_change_clone = on_command_change_clone.clone();
         let label = if false {
             row![text("Command")]
                 .push(widget::opt_helpers::reset_button(Some(
@@ -541,25 +576,29 @@ fn command_edit<'a>(
         )]
         .push(widget::opt_helpers::disable_checkbox(None))
         .push({
-            let commands_box = state.map(|state| {
-                let rest = rest.to_string();
-                let main_cmd = main_cmd.to_string();
-                let on_command_change_clone = on_command_change.clone();
-                combo_box(state, "", Some(&main_cmd), move |v| {
-                    let cmd = if rest.is_empty() {
-                        format!("komorebic {v}")
-                    } else {
-                        format!("komorebic {v} {rest}")
-                    };
-                    on_command_change_clone(cmd)
-                })
-            });
-            let on_command_change_c = on_command_change.clone();
-            let custom = widget::input("", command, on_command_change_c, None);
+            // let commands_box = state.map(|state| {
+            //     let rest = rest.to_string();
+            //     let main_cmd = main_cmd.to_string();
+            //     let on_command_change_clone = on_command_change.clone();
+            //     combo_box(state, "", Some(&main_cmd), move |v| {
+            //         let cmd = if rest.is_empty() {
+            //             format!("komorebic {v}")
+            //         } else {
+            //             format!("komorebic {v} {rest}")
+            //         };
+            //         on_command_change_clone(cmd)
+            //     })
+            //     .size(14)
+            // });
+            // let on_command_change_c = on_command_change.clone();
+            let custom = iced::widget::text_editor(content)
+                // .min_height(42)
+                .on_action(on_content_change.clone());
+            // let custom = widget::input("", command, on_command_change_c, None);
             container(
                 column![
-                    row!["Komorebic commands:", commands_box].spacing(5),
-                    "Command:",
+                    // row![text("komorebic commands list:").size(14), container(commands_box)].spacing(5),
+                    // "Command:",
                     custom,
                 ]
                 .max_width(700)
@@ -570,10 +609,11 @@ fn command_edit<'a>(
         })
         .spacing(10);
 
-        let top = commands_desc
-            .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-            .is_some()
-            .then(|| {
+        // let top = commands_desc
+        //     .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
+        //     .is_some()
+        //     .then(|| {
+        let top =
                 bottom_center(
                     row![
                         container(icons::info().size(12)).style(move |t| {
@@ -586,7 +626,8 @@ fn command_edit<'a>(
                                 container::transparent(t)
                             }
                         }),
-                        text(" Command Documentation ").size(10),
+                        // text(" Command Documentation ").size(10),
+                        text(" komorebic help ").size(10),
                         if expanded {
                             icons::up_chevron().size(12)
                         } else {
@@ -595,18 +636,40 @@ fn command_edit<'a>(
                     ]
                     .align_y(iced::Center),
                 )
-                .padding(padding::bottom(-10.0))
-            });
+                .padding(padding::bottom(-10.0));
 
         hover(main, top)
     })
     .bottom_elements(move || {
+        let commands_box = state.map(|state| {
+            let rest = rest.to_string();
+            let main_cmd = main_cmd.to_string();
+            let on_command_change_clone = on_command_change.clone();
+            combo_box(state, "", Some(&main_cmd), move |v| {
+                let cmd = if rest.is_empty() {
+                    format!("komorebic {v}")
+                } else {
+                    format!("komorebic {v} {rest}")
+                };
+                on_command_change_clone(cmd)
+            })
+        });
+        let selector = container(
+            column![
+                row!["Komorebic commands:", container(commands_box)].spacing(5),
+            ]
+            .max_width(700)
+            .padding(padding::bottom(10))
+            .spacing(10),
+        )
+        .align_left(iced::FillPortion(3));
+
         if let Some(items) =
             commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
         {
-            vec![markdown(items, theme).map(Message::UrlClicked)]
+            vec![selector.into(), markdown(items, theme).map(Message::UrlClicked)]
         } else {
-            vec![]
+            vec![selector.into()]
         }
     })
     .into()
