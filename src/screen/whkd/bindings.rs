@@ -1,4 +1,4 @@
-use super::{MODIFIERS, SEPARATOR};
+use super::{MODIFIERS, SEPARATOR, get_vk_key_mods, keybind_modal};
 
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
@@ -8,10 +8,10 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use iced::{
-    Element, Subscription, Task, Theme, padding,
+    Center, Element, Subscription, Task, Theme, padding,
     widget::{
         bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
-        scrollable, space, text,
+        scrollable, space, text, text_editor,
     },
 };
 
@@ -20,19 +20,22 @@ pub enum Message {
     ChangeNewBindingMod(usize, String),
     ChangeNewBindingKey(String),
     ChangeNewBindingCommand(String),
-    ChangeNewBindingContent(iced::widget::text_editor::Action),
+    ChangeNewBindingContent(text_editor::Action),
     ToggleShowNewBinding,
     AddNewBinding,
     RemoveBinding(usize),
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
     ChangeBindingCommand(usize, String),
-    ChangeBindingContent(usize, iced::widget::text_editor::Action),
+    ChangeBindingContent(usize, text_editor::Action),
     EditBinding(usize),
     FinishEditBinding(usize),
 
-    KeyPress(Option<String>, String),
-    KeyRelease,
+    KeyPress(String, String),
+    KeyRelease(String, String),
+    OpenNewBindingKeysModal,
+    OpenBindingKeysModal(usize),
+    CloseModal(bool),
     UrlClicked(markdown::Url),
 }
 
@@ -42,30 +45,40 @@ pub enum Action {
 }
 
 #[derive(Debug)]
+enum Modal {
+    NewBinding,
+    Binding(usize),
+}
+
+#[derive(Debug)]
 pub struct Bindings {
-    pressed_key: String,
+    pressed_keys: Vec<String>,
+    pressed_keys_temp: Vec<String>,
     pressed_mod: String,
+    modal_opened: Option<Modal>,
     new_binding: HotkeyBinding,
     new_binding_state: combo_box::State<String>,
-    new_binding_content: iced::widget::text_editor::Content,
+    new_binding_content: text_editor::Content,
     show_new_binding: bool,
     editing: HashSet<usize>,
     editing_states: HashMap<usize, combo_box::State<String>>,
-    editing_contents: HashMap<usize, iced::widget::text_editor::Content>,
+    editing_contents: HashMap<usize, text_editor::Content>,
 }
 
 impl Default for Bindings {
     fn default() -> Self {
         Self {
-            pressed_key: Default::default(),
+            pressed_keys: Default::default(),
+            pressed_keys_temp: Default::default(),
             pressed_mod: Default::default(),
+            modal_opened: Default::default(),
             new_binding: HotkeyBinding {
                 keys: Vec::new(),
                 command: String::new(),
                 process_name: None,
             },
             new_binding_state: Default::default(),
-            new_binding_content: iced::widget::text_editor::Content::new(),
+            new_binding_content: text_editor::Content::new(),
             show_new_binding: false,
             editing: Default::default(),
             editing_states: Default::default(),
@@ -82,14 +95,20 @@ impl Bindings {
         commands: &[String],
     ) -> (Action, Task<Message>) {
         match message {
-            Message::KeyPress(Some(k), m) => {
-                self.pressed_key = k;
+            Message::KeyPress(k, m) => {
+                if self.pressed_keys_temp.is_empty() {
+                    self.pressed_keys = vec![k.clone()];
+                    self.pressed_keys_temp.push(k);
+                } else if !self.pressed_keys_temp.contains(&k) {
+                    self.pressed_keys_temp.push(k);
+                    self.pressed_keys = self.pressed_keys_temp.clone();
+                }
                 self.pressed_mod = m;
             }
-            Message::KeyPress(None, _m) => {}
-            Message::KeyRelease => {
-                // self.pressed_key = String::new();
-                // self.pressed_mod = String::new();
+            Message::KeyRelease(key, _m) => {
+                if let Some(pos) = self.pressed_keys_temp.iter().position(|k| k == &key) {
+                    self.pressed_keys_temp.remove(pos);
+                }
             }
             Message::ChangeBindingMod(idx, (pos, mod1)) => {
                 if let Some(binding) = whkdrc.bindings.get_mut(idx) {
@@ -154,13 +173,21 @@ impl Bindings {
                 }
             }
             Message::ChangeBindingCommand(idx, command) => {
-                if let Some((binding, content)) = whkdrc.bindings.get_mut(idx).zip(self.editing_contents.get_mut(&idx)) {
-                    *content = iced::widget::text_editor::Content::with_text(&command);
+                if let Some((binding, content)) = whkdrc
+                    .bindings
+                    .get_mut(idx)
+                    .zip(self.editing_contents.get_mut(&idx))
+                {
+                    *content = text_editor::Content::with_text(&command);
                     binding.command = command;
                 }
             }
             Message::ChangeBindingContent(idx, action) => {
-                if let Some((binding, content)) = whkdrc.bindings.get_mut(idx).zip(self.editing_contents.get_mut(&idx)) {
+                if let Some((binding, content)) = whkdrc
+                    .bindings
+                    .get_mut(idx)
+                    .zip(self.editing_contents.get_mut(&idx))
+                {
                     content.perform(action);
                     binding.command = content.text();
                 }
@@ -172,6 +199,7 @@ impl Bindings {
                     process_name: None,
                 };
                 let new_binding = std::mem::replace(&mut self.new_binding, default_binding);
+                self.new_binding_content = text_editor::Content::new();
                 whkdrc.bindings.push(new_binding);
             }
             Message::RemoveBinding(idx) => {
@@ -252,11 +280,12 @@ impl Bindings {
                 }
             }
             Message::ChangeNewBindingCommand(command) => {
-                self.new_binding_content = iced::widget::text_editor::Content::with_text(&command);
+                self.new_binding_content = text_editor::Content::with_text(&command);
                 self.new_binding.command = command;
-            },
+            }
             Message::ChangeNewBindingContent(action) => {
                 self.new_binding_content.perform(action);
+                self.new_binding.command = self.new_binding_content.text();
             }
             Message::ToggleShowNewBinding => self.show_new_binding = !self.show_new_binding,
             Message::EditBinding(idx) => {
@@ -264,9 +293,9 @@ impl Bindings {
                 self.editing_states
                     .insert(idx, combo_box::State::new(commands.to_vec()));
                 let content = if let Some(binding) = whkdrc.bindings.get(idx) {
-                    iced::widget::text_editor::Content::with_text(&binding.command)
+                    text_editor::Content::with_text(&binding.command)
                 } else {
-                    iced::widget::text_editor::Content::new()
+                    text_editor::Content::new()
                 };
                 self.editing_contents.insert(idx, content);
             }
@@ -274,6 +303,31 @@ impl Bindings {
                 self.editing.remove(&idx);
                 self.editing_states.remove(&idx);
                 self.editing_contents.remove(&idx);
+            }
+            Message::OpenNewBindingKeysModal => self.modal_opened = Some(Modal::NewBinding),
+            Message::OpenBindingKeysModal(idx) => self.modal_opened = Some(Modal::Binding(idx)),
+            Message::CloseModal(save) => {
+                if save
+                    && (!self.pressed_mod.is_empty() || !self.pressed_keys.is_empty())
+                    && let Some(modal) = self.modal_opened.as_ref()
+                {
+                    let modifiers = std::mem::take(&mut self.pressed_mod);
+                    let mut mods: Vec<_> =
+                        modifiers.split(&SEPARATOR).map(|s| s.to_string()).collect();
+                    let mut keys: Vec<_> = self.pressed_keys.drain(..).collect();
+                    mods.append(&mut keys);
+                    match modal {
+                        Modal::NewBinding => {
+                            self.new_binding.keys = mods;
+                        }
+                        Modal::Binding(idx) => {
+                            if let Some(binding) = whkdrc.bindings.get_mut(*idx) {
+                                binding.keys = mods;
+                            }
+                        }
+                    }
+                }
+                self.modal_opened = None;
             }
         }
         (Action::None, Task::none())
@@ -293,14 +347,21 @@ impl Bindings {
                 .into();
 
         let new_binding = if self.show_new_binding {
+            let bind_button = button(widget::icons::edit())
+                .style(button::subtle)
+                .on_press(Message::OpenNewBindingKeysModal);
             let keybind = opt_helpers::opt_custom_el_disable_default(
                 "Keybind",
                 Some("A key combination to trigger the following command."),
-                keys(
-                    &self.new_binding,
-                    Message::ChangeNewBindingKey,
-                    Message::ChangeNewBindingMod,
-                ),
+                row![
+                    bind_button,
+                    keys(
+                        &self.new_binding,
+                        Message::ChangeNewBindingKey,
+                        Message::ChangeNewBindingMod,
+                    )
+                ]
+                .spacing(10),
                 false,
                 None,
                 None,
@@ -340,14 +401,21 @@ impl Bindings {
             .enumerate()
             .fold(col, |col, (idx, binding)| {
                 if self.editing.contains(&idx) {
+                    let bind_button = button(widget::icons::edit())
+                        .style(button::subtle)
+                        .on_press(Message::OpenBindingKeysModal(idx));
                     let keybind = opt_helpers::opt_custom_el_disable_default(
                         "Keybind",
                         Some("A key combination to trigger the following command."),
-                        keys(
-                            binding,
-                            move |k| Message::ChangeBindingKey(idx, k),
-                            move |pos, m| Message::ChangeBindingMod(idx, (pos, m)),
-                        ),
+                        row![
+                            bind_button,
+                            keys(
+                                binding,
+                                move |k| Message::ChangeBindingKey(idx, k),
+                                move |pos, m| Message::ChangeBindingMod(idx, (pos, m)),
+                            )
+                        ]
+                        .spacing(10),
                         false,
                         None,
                         None,
@@ -416,7 +484,7 @@ impl Bindings {
                     let b = hover(
                         row![keybind, text(" -> "), command]
                             .height(30)
-                            .align_y(iced::Center)
+                            .align_y(Center)
                             .padding(padding::right(60).top(2.5).bottom(2.5)),
                         right(
                             button(icons::edit())
@@ -424,7 +492,7 @@ impl Bindings {
                                 .style(button::secondary),
                         )
                         .padding(padding::right(5))
-                        .align_y(iced::Center),
+                        .align_y(Center),
                     );
 
                     col.push(b)
@@ -432,49 +500,69 @@ impl Bindings {
             })
             .into();
 
-        column![
+        let content = column![
             opt_helpers::section_view("Bindings:", [add_new_binding_button, new_binding]),
             opt_helpers::section_view("Bindings:", [bindings]),
         ]
-        .spacing(10)
-        .into()
+        .spacing(10);
+
+        keybind_modal(
+            content,
+            self.modal_opened.is_some(),
+            &self.pressed_mod,
+            &self.pressed_keys,
+            Message::CloseModal,
+        )
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        use iced::keyboard::{
-            self,
-            key::{Key, Named},
-        };
+        use iced::keyboard;
 
-        let press = keyboard::on_key_press(|key, modifiers| {
-            let k = match key {
-                Key::Named(named) => match named {
-                    Named::Alt
-                    | Named::AltGraph
-                    | Named::Shift
-                    | Named::Control
-                    | Named::Meta
-                    | Named::Hyper
-                    | Named::Super => None,
-                    _ => Some(format!("{:?}", named)),
-                },
-                Key::Character(c) => Some(format!("{}", c)),
-                Key::Unidentified => None,
-            };
-            let m = modifiers
-                .iter_names()
-                .fold(String::new(), |mut s, (n, _m)| {
-                    if !s.is_empty() {
-                        s.push_str(SEPARATOR);
-                    }
-                    s.push_str(n);
-                    s
-                });
-            Some(Message::KeyPress(k, m))
-        });
-        let release = keyboard::on_key_release(|_, _| Some(Message::KeyRelease));
-
-        Subscription::batch([press, release])
+        if self.modal_opened.is_some() {
+            iced::event::listen_with(|event, status, _id| {
+                if matches!(status, iced::event::Status::Captured) {
+                    return None;
+                }
+                match event {
+                    iced::Event::Keyboard(event) => match event {
+                        keyboard::Event::KeyPressed {
+                            key,
+                            modified_key: _,
+                            physical_key,
+                            location,
+                            modifiers,
+                            text: _,
+                        } => {
+                            println!("Physical Pressed: {physical_key:#?}");
+                            let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                            if !k.is_empty() {
+                                Some(Message::KeyPress(k, m))
+                            } else {
+                                None
+                            }
+                        }
+                        keyboard::Event::KeyReleased {
+                            key,
+                            modified_key: _,
+                            physical_key,
+                            location,
+                            modifiers,
+                        } => {
+                            let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
+                            if !k.is_empty() {
+                                Some(Message::KeyRelease(k, m))
+                            } else {
+                                None
+                            }
+                        }
+                        keyboard::Event::ModifiersChanged(_modifiers) => None,
+                    },
+                    _ => None,
+                }
+            })
+        } else {
+            Subscription::none()
+        }
     }
 
     pub fn load_new_commands(&mut self, commands: &[String]) {
@@ -509,7 +597,7 @@ fn mod_choose<'a>(
         options.retain(|v| {
             !binding_mods
                 .iter()
-                .map(|m| m.to_uppercase())
+                .map(|m| m.to_lowercase())
                 .any(|m| &m == v)
         });
         pick_list(options, Some(k), move |v| on_mod_change_clone(pos, v)).into()
@@ -544,15 +632,16 @@ fn keys<'a>(
     .into()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_edit<'a>(
     state: Option<&'a combo_box::State<String>>,
-    content: &'a iced::widget::text_editor::Content,
+    content: &'a text_editor::Content,
     command: &'a str,
     commands: &'a [String],
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
     theme: &'a Theme,
     on_command_change: impl Fn(String) -> Message + Clone + 'static,
-    on_content_change: impl Fn(iced::widget::text_editor::Action) -> Message + Clone + 'static,
+    on_content_change: impl Fn(text_editor::Action) -> Message + Clone + 'static,
 ) -> Element<'a, Message> {
     let (main_cmd, rest) = split_command(command, commands);
     let on_command_change_clone = on_command_change.clone();
@@ -565,9 +654,9 @@ fn command_edit<'a>(
                 )))
                 .spacing(5)
                 .height(30)
-                .align_y(iced::Center)
+                .align_y(Center)
         } else {
-            row![text("Command")].height(30).align_y(iced::Center)
+            row![text("Command")].height(30).align_y(Center)
         };
 
         let main = row![widget::opt_helpers::label_element_with_description(
@@ -576,67 +665,36 @@ fn command_edit<'a>(
         )]
         .push(widget::opt_helpers::disable_checkbox(None))
         .push({
-            // let commands_box = state.map(|state| {
-            //     let rest = rest.to_string();
-            //     let main_cmd = main_cmd.to_string();
-            //     let on_command_change_clone = on_command_change.clone();
-            //     combo_box(state, "", Some(&main_cmd), move |v| {
-            //         let cmd = if rest.is_empty() {
-            //             format!("komorebic {v}")
-            //         } else {
-            //             format!("komorebic {v} {rest}")
-            //         };
-            //         on_command_change_clone(cmd)
-            //     })
-            //     .size(14)
-            // });
-            // let on_command_change_c = on_command_change.clone();
-            let custom = iced::widget::text_editor(content)
-                // .min_height(42)
-                .on_action(on_content_change.clone());
-            // let custom = widget::input("", command, on_command_change_c, None);
-            container(
-                column![
-                    // row![text("komorebic commands list:").size(14), container(commands_box)].spacing(5),
-                    // "Command:",
-                    custom,
-                ]
+            let custom = text_editor(content).on_action(on_content_change.clone());
+            container(custom)
                 .max_width(700)
-                .padding(padding::bottom(10))
-                .spacing(10),
-            )
-            .align_right(iced::FillPortion(3))
+                .align_right(iced::FillPortion(3))
         })
+        .align_y(Center)
         .spacing(10);
 
-        // let top = commands_desc
-        //     .get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
-        //     .is_some()
-        //     .then(|| {
-        let top =
-                bottom_center(
-                    row![
-                        container(icons::info().size(12)).style(move |t| {
-                            if hovered {
-                                container::Style {
-                                    text_color: Some(*crate::widget::BLUE),
-                                    ..container::transparent(t)
-                                }
-                            } else {
-                                container::transparent(t)
-                            }
-                        }),
-                        // text(" Command Documentation ").size(10),
-                        text(" komorebic help ").size(10),
-                        if expanded {
-                            icons::up_chevron().size(12)
-                        } else {
-                            icons::down_chevron().size(12)
-                        },
-                    ]
-                    .align_y(iced::Center),
-                )
-                .padding(padding::bottom(-10.0));
+        let top = bottom_center(
+            row![
+                container(icons::info().size(12)).style(move |t| {
+                    if hovered {
+                        container::Style {
+                            text_color: Some(*crate::widget::BLUE),
+                            ..container::transparent(t)
+                        }
+                    } else {
+                        container::transparent(t)
+                    }
+                }),
+                text(" komorebic help ").size(10),
+                if expanded {
+                    icons::up_chevron().size(12)
+                } else {
+                    icons::down_chevron().size(12)
+                },
+            ]
+            .align_y(Center),
+        )
+        .padding(padding::bottom(-10.0));
 
         hover(main, top)
     })
@@ -656,20 +714,23 @@ fn command_edit<'a>(
         });
         let selector = container(
             column![
-                row!["Komorebic commands:", container(commands_box)].spacing(5),
+                row!["Komorebic commands:", container(commands_box)]
+                    .spacing(5)
+                    .align_y(Center),
             ]
             .max_width(700)
             .padding(padding::bottom(10))
             .spacing(10),
         )
-        .align_left(iced::FillPortion(3));
+        .align_left(iced::FillPortion(3))
+        .into();
 
         if let Some(items) =
             commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
         {
-            vec![selector.into(), markdown(items, theme).map(Message::UrlClicked)]
+            vec![selector, markdown(items, theme).map(Message::UrlClicked)]
         } else {
-            vec![selector.into()]
+            vec![selector]
         }
     })
     .into()

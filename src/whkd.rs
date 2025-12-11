@@ -265,6 +265,12 @@ impl Whkd {
         self.is_dirty = false;
     }
 
+    /// Refreshes the current state after some new config as been loaded. This makes sure that each
+    /// screen will refresh any internal state to make use of the new loaded config.
+    pub fn refresh(&mut self) {
+        self.whkd.refresh(&self.whkdrc);
+    }
+
     pub fn load_commands_description(&self) -> Task<Message> {
         Task::batch(self.commands.iter().map(|command| {
             let command_c = command.clone();
