@@ -1,7 +1,10 @@
+use super::{SEPARATOR, WhkdBinary};
+
+use crate::BOLD_FONT;
 use crate::widget::modal;
 
-use iced::widget::{button, column, container, row, text};
-use iced::{Element, keyboard};
+use iced::widget::{button, column, container, rich_text, row, span, text};
+use iced::{Center, Color, Element, Fill, Shrink, keyboard, padding};
 use windows_sys::Win32::UI::{
     Input::KeyboardAndMouse::{GetKeyboardLayout, VkKeyScanExW},
     WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
@@ -12,11 +15,12 @@ pub fn keybind_modal<'a, Message: Clone + 'a>(
     show: bool,
     modifiers: &'a String,
     keys: &'a [String],
+    whkd_bin: &'a WhkdBinary,
     on_close: impl Fn(bool) -> Message + Clone,
 ) -> Element<'a, Message> {
     modal(
         content.into(),
-        show.then_some(modal_content(modifiers, keys, on_close.clone())),
+        show.then_some(modal_content(modifiers, keys, whkd_bin, on_close.clone())),
         on_close(false),
     )
 }
@@ -24,27 +28,37 @@ pub fn keybind_modal<'a, Message: Clone + 'a>(
 pub fn modal_content<'a, Message: Clone + 'a>(
     modifiers: &'a String,
     keys: &'a [String],
+    whkd_bin: &'a WhkdBinary,
     on_close: impl Fn(bool) -> Message,
 ) -> Element<'a, Message> {
+    let whkd_warnings = whkd_bin_warnings(whkd_bin);
+    let has_whkd_warnings = whkd_warnings.is_some();
     container(
         column![
             "Press some key to bind:",
             {
-                let mut key_pressed = row![text!("{}", modifiers),];
-
-                key_pressed = key_pressed
-                    .push((!modifiers.is_empty() && !keys.is_empty()).then_some(text(" + ")));
-                key_pressed = key_pressed.push(text!(
-                    "{}",
-                    keys.iter().fold(String::new(), |mut str, k| {
-                        if !str.is_empty() {
-                            str.push_str(" + ");
+                let key_pressed = text!(
+                    "{:^10}",
+                    keys.iter().fold(modifiers.clone(), |mut str, k| {
+                        if !str.is_empty() && !k.is_empty() {
+                            str.push_str(&SEPARATOR);
                         }
                         str.push_str(k);
                         str
                     })
-                ));
-                key_pressed
+                )
+                .font(iced::font::Font::MONOSPACE);
+
+                container(key_pressed)
+                    .center_x(Shrink)
+                    .padding(padding::left(10).right(10))
+                    .style(|t: &iced::Theme| {
+                        let palette = t.extended_palette();
+                        container::Style {
+                            background: Some(palette.background.weaker.color.into()),
+                            ..container::transparent(t)
+                        }
+                    })
             },
             row![
                 button("Save").on_press(on_close(true)),
@@ -52,14 +66,93 @@ pub fn modal_content<'a, Message: Clone + 'a>(
                     .style(button::secondary)
                     .on_press(on_close(false))
             ]
+            .padding(if has_whkd_warnings {
+                padding::left(150).right(150).bottom(20)
+            } else {
+                padding::all(0)
+            })
             .spacing(10),
+            whkd_warnings,
         ]
-        .align_x(iced::Center)
+        .width(Shrink)
+        .align_x(Center)
         .spacing(10),
     )
-    .padding(50)
+    .padding(if has_whkd_warnings { 20 } else { 50 })
     .style(container::bordered_box)
     .into()
+}
+
+fn whkd_bin_warnings<'a, Message: 'a>(whkd_bin: &'a WhkdBinary) -> Option<Element<'a, Message>> {
+    let normal_warning = (whkd_bin.found && whkd_bin.running_initial && !whkd_bin.running_current)
+        .then_some(
+            rich_text![
+                span("WARNING: ")
+                    .font(*BOLD_FONT)
+                    .color(*crate::widget::YELLOW),
+                span("Whkd was running! "),
+                span("Komorice stopped it temporarily so that you can setup your keybind. "),
+                span("Once this modal is closed it will restart it again."),
+            ]
+            .size(12)
+            .width(Fill)
+            .on_link_click(iced::never),
+        );
+    let normal_warning_temp =
+        (whkd_bin.found && whkd_bin.running_initial && whkd_bin.running_current).then_some(
+            rich_text![
+                span("WARNING: ")
+                    .font(*BOLD_FONT)
+                    .color(*crate::widget::YELLOW),
+                span("Whkd is running! "),
+                span("Komorice stopped it temporarily so that you can setup your keybind.  ")
+                    .color(Color::TRANSPARENT),
+                span("Once this modal is closed it will restart it again. ")
+                    .color(Color::TRANSPARENT),
+            ]
+            .size(12)
+            .width(Fill)
+            .on_link_click(iced::never),
+        );
+    let unable_to_toggle_warning = (!whkd_bin.found && whkd_bin.running_initial).then_some(
+        rich_text![
+            span("WARNING: ")
+                .font(*BOLD_FONT)
+                .color(*crate::widget::YELLOW),
+            span("Whkd is running! "),
+            span(
+                "However Komorice failed to find the 'whkd.exe' binary \
+                on path, so it can't stop it and restart it for you! This means that you \
+                can't use this modal to bind to a key that will be captured by 'whkd'.\n\n\
+                You need to either stop 'whkd' yourself manually or make sure you add it \
+                on path and restart Komorice so that it can do it for you."
+            )
+        ]
+        .size(12)
+        .width(Fill)
+        .on_link_click(iced::never),
+    );
+    // let failed_to_stop_warning =
+    //     (whkd_bin.found && whkd_bin.running_initial && whkd_bin.running_current).then_some(
+    //         rich_text![
+    //             span("WARNING: ")
+    //                 .font(*BOLD_FONT)
+    //                 .color(*crate::widget::YELLOW),
+    //             span(
+    //                 "Whkd is running! Komorice tried to stop it temporarily so that you can setup \
+    //             your keybind, but failed to do so."
+    //             )
+    //         ]
+    //         .size(12)
+    //         .width(Fill)
+    //         .on_link_click(iced::never),
+    //     );
+
+    normal_warning
+        .or(normal_warning_temp)
+        .or(unable_to_toggle_warning)
+        // .or(failed_to_stop_warning)
+        .map(Into::into)
 }
 
 pub fn get_vk_key_mods(
