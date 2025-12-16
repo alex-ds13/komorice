@@ -1,4 +1,4 @@
-use super::{MODIFIERS, SEPARATOR, get_vk_key_mods, keybind_modal};
+use super::{MODIFIERS, SEPARATOR, WhkdBinary, get_vk_key_mods, keybind_modal};
 
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
@@ -42,6 +42,8 @@ pub enum Message {
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
+    StopWhkd,
+    StartWhkd,
 }
 
 #[derive(Debug)]
@@ -304,8 +306,20 @@ impl Bindings {
                 self.editing_states.remove(&idx);
                 self.editing_contents.remove(&idx);
             }
-            Message::OpenNewBindingKeysModal => self.modal_opened = Some(Modal::NewBinding),
-            Message::OpenBindingKeysModal(idx) => self.modal_opened = Some(Modal::Binding(idx)),
+            Message::OpenNewBindingKeysModal => {
+                self.modal_opened = Some(Modal::NewBinding);
+                self.pressed_mod = String::new();
+                self.pressed_keys = Vec::new();
+                self.pressed_keys_temp = Vec::new();
+                return (Action::StopWhkd, Task::none());
+            }
+            Message::OpenBindingKeysModal(idx) => {
+                self.modal_opened = Some(Modal::Binding(idx));
+                self.pressed_mod = String::new();
+                self.pressed_keys = Vec::new();
+                self.pressed_keys_temp = Vec::new();
+                return (Action::StopWhkd, Task::none());
+            }
             Message::CloseModal(save) => {
                 if save
                     && (!self.pressed_mod.is_empty() || !self.pressed_keys.is_empty())
@@ -328,6 +342,7 @@ impl Bindings {
                     }
                 }
                 self.modal_opened = None;
+                return (Action::StartWhkd, Task::none());
             }
         }
         (Action::None, Task::none())
@@ -336,6 +351,7 @@ impl Bindings {
     pub fn view<'a>(
         &'a self,
         whkdrc: &'a Whkdrc,
+        whkd_bin: &'a WhkdBinary,
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
@@ -511,6 +527,7 @@ impl Bindings {
             self.modal_opened.is_some(),
             &self.pressed_mod,
             &self.pressed_keys,
+            whkd_bin,
             Message::CloseModal,
         )
     }
@@ -562,6 +579,21 @@ impl Bindings {
             })
         } else {
             Subscription::none()
+        }
+    }
+
+    /// Refreshes any internal state with a newly loaded config.
+    pub fn refresh(&mut self, whkdrc: &Whkdrc) {
+        self.modal_opened = None;
+        if !self.editing.is_empty() {
+            self.editing.iter().for_each(|idx| {
+                let content = if let Some(binding) = whkdrc.bindings.get(*idx) {
+                    text_editor::Content::with_text(&binding.command)
+                } else {
+                    text_editor::Content::new()
+                };
+                self.editing_contents.insert(*idx, content);
+            });
         }
     }
 

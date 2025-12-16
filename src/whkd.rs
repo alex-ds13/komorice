@@ -115,6 +115,7 @@ impl Whkd {
                     // println!("Whkdrc Loaded: {whkdrc:#?}");
                     self.whkdrc = whkdrc.clone();
                     self.loaded_whkdrc = Arc::new(whkdrc);
+                    self.refresh();
                     //TODO: show message on app to load external changes
                     return (Action::LoadedWhkdrc, Task::none());
                 }
@@ -137,14 +138,19 @@ impl Whkd {
                 let (action, task) = self.whkd.update(message, &mut self.whkdrc);
                 let action_task = match action {
                     screen::whkd::Action::None => Task::none(),
-                    screen::whkd::Action::ToggleWhkd => {
+                    screen::whkd::Action::StopWhkd => {
                         if self.whkd_bin.found
-                            && self.whkd_bin.running
+                            && self.whkd_bin.running_initial
                             && self.whkd_bin.running_current
                         {
                             stop_whkd()
-                        } else if self.whkd_bin.found
-                            && self.whkd_bin.running
+                        } else {
+                            Task::none()
+                        }
+                    }
+                    screen::whkd::Action::StartWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running_initial
                             && !self.whkd_bin.running_current
                         {
                             restart_whkd()
@@ -165,11 +171,31 @@ impl Whkd {
                         .update(message, &mut self.whkdrc, &self.commands);
                 let action_task = match action {
                     screen::whkd::bindings::Action::None => Task::none(),
+                    screen::whkd::bindings::Action::StopWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running_initial
+                            && self.whkd_bin.running_current
+                        {
+                            stop_whkd()
+                        } else {
+                            Task::none()
+                        }
+                    }
+                    screen::whkd::bindings::Action::StartWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running_initial
+                            && !self.whkd_bin.running_current
+                        {
+                            restart_whkd()
+                        } else {
+                            Task::none()
+                        }
+                    }
                 };
                 self.check_changes();
                 return (
                     Action::None,
-                    Task::batch([task, action_task]).map(Message::Bindings),
+                    Task::batch([task.map(Message::Bindings), action_task]),
                 );
             }
             Message::LoadedCommands(commands) => {
@@ -198,7 +224,7 @@ impl Whkd {
             Message::StartedWhkd => self.whkd_bin.running_current = true,
             Message::FailedToStartWhkd => {}
             Message::WhkdStatus(running) => {
-                self.whkd_bin.running = running;
+                self.whkd_bin.running_initial = running;
                 self.whkd_bin.running_current = running;
             }
         }
@@ -219,7 +245,13 @@ impl Whkd {
                 .map(Message::Whkd),
             Screen::WhkdBinding => self
                 .bindings
-                .view(&self.whkdrc, &self.commands, &self.commands_desc, theme)
+                .view(
+                    &self.whkdrc,
+                    &self.whkd_bin,
+                    &self.commands,
+                    &self.commands_desc,
+                    theme,
+                )
                 .map(Message::Bindings),
             _ => space::horizontal().into(),
         }
@@ -249,6 +281,7 @@ impl Whkd {
     pub fn discard_changes(&mut self) {
         self.whkdrc = (*self.loaded_whkdrc).clone();
         self.is_dirty = false;
+        self.refresh();
     }
 
     fn check_changes(&mut self) {
@@ -263,12 +296,15 @@ impl Whkd {
         self.whkdrc = DEFAULT_WHKDRC.clone();
         self.loaded_whkdrc = Arc::new(DEFAULT_WHKDRC.clone());
         self.is_dirty = false;
+
+        self.refresh();
     }
 
     /// Refreshes the current state after some new config as been loaded. This makes sure that each
     /// screen will refresh any internal state to make use of the new loaded config.
     pub fn refresh(&mut self) {
         self.whkd.refresh(&self.whkdrc);
+        self.bindings.refresh(&self.whkdrc);
     }
 
     pub fn load_commands_description(&self) -> Task<Message> {
@@ -321,14 +357,8 @@ impl Whkd {
 #[derive(Debug, Default)]
 pub struct WhkdBinary {
     pub found: bool,
-    pub running: bool,
+    pub running_initial: bool,
     pub running_current: bool,
-}
-
-impl WhkdBinary {
-    pub fn is_running(&self) -> bool {
-        self.running && self.running_current
-    }
 }
 
 fn find_whkd() -> Task<Message> {

@@ -2,7 +2,7 @@ pub mod bindings;
 pub mod helpers;
 
 pub use bindings::Bindings;
-pub use helpers::{keybind_modal, get_vk_key_mods};
+pub use helpers::{get_vk_key_mods, keybind_modal};
 
 use crate::{
     whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, WhkdBinary, Whkdrc},
@@ -39,13 +39,13 @@ pub enum Message {
     KeyRelease(String, String),
     Navigate(NavMessage),
     UrlClicked(markdown::Url),
-    ToggleWhkd,
 }
 
 #[derive(Clone, Debug)]
 pub enum Action {
     None,
-    ToggleWhkd,
+    StopWhkd,
+    StartWhkd,
 }
 
 #[derive(Debug, Default)]
@@ -67,6 +67,7 @@ impl Whkd {
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
+                return (Action::StopWhkd, Task::none());
             }
             Message::CloseModal(save) => {
                 self.bind_key = false;
@@ -78,6 +79,7 @@ impl Whkd {
                     mods.append(&mut keys);
                     whkdrc.pause_binding = Some(mods);
                 }
+                return (Action::StartWhkd, Task::none());
             }
             Message::KeyPress(k, m) => {
                 if self.pressed_keys_temp.is_empty() {
@@ -172,9 +174,6 @@ impl Whkd {
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
-            Message::ToggleWhkd => {
-                return (Action::ToggleWhkd, Task::none());
-            }
         }
         (Action::None, Task::none())
     }
@@ -217,27 +216,14 @@ impl Whkd {
             theme,
         );
 
-        let toggle_whkd_but = if whkd_bin.found {
-            iced::widget::space().into()
-            // iced::widget::button(if whkd_bin.is_running() {
-            //     "Stop Whkd"
-            // } else {
-            //     "Start Whkd"
-            // })
-            // .on_press(Message::ToggleWhkd)
-            // .into()
-        } else {
-            iced::widget::space().into()
-        };
-
-        let content =
-            opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook, toggle_whkd_but]);
+        let content = opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook]);
 
         keybind_modal(
             content,
             self.bind_key,
             &self.pressed_mod,
             &self.pressed_keys,
+            whkd_bin,
             Message::CloseModal,
         )
     }

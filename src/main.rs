@@ -343,7 +343,6 @@ impl Komorice {
                                 .sidebar
                                 .selected_screen(&self.configuration.config_type);
                         }
-                        self.whkd.refresh();
                         Task::none()
                     }
                     whkd::Action::FailedToLoadWhkdrc(app_error) => {
