@@ -11,7 +11,7 @@ use iced::{
     Center, Element, Subscription, Task, Theme, padding,
     widget::{
         bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
-        scrollable, space, text, text_editor,
+        scrollable, space, stack, text, text_editor,
     },
 };
 
@@ -314,7 +314,8 @@ impl Bindings {
                         Message::ChangeNewBindingMod,
                     )
                 ]
-                .spacing(10),
+                .spacing(10)
+                .align_y(Center),
                 false,
                 None,
                 None,
@@ -368,7 +369,8 @@ impl Bindings {
                                 move |pos, m| Message::ChangeBindingMod(idx, (pos, m)),
                             )
                         ]
-                        .spacing(10),
+                        .spacing(10)
+                        .align_y(Center),
                         false,
                         None,
                         None,
@@ -589,14 +591,26 @@ fn keys<'a>(
 ) -> Element<'a, Message> {
     let sb = split_binding(binding);
     let joined_keys = sb.keys.join(UNPADDED_SEPARATOR);
-    let key = widget::input("", joined_keys, on_key_change, None).width(75);
+    let hidden_str = if joined_keys.chars().count() <= 8 {
+        format!("{:n^8}", "n".repeat(joined_keys.len()))
+    } else {
+        let rest = joined_keys.len() - 8;
+        format!(
+            "{:n^8}{}",
+            "n".repeat(8),
+            joined_keys.chars().take(rest).collect::<String>()
+        )
+    };
+    let keys_hidden = container(text(hidden_str)).padding(5);
+    let key = widget::input("", joined_keys, on_key_change, None);
     row![
         mod_choose(sb.modifiers, 3, on_mod_change.clone()),
         mod_choose(sb.modifiers, 2, on_mod_change.clone()),
         mod_choose(sb.modifiers, 1, on_mod_change.clone()),
         mod_choose(sb.modifiers, 0, on_mod_change),
-        key,
+        stack![keys_hidden, key],
     ]
+    .align_y(Center)
     .spacing(5)
     .into()
 }

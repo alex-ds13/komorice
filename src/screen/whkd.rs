@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use iced::{
     Center, Element, Subscription, Task, Theme, keyboard, padding,
     widget::{
-        bottom_center, button, column, combo_box, container, markdown, pick_list, row, text,
+        bottom_center, button, column, combo_box, container, markdown, pick_list, row, stack, text,
         text_editor,
     },
 };
@@ -193,7 +193,9 @@ impl Whkd {
         let pause_binding = opt_helpers::opt_custom_el_disable_default(
             "Pause Binding",
             Some("Can be any hotkey combo to toggle all other hotkeys on/off. (default: None)"),
-            row![bind_button, keys(&whkdrc.pause_binding)].spacing(10),
+            row![bind_button, keys(&whkdrc.pause_binding)]
+                .spacing(10)
+                .align_y(Center),
             whkdrc.pause_binding.is_some(),
             Some(Message::PauseBinding(None)),
             None,
@@ -339,14 +341,26 @@ fn mod_choose<'a>(binding_mods: &[String], pos: usize) -> Option<Element<'a, Mes
 fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
     let sb = split_binding(binding);
     let joined_keys = sb.keys.join(UNPADDED_SEPARATOR);
+    let hidden_str = if joined_keys.chars().count() <= 8 {
+        format!("{:n^8}", "n".repeat(joined_keys.len()))
+    } else {
+        let rest = joined_keys.len() - 8;
+        format!(
+            "{:n^8}{}",
+            "n".repeat(8),
+            joined_keys.chars().take(rest).collect::<String>()
+        )
+    };
+    let keys_hidden = container(text(hidden_str)).padding(5);
     let key = widget::input("", joined_keys, Message::PBKey, None);
     row![
         mod_choose(sb.modifiers, 3),
         mod_choose(sb.modifiers, 2),
         mod_choose(sb.modifiers, 1),
         mod_choose(sb.modifiers, 0),
-        key,
+        stack![keys_hidden, key],
     ]
+    .align_y(Center)
     .spacing(5)
     .into()
 }
