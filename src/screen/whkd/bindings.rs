@@ -338,9 +338,7 @@ impl Bindings {
             column![
                 keybind,
                 command,
-                column![add_binding_button] //, row![copy_button, paste_button].spacing(5)]
-                    .align_x(iced::Right)
-                    .spacing(10),
+                column![add_binding_button].align_x(iced::Right).spacing(10),
             ]
             .spacing(10)
             .into()
@@ -489,7 +487,6 @@ impl Bindings {
                             modifiers,
                             text: _,
                         } => {
-                            println!("Physical Pressed: {physical_key:#?}");
                             let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
                             if !k.is_empty() {
                                 Some(Message::KeyPress(k, m))

@@ -237,7 +237,6 @@ impl Whkd {
                             modifiers,
                             text: _,
                         } => {
-                            println!("Physical Pressed: {physical_key:#?}");
                             let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
                             if !k.is_empty() {
                                 Some(Message::KeyPress(k, m))
@@ -267,29 +266,9 @@ impl Whkd {
         } else {
             Subscription::none()
         };
-        // let press = keyboard::on_key_press(|k, m| {
-        //     let (k, m) = get_vk_key_mods(k, m);
-        //     if !k.is_empty() {
-        //         Some(Message::KeyPress(k, m))
-        //     } else {
-        //         None
-        //     }
-        // });
-        // let release = keyboard::on_key_release(|k, m| {
-        //     let (k, m) = get_vk_key_mods(k, m);
-        //     if !k.is_empty() {
-        //         Some(Message::KeyRelease(k, m))
-        //     } else {
-        //         None
-        //     }
-        // });
         let navigation = navigation_sub().map(Message::Navigate);
 
-        Subscription::batch([
-            // press,
-            // release,
-            navigation, keys,
-        ])
+        Subscription::batch([navigation, keys])
     }
 
     pub fn load_new_commands(&mut self, commands: &[String]) {
