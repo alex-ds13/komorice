@@ -1,4 +1,4 @@
-use super::{MODIFIERS, SEPARATOR, WhkdBinary, get_vk_key_mods, keybind_modal};
+use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mods, keybind_modal};
 
 use crate::{
     whkd::{HotkeyBinding, Whkdrc},
@@ -112,65 +112,35 @@ impl Bindings {
                     self.pressed_keys_temp.remove(pos);
                 }
             }
-            Message::ChangeBindingMod(idx, (pos, mod1)) => {
+            Message::ChangeBindingMod(idx, (pos, modifier)) => {
                 if let Some(binding) = whkdrc.bindings.get_mut(idx) {
                     let sb = split_binding(binding);
-                    if mod1.is_empty() {
+                    if modifier.is_empty() {
                         if pos < sb.modifiers.len() {
                             binding.keys.remove(pos);
                         }
                     } else if let Some(k) = binding.keys.iter_mut().filter(|m| is_mod(m)).nth(pos) {
-                        *k = mod1.to_lowercase();
+                        *k = modifier;
                     } else if pos <= binding.keys.len() {
-                        binding.keys.insert(pos, mod1.to_lowercase());
+                        binding.keys.insert(pos, modifier);
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
                         println!(
-                            "Failed to add mod {mod1} to binding with index {pos} since len is {}",
+                            "Failed to add mod {modifier} to binding with index {pos} since len is {}",
                             binding.keys.len()
                         );
                     }
                 }
             }
-            Message::ChangeBindingKey(idx, key) => {
+            Message::ChangeBindingKey(idx, keys) => {
                 if let Some(binding) = whkdrc.bindings.get_mut(idx) {
                     let sb = split_binding(binding);
-                    let keys_count = sb.keys.len();
                     let mods_count = sb.modifiers.len();
-                    if key.is_empty() {
-                        if keys_count == 1 {
-                            binding.keys.pop();
-                        } else if keys_count >= 2 {
-                            //TODO: show error to user
-                            println!(
-                                "Failed to remove key {key} from binding since key count is {}, should be <=1",
-                                keys_count
-                            );
-                        }
-                    } else {
-                        if keys_count == 1 {
-                            let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
-                            if kk.len() > 1 {
-                                binding.keys.truncate(mods_count);
-                                kk.into_iter().for_each(|k| {
-                                    binding.keys.push(k);
-                                });
-                            } else if let Some(k) = binding.keys.last_mut() {
-                                *k = key;
-                            } else {
-                                binding.keys.push(key);
-                            }
-                        } else if keys_count == 0 {
-                            binding.keys.push(key);
-                        } else {
-                            //TODO: show error to user
-                            // println!("Failed to add key {key} to binding since key count is {}, should be <=1", keys_count);
-                            binding.keys.truncate(binding.keys.len() - keys_count);
-                            key.split(SEPARATOR).map(String::from).for_each(|k| {
-                                binding.keys.push(k);
-                            });
-                        }
+                    let _ = binding.keys.split_off(mods_count);
+                    if !keys.is_empty() {
+                        let keys = keys.split(&UNPADDED_SEPARATOR).map(|s| s.to_string());
+                        binding.keys.extend(keys);
                     }
                 }
             }
@@ -215,9 +185,9 @@ impl Bindings {
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
-            Message::ChangeNewBindingMod(pos, mod1) => {
+            Message::ChangeNewBindingMod(pos, modifier) => {
                 let sb = split_binding(&self.new_binding);
-                if mod1.is_empty() {
+                if modifier.is_empty() {
                     if pos < sb.modifiers.len() {
                         self.new_binding.keys.remove(pos);
                     }
@@ -228,57 +198,25 @@ impl Bindings {
                     .filter(|m| is_mod(m))
                     .nth(pos)
                 {
-                    *k = mod1.to_lowercase();
+                    *k = modifier;
                 } else if pos <= self.new_binding.keys.len() {
-                    self.new_binding.keys.insert(pos, mod1.to_lowercase());
+                    self.new_binding.keys.insert(pos, modifier);
                 } else {
                     //TODO: show error to user in case `i` is higher than len(), this shouldn't
                     //happen though
                     println!(
-                        "Failed to add mod {mod1} to binding with index {pos} since len is {}",
+                        "Failed to add mod {modifier} to binding with index {pos} since len is {}",
                         self.new_binding.keys.len()
                     );
                 }
             }
-            Message::ChangeNewBindingKey(key) => {
+            Message::ChangeNewBindingKey(keys) => {
                 let sb = split_binding(&self.new_binding);
-                let keys_count = sb.keys.len();
                 let mods_count = sb.modifiers.len();
-                if key.is_empty() {
-                    if keys_count == 1 {
-                        self.new_binding.keys.pop();
-                    } else if keys_count >= 2 {
-                        //TODO: show error to user
-                        println!(
-                            "Failed to remove key {key} from new binding since key count is {}, should be <=1",
-                            keys_count
-                        );
-                    }
-                } else {
-                    if keys_count == 1 {
-                        let kk = key.split(SEPARATOR).map(String::from).collect::<Vec<_>>();
-                        if kk.len() > 1 {
-                            self.new_binding.keys.truncate(mods_count);
-                            kk.into_iter().for_each(|k| {
-                                self.new_binding.keys.push(k);
-                            });
-                        } else if let Some(k) = self.new_binding.keys.last_mut() {
-                            *k = key;
-                        } else {
-                            self.new_binding.keys.push(key);
-                        }
-                    } else if keys_count == 0 {
-                        self.new_binding.keys.push(key);
-                    } else {
-                        //TODO: show error to user
-                        // println!("Failed to add key {key} to new binding since key count is {}, should be <=1", keys_count);
-                        self.new_binding
-                            .keys
-                            .truncate(self.new_binding.keys.len() - keys_count);
-                        key.split(SEPARATOR).map(String::from).for_each(|k| {
-                            self.new_binding.keys.push(k);
-                        });
-                    }
+                let _ = self.new_binding.keys.split_off(mods_count);
+                if !keys.is_empty() {
+                    let keys = keys.split(&UNPADDED_SEPARATOR).map(|s| s.to_string());
+                    self.new_binding.keys.extend(keys);
                 }
             }
             Message::ChangeNewBindingCommand(command) => {
@@ -326,17 +264,16 @@ impl Bindings {
                     && let Some(modal) = self.modal_opened.as_ref()
                 {
                     let modifiers = std::mem::take(&mut self.pressed_mod);
-                    let mut mods: Vec<_> =
-                        modifiers.split(&SEPARATOR).map(|s| s.to_string()).collect();
-                    let mut keys: Vec<_> = self.pressed_keys.drain(..).collect();
-                    mods.append(&mut keys);
+                    let mods = modifiers.split(&SEPARATOR).map(|s| s.to_string());
+                    let keys = self.pressed_keys.drain(..);
+                    let key_combination = mods.chain(keys).collect();
                     match modal {
                         Modal::NewBinding => {
-                            self.new_binding.keys = mods;
+                            self.new_binding.keys = key_combination;
                         }
                         Modal::Binding(idx) => {
                             if let Some(binding) = whkdrc.bindings.get_mut(*idx) {
-                                binding.keys = mods;
+                                binding.keys = key_combination;
                             }
                         }
                     }
@@ -482,9 +419,9 @@ impl Bindings {
                             row![].spacing(5),
                             |r, (i, m)| {
                                 if i == keys_count - 1 {
-                                    r.push(text(m))
+                                    r.push(text(m.trim()))
                                 } else {
-                                    r.push(text(m)).push(SEPARATOR)
+                                    r.push(text(m.trim())).push(SEPARATOR)
                                 }
                             },
                         ))
@@ -651,8 +588,8 @@ fn keys<'a>(
     on_mod_change: impl Fn(usize, String) -> Message + Clone + 'a,
 ) -> Element<'a, Message> {
     let sb = split_binding(binding);
-    let joined_key = sb.keys.join(SEPARATOR);
-    let key = widget::input("", joined_key, on_key_change, None).width(75);
+    let joined_keys = sb.keys.join(UNPADDED_SEPARATOR);
+    let key = widget::input("", joined_keys, on_key_change, None).width(75);
     row![
         mod_choose(sb.modifiers, 3, on_mod_change.clone()),
         mod_choose(sb.modifiers, 2, on_mod_change.clone()),
