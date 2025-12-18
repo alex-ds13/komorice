@@ -265,7 +265,7 @@ pub fn get_vk_key_mods(
             Key::Character(ref c) => {
                 let x = c.encode_utf16();
                 let count = x.count();
-                println!("Count: {}", count);
+                // println!("Count: {}", count);
                 let mut x = c.encode_utf16();
                 if count == 1
                     && let Some(x) = x.next()
@@ -276,11 +276,11 @@ pub fn get_vk_key_mods(
                     let locale_id = unsafe { GetKeyboardLayout(current_window_thread_id) };
                     let res = unsafe { VkKeyScanExW(x as _, locale_id) };
                     let vk = res & 0x00FF;
-                    let m_state = res >> 8;
-                    println!("m_state: {m_state}");
+                    // let m_state = res >> 8;
+                    // println!("m_state: {m_state}");
                     VKey::from_vk_code(vk as u16)
                 } else {
-                    println!("Key: {key:?}");
+                    // println!("Key: {key:?}");
                     return None;
                 }
             }
