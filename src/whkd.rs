@@ -23,6 +23,7 @@ pub use whkd_core::{HotkeyBinding, Shell, Whkdrc};
 pub static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
 
 pub const SEPARATOR: &str = " + ";
+pub const UNPADDED_SEPARATOR: &str = "+";
 
 pub static DEFAULT_WHKDRC: Whkdrc = Whkdrc {
     shell: Shell::Pwsh,

@@ -5,7 +5,7 @@ pub use bindings::Bindings;
 pub use helpers::{get_vk_key_mods, keybind_modal};
 
 use crate::{
-    whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, WhkdBinary, Whkdrc},
+    whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, UNPADDED_SEPARATOR, WhkdBinary, Whkdrc},
     widget::{self, hover, icons, opt_helpers},
 };
 
@@ -73,11 +73,10 @@ impl Whkd {
                 self.bind_key = false;
                 if save && (!self.pressed_mod.is_empty() || !self.pressed_keys.is_empty()) {
                     let modifiers = std::mem::take(&mut self.pressed_mod);
-                    let mut mods: Vec<_> =
-                        modifiers.split(&SEPARATOR).map(|s| s.to_string()).collect();
-                    let mut keys: Vec<_> = self.pressed_keys.drain(..).collect();
-                    mods.append(&mut keys);
-                    whkdrc.pause_binding = Some(mods);
+                    let mods = modifiers.split(&SEPARATOR).map(|s| s.to_string());
+                    let keys = self.pressed_keys.drain(..);
+                    let key_combination = mods.chain(keys).collect();
+                    whkdrc.pause_binding = Some(key_combination);
                 }
                 return (Action::StartWhkd, Task::none());
             }
@@ -96,63 +95,55 @@ impl Whkd {
                     self.pressed_keys_temp.remove(pos);
                 }
             }
-            Message::PBMod(i, mod1) => {
+            Message::PBMod(i, modifier) => {
                 let sb = split_binding(&whkdrc.pause_binding);
-                if mod1.is_empty() {
+                if modifier.is_empty() {
                     if i < sb.modifiers.len()
                         && let Some(pause_binding) = &mut whkdrc.pause_binding
                         && i < pause_binding.len()
                     {
                         pause_binding.remove(i);
+                        if pause_binding.is_empty() {
+                            whkdrc.pause_binding = None;
+                        }
                     }
                 } else if let Some(pause_binding) = &mut whkdrc.pause_binding {
                     if let Some(k) = pause_binding.iter_mut().filter(|m| is_mod(m)).nth(i) {
-                        *k = mod1.to_lowercase();
+                        *k = modifier;
                     } else if i <= pause_binding.len() {
-                        pause_binding.insert(i, mod1.to_lowercase());
+                        pause_binding.insert(i, modifier);
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
                         println!(
-                            "Failed to add mod {mod1} to pause_binding with index {i} since len is {}",
+                            "Failed to add mod {modifier} to pause_binding with index {i} since len is {}",
                             pause_binding.len()
                         );
                     }
                 } else {
-                    whkdrc.pause_binding = Some(vec![mod1.to_lowercase()]);
+                    whkdrc.pause_binding = Some(vec![modifier]);
                 }
             }
-            Message::PBKey(key) => {
-                let keys_count = split_binding(&whkdrc.pause_binding).key.len();
-                if key.is_empty() {
-                    if keys_count == 1 {
-                        whkdrc.pause_binding.as_mut().and_then(|pb| pb.pop());
-                    } else if keys_count >= 2 {
-                        //TODO: show error to user
-                        println!(
-                            "Failed to remove key {key} from pause_binding since key count is {}, should be <=1",
-                            keys_count
-                        );
-                    }
-                } else if let Some(pause_binding) = whkdrc.pause_binding.as_mut() {
-                    if keys_count == 1 {
-                        if let Some(k) = pause_binding.last_mut() {
-                            *k = key;
-                        } else {
-                            pause_binding.push(key);
+            Message::PBKey(keys) => {
+                let sb = split_binding(&whkdrc.pause_binding);
+                let mods_count = sb.modifiers.len();
+                if let Some(pause_binding) = whkdrc.pause_binding.as_mut() {
+                    let _ = pause_binding.split_off(mods_count);
+                    if keys.is_empty() {
+                        if pause_binding.is_empty() {
+                            whkdrc.pause_binding = None;
                         }
-                    } else if keys_count == 0 {
-                        pause_binding.push(key);
                     } else {
-                        //TODO: show error to user
-                        println!(
-                            "Failed to add key {key} to pause_binding since key count is {}, should be <=1",
-                            keys_count
-                        );
+                        let keys = keys.split(&UNPADDED_SEPARATOR).map(|s| s.to_string());
+                        pause_binding.extend(keys);
                     }
                 } else {
-                    whkdrc.pause_binding = Some(vec![key]);
-                }
+                    let keys = keys
+                        .split(&UNPADDED_SEPARATOR)
+                        .map(|s| s.to_string())
+                        .collect();
+                    whkdrc.pause_binding = Some(keys);
+                };
             }
             Message::PauseBinding(binding) => whkdrc.pause_binding = binding,
             Message::PauseHook(pause_hook) => {
@@ -347,23 +338,8 @@ fn mod_choose<'a>(binding_mods: &[String], pos: usize) -> Option<Element<'a, Mes
 
 fn keys(binding: &Option<Vec<String>>) -> Element<'_, Message> {
     let sb = split_binding(binding);
-    let key = widget::input(
-        "",
-        sb.key.iter().fold(String::new(), |mut s, k| {
-            if !k.is_empty() {
-                if s.is_empty() {
-                    s.push_str(k);
-                } else {
-                    s.push_str(SEPARATOR);
-                    s.push_str(k);
-                }
-            }
-            s
-        }),
-        Message::PBKey,
-        None,
-    )
-    .width(75);
+    let joined_keys = sb.keys.join(UNPADDED_SEPARATOR);
+    let key = widget::input("", joined_keys, Message::PBKey, None);
     row![
         mod_choose(sb.modifiers, 3),
         mod_choose(sb.modifiers, 2),
@@ -495,13 +471,13 @@ fn split_pause_hook<'a>(
 
 struct SplitBinding<'a> {
     modifiers: &'a [String],
-    key: &'a [String],
+    keys: &'a [String],
 }
 impl<'a> From<(&'a [String], &'a [String])> for SplitBinding<'a> {
     fn from(value: (&'a [String], &'a [String])) -> Self {
         Self {
             modifiers: value.0,
-            key: value.1,
+            keys: value.1,
         }
     }
 }
@@ -509,7 +485,7 @@ impl<'a> From<(&'a [String; 0], &'a [String; 0])> for SplitBinding<'a> {
     fn from(value: (&'a [String; 0], &'a [String; 0])) -> Self {
         Self {
             modifiers: value.0,
-            key: value.1,
+            keys: value.1,
         }
     }
 }
