@@ -2,9 +2,10 @@ pub mod bindings;
 pub mod helpers;
 
 pub use bindings::Bindings;
-pub use helpers::{get_vk_key_mods, keybind_modal};
+pub use helpers::{get_vk_key_mods, modal_content};
 
 use crate::{
+    screen::View,
     whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, UNPADDED_SEPARATOR, WhkdBinary, Whkdrc},
     widget::{self, hover, icons, opt_helpers},
 };
@@ -176,7 +177,7 @@ impl Whkd {
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
-    ) -> Element<'a, Message> {
+    ) -> View<'a, Message> {
         let shell = opt_helpers::choose_with_disable_default(
             "Shell",
             Some("The Shell you want whkd to use. (default: pwsh)"),
@@ -211,13 +212,14 @@ impl Whkd {
 
         let content = opt_helpers::section_view("Whkd:", [shell, pause_binding, pause_hook]);
 
-        keybind_modal(
-            content,
-            self.bind_key,
-            &self.pressed_mod,
-            &self.pressed_keys,
-            whkd_bin,
-            Message::CloseModal,
+        View::new(content).modal(
+            self.bind_key.then_some(modal_content(
+                &self.pressed_mod,
+                &self.pressed_keys,
+                whkd_bin,
+                Message::CloseModal,
+            )),
+            Message::CloseModal(false),
         )
     }
 

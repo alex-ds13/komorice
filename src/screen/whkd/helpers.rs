@@ -1,7 +1,6 @@
 use super::{SEPARATOR, WhkdBinary};
 
 use crate::BOLD_FONT;
-use crate::widget::modal;
 
 use iced::widget::{button, column, container, rich_text, row, span, text};
 use iced::{Center, Color, Element, Fill, Shrink, keyboard, padding};
@@ -9,21 +8,6 @@ use windows_sys::Win32::UI::{
     Input::KeyboardAndMouse::{GetKeyboardLayout, VkKeyScanExW},
     WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
 };
-
-pub fn keybind_modal<'a, Message: Clone + 'a>(
-    content: impl Into<Element<'a, Message>>,
-    show: bool,
-    modifiers: &'a String,
-    keys: &'a [String],
-    whkd_bin: &'a WhkdBinary,
-    on_close: impl Fn(bool) -> Message + Clone,
-) -> Element<'a, Message> {
-    modal(
-        content.into(),
-        show.then_some(modal_content(modifiers, keys, whkd_bin, on_close.clone())),
-        on_close(false),
-    )
-}
 
 pub fn modal_content<'a, Message: Clone + 'a>(
     modifiers: &'a String,

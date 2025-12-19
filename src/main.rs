@@ -14,8 +14,8 @@ mod widget;
 use crate::apperror::{AppError, AppErrorKind};
 use crate::config::DEFAULT_CONFIG;
 use crate::screen::{
-    ConfigState, ConfigType, Configuration, Screen, animation, border, general, home, live_debug,
-    monitors, rules, sidebar, stackbar, theme, transparency,
+    ConfigState, ConfigType, Configuration, Screen, View, animation, border, general, home,
+    live_debug, monitors, rules, sidebar, stackbar, theme, transparency,
 };
 use crate::widget::{button_with_icon, icons};
 
@@ -503,9 +503,13 @@ impl Komorice {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let main_screen: Element<Message> = match self.main_screen {
-            Screen::Home => self.home.view(&self.configuration).map(Message::Home),
-            Screen::General => self.general.view(&self.config).map(Message::General),
+        let main_screen: View<Message> = match self.main_screen {
+            Screen::Home => self
+                .home
+                .view(&self.configuration)
+                .map(Message::Home)
+                .into(),
+            Screen::General => self.general.view(&self.config).map(Message::General).into(),
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
                     self.monitors
@@ -515,37 +519,46 @@ impl Komorice {
                             &self.config.display_index_preferences,
                         )
                         .map(Message::Monitors)
+                        .into()
                 } else {
                     space::horizontal().into()
                 }
             }
-            Screen::Border => self.border.view(&self.config).map(Message::Border),
+            Screen::Border => self.border.view(&self.config).map(Message::Border).into(),
             Screen::Stackbar => self
                 .stackbar
                 .view(self.config.stackbar.as_ref())
-                .map(Message::Stackbar),
+                .map(Message::Stackbar)
+                .into(),
             Screen::Transparency => self
                 .transparency
                 .view(&self.config)
-                .map(Message::Transparency),
+                .map(Message::Transparency)
+                .into(),
             Screen::Animations => self
                 .animation
                 .view(self.config.animation.as_ref())
-                .map(Message::Animation),
-            Screen::Theme => self.theme_screen.view(&self.config).map(Message::Theme),
+                .map(Message::Animation)
+                .into(),
+            Screen::Theme => self
+                .theme_screen
+                .view(&self.config)
+                .map(Message::Theme)
+                .into(),
             Screen::Rules => self
                 .rules
                 .view(&self.config, self.settings.show_advanced)
-                .map(Message::Rules),
-            Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug),
-            Screen::Settings => self.settings.view().map(Message::Settings),
+                .map(Message::Rules)
+                .into(),
+            Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug).into(),
+            Screen::Settings => self.settings.view().map(Message::Settings).into(),
             Screen::Whkd | Screen::WhkdBinding => {
                 self.whkd.view(&self.settings.theme).map(Message::Whkd)
             }
         };
 
         if matches!(self.main_screen, Screen::Home) {
-            return main_screen;
+            return main_screen.element;
         }
 
         let sidebar = self
@@ -569,13 +582,23 @@ impl Komorice {
                 .into(),
         ]);
         let right_col = column![
-            container(main_screen)
+            container(main_screen.element)
                 .height(Fill)
                 .padding(padding::all(20).bottom(0)),
             container(rule::horizontal(2.0)).padding(padding::bottom(5)),
             save_buttons,
         ];
+
         let main_content = row![sidebar, rule::vertical(2.0), right_col].padding(10);
+        let main_content = if let Some(screen_modal) = main_screen.modal {
+            widget::modal(
+                main_content,
+                screen_modal.element,
+                screen_modal.close_message,
+            )
+        } else {
+            main_content.into()
+        };
         let modal_content = self.show_save_modal.then(|| self.save_warning());
         let main_modal = widget::modal(main_content, modal_content, Message::ToggleSaveModal);
         let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());

@@ -2,14 +2,14 @@ pub mod unparser;
 
 use crate::{
     apperror::{AppError, AppErrorKind},
-    screen::{self, ConfigState, ConfigType, Configuration, Screen},
+    screen::{self, ConfigState, ConfigType, Configuration, Screen, View},
 };
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use async_compat::Compat;
 use iced::{
-    Element, Subscription, Task, Theme,
+    Subscription, Task, Theme,
     futures::{SinkExt, channel::mpsc},
     widget::{markdown, space},
 };
@@ -232,7 +232,7 @@ impl Whkd {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, theme: &'a Theme) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, theme: &'a Theme) -> View<'a, Message> {
         match self.screen {
             Screen::Whkd => self
                 .whkd
