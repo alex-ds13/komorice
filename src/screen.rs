@@ -168,11 +168,10 @@ impl ConfigState {
 }
 
 /// A View object that can be returned by some screen which always includes the screen view element
-/// and some optional modal and title.
+/// and some optional modal.
 pub struct View<'a, Message> {
     pub element: Element<'a, Message>,
     pub modal: Option<Modal<'a, Message>>,
-    pub title: Option<Element<'a, Message>>,
 }
 
 impl<'a, Message> View<'a, Message> {
@@ -181,7 +180,6 @@ impl<'a, Message> View<'a, Message> {
         Self {
             element: element.into(),
             modal: None,
-            title: None,
         }
     }
 
@@ -195,12 +193,6 @@ impl<'a, Message> View<'a, Message> {
         self
     }
 
-    /// Adds a title to the `View`.
-    pub fn title(mut self, title: impl Into<Element<'a, Message>>) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
     /// Applies a transformation to the produced message of the elements.
     pub fn map<MessageB, F>(self, f: F) -> View<'a, MessageB>
     where
@@ -211,7 +203,6 @@ impl<'a, Message> View<'a, Message> {
         View {
             element: self.element.map(f.clone()),
             modal: self.modal.map(|modal| modal.map(f.clone())),
-            title: self.title.map(|el| el.map(f)),
         }
     }
 }
