@@ -356,7 +356,7 @@ fn hook_custom<'a>(
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
     widget::expandable::expandable(move |hovered, expanded| {
         let label = if is_dirty {
-            row![text("Command")]
+            row![text("Pause Hook")]
                 .push(widget::opt_helpers::reset_button(Some(Message::PauseHook(
                     DEFAULT_WHKDRC.pause_hook.clone(),
                 ))))
@@ -364,12 +364,15 @@ fn hook_custom<'a>(
                 .height(30)
                 .align_y(Center)
         } else {
-            row![text("Command")].height(30).align_y(Center)
+            row![text("Pause Hook")].height(30).align_y(Center)
         };
 
         let main = row![widget::opt_helpers::label_element_with_description(
             label,
-            Some("A command that should run when the keybind above is triggered.")
+            Some(
+                "A command that should run when the keybind above is triggered. (default: None)\n\n\
+                You can use this to pause komorebi along with whkd for example."
+            )
         )]
         .push(widget::opt_helpers::disable_checkbox(None))
         .push({
