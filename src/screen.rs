@@ -166,3 +166,91 @@ impl ConfigState {
         }
     }
 }
+
+/// A View object that can be returned by some screen which always includes the screen view element
+/// and some optional modal and title.
+pub struct View<'a, Message> {
+    pub element: Element<'a, Message>,
+    pub modal: Option<Modal<'a, Message>>,
+    pub title: Option<Element<'a, Message>>,
+}
+
+impl<'a, Message> View<'a, Message> {
+    /// Creates a new `View` with the given element.
+    pub fn new(element: impl Into<Element<'a, Message>>) -> Self {
+        Self {
+            element: element.into(),
+            modal: None,
+            title: None,
+        }
+    }
+
+    /// Adds a modal to the `View`, including a close message.
+    pub fn modal(
+        mut self,
+        modal: Option<impl Into<Element<'a, Message>>>,
+        close_message: Message,
+    ) -> Self {
+        self.modal = Some(Modal::new(modal, close_message));
+        self
+    }
+
+    /// Adds a title to the `View`.
+    pub fn title(mut self, title: impl Into<Element<'a, Message>>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    /// Applies a transformation to the produced message of the elements.
+    pub fn map<MessageB, F>(self, f: F) -> View<'a, MessageB>
+    where
+        Message: 'a,
+        MessageB: 'a,
+        F: Fn(Message) -> MessageB + Clone + 'a,
+    {
+        View {
+            element: self.element.map(f.clone()),
+            modal: self.modal.map(|modal| modal.map(f.clone())),
+            title: self.title.map(|el| el.map(f)),
+        }
+    }
+}
+
+impl<'a, Message, T> From<T> for View<'a, Message>
+where
+    T: Into<Element<'a, Message>>,
+{
+    fn from(value: T) -> Self {
+        View::new(value.into())
+    }
+}
+
+/// A Modal object that can be returned by some screen which always includes an optional modal element
+/// and the close message.
+pub struct Modal<'a, Message> {
+    pub element: Option<Element<'a, Message>>,
+    pub close_message: Message,
+}
+
+impl<'a, Message> Modal<'a, Message> {
+    /// Creates a new `Modal` with the given optional element and close message.
+    pub fn new(element: Option<impl Into<Element<'a, Message>>>, close_message: Message) -> Self {
+        Self {
+            element: element.map(Into::into),
+            close_message,
+        }
+    }
+
+    /// Applies a transformation to the produced message of the elements.
+    pub fn map<MessageB, F>(self, f: F) -> Modal<'a, MessageB>
+    where
+        Message: 'a,
+        MessageB: 'a,
+        F: Fn(Message) -> MessageB + Clone + 'a,
+    {
+        Modal {
+            element: self.element.map(|el| el.map(f.clone())),
+            close_message: f(self.close_message),
+        }
+    }
+}

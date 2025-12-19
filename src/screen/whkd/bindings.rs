@@ -1,6 +1,7 @@
-use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mods, keybind_modal};
+use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mods, modal_content};
 
 use crate::{
+    screen::View,
     whkd::{HotkeyBinding, Whkdrc},
     widget::{self, button_with_icon, hover, icons, opt_helpers},
 };
@@ -292,7 +293,7 @@ impl Bindings {
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
-    ) -> Element<'a, Message> {
+    ) -> View<'a, Message> {
         let add_new_binding_button =
             widget::button_with_icon(icons::plus(), text("Add New Binding"))
                 .on_press(Message::ToggleShowNewBinding)
@@ -459,13 +460,14 @@ impl Bindings {
         ]
         .spacing(10);
 
-        keybind_modal(
-            content,
-            self.modal_opened.is_some(),
-            &self.pressed_mod,
-            &self.pressed_keys,
-            whkd_bin,
-            Message::CloseModal,
+        View::new(content).modal(
+            self.modal_opened.is_some().then_some(modal_content(
+                &self.pressed_mod,
+                &self.pressed_keys,
+                whkd_bin,
+                Message::CloseModal,
+            )),
+            Message::CloseModal(false),
         )
     }
 
