@@ -13,7 +13,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use iced::{
     Center, Element, Fill, Subscription, Task, padding,
-    widget::{Id, button, checkbox, column, container, row, rule, scrollable, space, text},
+    widget::{
+        Id, button, checkbox, column, container, rich_text, row, rule, scrollable, space, text,
+    },
 };
 use komorebi_client::{MonitorConfig, Rect};
 
@@ -34,6 +36,13 @@ pub enum Message {
     ChangeIndexPreferenceIndex(usize, usize),
     ChangeIndexPreferenceId(usize, String),
     ChangeDisplayIndexPreferences(Option<HashMap<usize, String>>),
+    Title(TitleLink),
+}
+
+#[derive(Clone, Debug)]
+pub enum TitleLink {
+    Monitors,
+    Monitor(usize, monitor::SubScreen),
 }
 
 #[derive(Clone, Debug)]
@@ -262,6 +271,17 @@ impl Monitors {
                 *display_index_preferences = dip;
                 *display_info = get_display_information(display_index_preferences);
             }
+            Message::Title(link) => match link {
+                TitleLink::Monitors => self.monitor_to_config = None,
+                TitleLink::Monitor(idx, sub_screen) => {
+                    if let Some(monitor) = self.monitors.get_mut(&idx) {
+                        let task = monitor
+                            .set_subscreen(sub_screen)
+                            .map(move |m| Message::MonitorConfigChanged(idx, m));
+                        return (Action::None, task);
+                    }
+                }
+            },
         }
         (Action::None, Task::none())
     }
@@ -272,16 +292,18 @@ impl Monitors {
         display_info: &'a HashMap<usize, DisplayInfo>,
         display_index_preferences: &'a Option<HashMap<usize, String>>,
     ) -> Element<'a, Message> {
-        let mut main_title = if let Some(idx) = self.monitor_to_config {
-            row![
-                button(text("Monitors > ").size(20).font(*BOLD_FONT))
-                    .on_press(Message::ConfigMonitor(idx))
-                    .padding(0)
-                    .style(button::text)
-            ]
-        } else {
-            row![text("Monitors:").size(20).font(*BOLD_FONT)]
-        };
+        let mut main_title_spans = vec![
+            iced::widget::span("Monitors").link_maybe(
+                self.monitor_to_config
+                    .is_some()
+                    .then_some(TitleLink::Monitors),
+            ),
+            iced::widget::span(if self.monitor_to_config.is_some() {
+                " > "
+            } else {
+                ":"
+            }),
+        ];
 
         let mut col = column![space::horizontal()]
             .spacing(10)
@@ -295,7 +317,7 @@ impl Monitors {
             let MonitorView { title, contents } = monitor
                 .view(m_config)
                 .map(move |message| Message::MonitorConfigChanged(monitor_idx, message));
-            main_title = main_title.push(title);
+            main_title_spans.extend(title);
             col = col.extend(contents);
         } else if self.show_monitors_list {
             col = monitors_config
@@ -370,6 +392,11 @@ impl Monitors {
                 .align_x(Center)
                 .style(container::rounded_box)
         });
+
+        let main_title = rich_text(main_title_spans)
+            .size(20)
+            .font(*BOLD_FONT)
+            .on_link_click(Message::Title);
 
         column![main_title, rule::horizontal(2.0), show_monitors_display]
             .push(monitors_display)
