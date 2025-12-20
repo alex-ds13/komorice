@@ -173,6 +173,7 @@ impl Bindings {
                 };
                 let new_binding = std::mem::replace(&mut self.new_binding, default_binding);
                 self.new_binding_content = text_editor::Content::new();
+                self.show_new_binding = false;
                 whkdrc.bindings.push(new_binding);
             }
             Message::RemoveBinding(idx) => {
