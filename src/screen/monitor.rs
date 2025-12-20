@@ -70,30 +70,6 @@ pub struct MonitorView<'a, M> {
     pub contents: Vec<Element<'a, M>>,
 }
 
-pub trait SpanMapper<'a, A, B> {
-    type Output;
-    fn map(self, f: impl Fn(A) -> B + 'a) -> Self::Output;
-}
-
-impl<'a, A, B> SpanMapper<'a, A, B> for Span<'a, A> {
-    type Output = Span<'a, B>;
-
-    fn map(self, f: impl Fn(A) -> B + 'a) -> Self::Output {
-        Span {
-            text: self.text,
-            size: self.size,
-            line_height: self.line_height,
-            font: self.font,
-            color: self.color,
-            link: self.link.map(|l| f(l)),
-            highlight: self.highlight,
-            padding: self.padding,
-            underline: self.underline,
-            strikethrough: self.strikethrough,
-        }
-    }
-}
-
 impl<'a, M> MonitorView<'a, M> {
     pub fn map<B>(self, f: impl Fn(M) -> B + Clone + 'a) -> MonitorView<'a, B>
     where
