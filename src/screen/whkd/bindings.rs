@@ -11,10 +11,12 @@ use std::collections::{HashMap, HashSet};
 use iced::{
     Center, Element, Subscription, Task, Theme, padding,
     widget::{
-        bottom_center, button, column, combo_box, container, markdown, pick_list, right, row,
-        scrollable, space, stack, text, text_editor,
+        bottom_center, button, column, combo_box, container, markdown, operation, pick_list, right,
+        row, scrollable, space, stack, text, text_editor,
     },
 };
+
+const SCROLLABLE_ID: &'static str = "BINDINGS_SCROLLABLE";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -175,6 +177,7 @@ impl Bindings {
                 self.new_binding_content = text_editor::Content::new();
                 self.show_new_binding = false;
                 whkdrc.bindings.push(new_binding);
+                return (Action::None, operation::snap_to_end(SCROLLABLE_ID));
             }
             Message::RemoveBinding(idx) => {
                 if whkdrc.bindings.len() > idx {
@@ -457,7 +460,7 @@ impl Bindings {
 
         let content = column![
             opt_helpers::section_view("Bindings:", [add_new_binding_button, new_binding]),
-            opt_helpers::section_view("Bindings:", [bindings]),
+            opt_helpers::section_view_id("Bindings:", SCROLLABLE_ID, [bindings]),
         ]
         .spacing(10);
 
