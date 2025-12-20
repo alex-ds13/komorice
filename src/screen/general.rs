@@ -1,6 +1,7 @@
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::{self, icons};
 use crate::{
+    BOLD_FONT, ITALIC_FONT,
     config::DEFAULT_CONFIG,
     utils::DisplayOption,
     widget::opt_helpers::{self, DisableArgs},
@@ -10,7 +11,7 @@ use std::path::PathBuf;
 
 use iced::{
     Element, Task, padding,
-    widget::{button, column, pick_list, row, rule, text},
+    widget::{button, column, container, pick_list, row, rule, text},
 };
 use komorebi_client::{
     AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour, FloatingLayerBehaviour,
@@ -273,362 +274,473 @@ impl General {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
-        opt_helpers::section_view(
-            "General:",
+    pub fn view<'a>(
+        &'a self,
+        config: &'a StaticConfig,
+        show_advanced: bool,
+    ) -> Element<'a, Message> {
+        let asc_path = opt_helpers::expandable(
+            "App Specific Configuration Path",
+            Some(
+                "Path to applications.json from komorebi-application-specific-configurations (default: None)",
+            ),
+            || self.asc_children(&config.app_specific_configuration_path),
+            config.app_specific_configuration_path
+                != DEFAULT_CONFIG.app_specific_configuration_path,
+            Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
+                DEFAULT_CONFIG.app_specific_configuration_path.clone(),
+            )),
+            Some(DisableArgs {
+                disable: config.app_specific_configuration_path.is_none(),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
+                        (!v).then_some(DEFAULT_CONFIG.app_specific_configuration_path.clone())
+                            .flatten(),
+                    ))
+                },
+            }),
+        );
+        let cross_boundary_behaviour = opt_helpers::choose_with_disable_default(
+            "Cross Boundary Behaviour",
+            Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
+            vec![
+                t("Selected: 'Monitor' -> Attempt to perform actions across a monitor boundary").into(),
+                t("Selected: 'Workspace' -> Attempt to perform actions across a workspace boundary").into(),
+            ],
+            [CrossBoundaryBehaviour::Monitor, CrossBoundaryBehaviour::Workspace],
+            config.cross_boundary_behaviour.or(DEFAULT_CONFIG.cross_boundary_behaviour),
+            |selected| Message::ConfigChange(ConfigChange::CrossBoundaryBehaviour(selected)),
+            DEFAULT_CONFIG.cross_boundary_behaviour,
+            None,
+        );
+        let cross_monitor_move_behaviour = opt_helpers::choose_with_disable_default(
+            "Cross Monitor Move Behaviour",
+            Some("Determine what happens when a window is moved across a monitor boundary (default: Swap)"),
+            vec![
+                t("Selected: 'Swap' -> Swap the window container with the window container at the edge of the adjacent monitor").into(),
+                t("Selected: 'Insert' -> Insert the window container into the focused workspace on the adjacent monitor").into(),
+                t("Selected: 'NoOp' -> Do nothing if trying to move a window container in the direction of an adjacent monitor").into(),
+            ],
+            [MoveBehaviour::Swap, MoveBehaviour::Insert, MoveBehaviour::NoOp],
+            config.cross_monitor_move_behaviour.or(DEFAULT_CONFIG.cross_monitor_move_behaviour),
+            |selected| Message::ConfigChange(ConfigChange::CrossMonitorMoveBehaviour(selected)),
+            DEFAULT_CONFIG.cross_monitor_move_behaviour,
+            None,
+        );
+        let default_container_padding = opt_helpers::number_with_disable_default_option(
+            "Default Container Padding",
+            Some("Global default container padding (default: 10)"),
+            config
+                .default_container_padding
+                .or(DEFAULT_CONFIG.default_container_padding),
+            DEFAULT_CONFIG.default_container_padding,
+            |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
+            None,
+        );
+        let default_workspace_padding = opt_helpers::number_with_disable_default_option(
+            "Default Workspace Padding",
+            Some("Global default workspace padding (default: 10)"),
+            config
+                .default_workspace_padding
+                .or(DEFAULT_CONFIG.default_workspace_padding),
+            DEFAULT_CONFIG.default_workspace_padding,
+            |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
+            None,
+        );
+        let float_override = opt_helpers::toggle_with_disable_default(
+            "Float Override",
+            Some(
+                "Enable or disable float override, which makes it so every new window opens in floating mode (default: false)",
+            ),
+            config.float_override.or(DEFAULT_CONFIG.float_override),
+            DEFAULT_CONFIG.float_override,
+            |value| Message::ConfigChange(ConfigChange::FloatOverride(value)),
+            None,
+        );
+        let focus_follows_mouse = opt_helpers::choose_with_disable_default(
+            "Focus Follows Mouse",
+            Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)\n\
+            Use 'https://github.com/LGUG2Z/masir' instead"),
+            vec![
+                t("Selected: '[None]' -> No focus follows mouse is performed").into(),
+                t("Selected: 'Komorebi' -> A custom FFM implementation (slightly more CPU-intensive)").into(),
+                t("Selected: 'Windows' -> The native (legacy) Windows FFM implementation").into(),
+            ],
+            &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
+            Some(DisplayOption(config.focus_follows_mouse)),
+            |selected| Message::ConfigChange(ConfigChange::FocusFollowsMouse(selected.and_then(|v| v.0))),
+            Some(DisplayOption(DEFAULT_CONFIG.focus_follows_mouse)),
+            None,
+        );
+        let global_work_area_offset = opt_helpers::expandable(
+            "Global Work Area Offset",
+            Some("Global work area (space used for tiling) offset (default: None)"),
+            || {
+                [
+                    opt_helpers::number(
+                        "left",
+                        None,
+                        config.global_work_area_offset.map_or(0, |r| r.left),
+                        |value| {
+                            Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value))
+                        },
+                    ),
+                    opt_helpers::number(
+                        "top",
+                        None,
+                        config.global_work_area_offset.map_or(0, |r| r.top),
+                        |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
+                    ),
+                    opt_helpers::number(
+                        "bottom",
+                        None,
+                        config.global_work_area_offset.map_or(0, |r| r.bottom),
+                        |value| {
+                            Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value))
+                        },
+                    ),
+                    opt_helpers::number(
+                        "right",
+                        None,
+                        config.global_work_area_offset.map_or(0, |r| r.right),
+                        |value| {
+                            Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value))
+                        },
+                    ),
+                ]
+            },
+            config.global_work_area_offset.is_some(),
+            Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(None)),
+            Some(DisableArgs {
+                disable: config.global_work_area_offset.is_none(),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(
+                        (!v).then_some(Rect::default()),
+                    ))
+                },
+            }),
+        );
+        let mouse_follows_focus = opt_helpers::toggle_with_disable_default(
+            "Mouse Follows Focus",
+            Some("Enable or disable mouse follows focus (default: true)"),
+            config
+                .mouse_follows_focus
+                .or(DEFAULT_CONFIG.mouse_follows_focus),
+            DEFAULT_CONFIG.mouse_follows_focus,
+            |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value)),
+            None,
+        );
+        let resize_delta = opt_helpers::number_with_disable_default_option(
+            "Resize Delta",
+            Some("Delta to resize windows by (default 50)"),
+            config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
+            DEFAULT_CONFIG.resize_delta,
+            |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
+            None,
+        );
+        let slow_application_comp_time = opt_helpers::number_with_disable_default_option(
+            "Slow Application Compensation Time",
+            Some(
+                "How long to wait when compensating for slow applications, \
+            in milliseconds (default: 20)\n\n\
+            Value must be greater or equal to 0.",
+            ),
+            config
+                .slow_application_compensation_time
+                .or(DEFAULT_CONFIG.slow_application_compensation_time),
+            DEFAULT_CONFIG.slow_application_compensation_time,
+            |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
+            None,
+        );
+        let unmanaged_window_behavior = opt_helpers::choose_with_disable_default(
+            "Unmanaged Window Behaviour",
+            Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
+            vec![
+                t("Selected: 'Op' -> Process komorebic commands on temporarily unmanaged/floated windows").into(),
+                t("Selected: 'NoOp' -> Ignore komorebic commands on temporarily unmanaged/floated windows").into(),
+            ],
+            [OperationBehaviour::Op, OperationBehaviour::NoOp],
+            config.unmanaged_window_operation_behaviour.or(DEFAULT_CONFIG.unmanaged_window_operation_behaviour),
+            |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
+            DEFAULT_CONFIG.unmanaged_window_operation_behaviour,
+            None,
+        );
+        let window_container_behaviour = opt_helpers::choose_with_disable_default(
+            "Window Container Behaviour",
+            Some("Determine what happens when a new window is opened (default: Create)"),
+            vec![
+                t("Selected: 'Create' -> Create a new container for each new window").into(),
+                t("Selected: 'Append' -> Append new windows to the focused window container")
+                    .into(),
+            ],
             [
-                opt_helpers::expandable(
-                    "App Specific Configuration Path",
-                    Some("Path to applications.json from komorebi-application-specific-configurations (default: None)"),
-                    || self.asc_children(&config.app_specific_configuration_path),
-                    config.app_specific_configuration_path != DEFAULT_CONFIG.app_specific_configuration_path,
-                    Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(DEFAULT_CONFIG.app_specific_configuration_path.clone())),
-                    Some(DisableArgs {
-                        disable: config.app_specific_configuration_path.is_none(),
-                        label: Some("None"),
-                        on_toggle: |v| Message::ConfigChange(
-                            ConfigChange::AppSpecificConfigurationPath(
-                                (!v)
-                                .then_some(DEFAULT_CONFIG.app_specific_configuration_path.clone())
-                                .flatten()
-                            )
-                        ),
-                    }),
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Cross Boundary Behaviour",
-                    Some("Determine what happens when an action is called on a window at a monitor boundary (default: Monitor)"),
-                    vec![
-                        t("Selected: 'Monitor' -> Attempt to perform actions across a monitor boundary").into(),
-                        t("Selected: 'Workspace' -> Attempt to perform actions across a workspace boundary").into(),
-                    ],
-                    [CrossBoundaryBehaviour::Monitor, CrossBoundaryBehaviour::Workspace],
-                    config.cross_boundary_behaviour.or(DEFAULT_CONFIG.cross_boundary_behaviour),
-                    |selected| Message::ConfigChange(ConfigChange::CrossBoundaryBehaviour(selected)),
-                    DEFAULT_CONFIG.cross_boundary_behaviour,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Cross Monitor Move Behaviour",
-                    Some("Determine what happens when a window is moved across a monitor boundary (default: Swap)"),
-                    vec![
-                        t("Selected: 'Swap' -> Swap the window container with the window container at the edge of the adjacent monitor").into(),
-                        t("Selected: 'Insert' -> Insert the window container into the focused workspace on the adjacent monitor").into(),
-                        t("Selected: 'NoOp' -> Do nothing if trying to move a window container in the direction of an adjacent monitor").into(),
-                    ],
-                    [MoveBehaviour::Swap, MoveBehaviour::Insert, MoveBehaviour::NoOp],
-                    config.cross_monitor_move_behaviour.or(DEFAULT_CONFIG.cross_monitor_move_behaviour),
-                    |selected| Message::ConfigChange(ConfigChange::CrossMonitorMoveBehaviour(selected)),
-                    DEFAULT_CONFIG.cross_monitor_move_behaviour,
-                    None,
-                ),
-                opt_helpers::number_with_disable_default_option(
-                    "Default Container Padding",
-                    Some("Global default container padding (default: 10)"),
-                    config.default_container_padding.or(DEFAULT_CONFIG.default_container_padding),
-                    DEFAULT_CONFIG.default_container_padding,
-                    |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
-                    None,
-                ),
-                opt_helpers::number_with_disable_default_option(
-                    "Default Workspace Padding",
-                    Some("Global default workspace padding (default: 10)"),
-                    config.default_workspace_padding.or(DEFAULT_CONFIG.default_workspace_padding),
-                    DEFAULT_CONFIG.default_workspace_padding,
-                    |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
-                    None,
-                ),
-                opt_helpers::toggle_with_disable_default(
-                    "Float Override",
-                    Some("Enable or disable float override, which makes it so every new window opens in floating mode (default: false)"),
-                    config.float_override.or(DEFAULT_CONFIG.float_override),
-                    DEFAULT_CONFIG.float_override,
-                    |value| Message::ConfigChange(ConfigChange::FloatOverride(value)),
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Focus Follows Mouse",
-                    Some("END OF LIFE FEATURE: Determine focus follows mouse implementation (default: None)\n\
-                    Use 'https://github.com/LGUG2Z/masir' instead"),
-                    vec![
-                        t("Selected: '[None]' -> No focus follows mouse is performed").into(),
-                        t("Selected: 'Komorebi' -> A custom FFM implementation (slightly more CPU-intensive)").into(),
-                        t("Selected: 'Windows' -> The native (legacy) Windows FFM implementation").into(),
-                    ],
-                    &FOCUS_FOLLOWS_MOUSE_IMPLEMENTATION_OPTIONS[..],
-                    Some(DisplayOption(config.focus_follows_mouse)),
-                    |selected| Message::ConfigChange(ConfigChange::FocusFollowsMouse(selected.and_then(|v| v.0))),
-                    Some(DisplayOption(DEFAULT_CONFIG.focus_follows_mouse)),
-                    None,
-                ),
-                opt_helpers::expandable(
-                    "Global Work Area Offset",
-                    Some("Global work area (space used for tiling) offset (default: None)"),
-                    || [
-                        opt_helpers::number(
-                            "left",
-                            None,
-                            config.global_work_area_offset.map_or(0, |r| r.left),
-                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetLeft(value)),
-                        ),
-                        opt_helpers::number(
-                            "top",
-                            None,
-                            config.global_work_area_offset.map_or(0, |r| r.top),
-                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetTop(value)),
-                        ),
-                        opt_helpers::number(
-                            "bottom",
-                            None,
-                            config.global_work_area_offset.map_or(0, |r| r.bottom),
-                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetBottom(value)),
-                        ),
-                        opt_helpers::number(
-                            "right",
-                            None,
-                            config.global_work_area_offset.map_or(0, |r| r.right),
-                            |value| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffsetRight(value)),
-                        ),
-                    ],
-                    config.global_work_area_offset.is_some(),
-                    Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(None)),
-                    Some(DisableArgs {
-                        disable: config.global_work_area_offset.is_none(),
-                        label: Some("None"),
-                        on_toggle: |v| Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset((!v).then_some(Rect::default()))),
-                    }),
-                ),
-                opt_helpers::toggle_with_disable_default(
-                    "Mouse Follows Focus",
-                    Some("Enable or disable mouse follows focus (default: true)"),
-                    config.mouse_follows_focus.or(DEFAULT_CONFIG.mouse_follows_focus),
-                    DEFAULT_CONFIG.mouse_follows_focus,
-                    |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value)),
-                    None,
-                ),
-                opt_helpers::number_with_disable_default_option(
-                    "Resize Delta",
-                    Some("Delta to resize windows by (default 50)"),
-                    config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
-                    DEFAULT_CONFIG.resize_delta,
-                    |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
-                    None,
-                ),
-                opt_helpers::number_with_disable_default_option(
-                    "Slow Application Compensation Time",
-                    Some("How long to wait when compensating for slow applications, \
-                    in milliseconds (default: 20)\n\n\
-                    Value must be greater or equal to 0."
-                    ),
-                    config.slow_application_compensation_time.or(DEFAULT_CONFIG.slow_application_compensation_time),
-                    DEFAULT_CONFIG.slow_application_compensation_time,
-                    |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Unmanaged Window Behaviour",
-                    Some("Determine what happens when commands are sent while an unmanaged window is in the foreground (default: Op)"),
-                    vec![
-                        t("Selected: 'Op' -> Process komorebic commands on temporarily unmanaged/floated windows").into(),
-                        t("Selected: 'NoOp' -> Ignore komorebic commands on temporarily unmanaged/floated windows").into(),
-                    ],
-                    [OperationBehaviour::Op, OperationBehaviour::NoOp],
-                    config.unmanaged_window_operation_behaviour.or(DEFAULT_CONFIG.unmanaged_window_operation_behaviour),
-                    |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
-                    DEFAULT_CONFIG.unmanaged_window_operation_behaviour,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Window Container Behaviour",
-                    Some("Determine what happens when a new window is opened (default: Create)"),
-                    vec![
-                        t("Selected: 'Create' -> Create a new container for each new window").into(),
-                        t("Selected: 'Append' -> Append new windows to the focused window container").into(),
-                    ],
-                    [WindowContainerBehaviour::Create, WindowContainerBehaviour::Append],
-                    config.window_container_behaviour.or(DEFAULT_CONFIG.window_container_behaviour),
-                    |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
-                    DEFAULT_CONFIG.window_container_behaviour,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Window Hiding Behaviour",
-                    Some("Which Windows signal to use when hiding windows (default: Cloak)"),
-                    vec![
-                        t("Selected: 'Cloak' -> Use the undocumented SetCloak Win32 function to hide windows when switching workspaces").into(),
-                        t("Selected: 'Hide' -> Use the SW_HIDE flag to hide windows when switching workspaces (has issues with Electron apps)").into(),
-                        t("Selected: 'Minimize' -> Use the SW_MINIMIZE flag to hide windows when switching workspaces (has issues with frequent workspace switching)").into(),
-                    ],
-                    [HidingBehaviour::Cloak, HidingBehaviour::Hide, HidingBehaviour::Minimize],
-                    config.window_hiding_behaviour.or(DEFAULT_CONFIG.window_hiding_behaviour),
-                    |selected| Message::ConfigChange(ConfigChange::WindowHidingBehaviour(selected)),
-                    DEFAULT_CONFIG.window_hiding_behaviour,
-                    None,
-                ),
-                opt_helpers::expandable_custom(
-                    "Floating Window Aspect Ratio",
-                    get_aspect_ratio_description(
-                        config.floating_window_aspect_ratio
-                            .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
-                            .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into)
-                    ),
-                    |_, _| pick_list(
-                        [
-                            crate::komo_interop::aspect_ratio::AspectRatio::Standard,
-                            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
-                            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide,
-                            crate::komo_interop::aspect_ratio::AspectRatio::Custom(
-                                config.floating_window_aspect_ratio.map_or(4, |ar| {
-                                    match ar {
-                                        AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                WindowContainerBehaviour::Create,
+                WindowContainerBehaviour::Append,
+            ],
+            config
+                .window_container_behaviour
+                .or(DEFAULT_CONFIG.window_container_behaviour),
+            |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
+            DEFAULT_CONFIG.window_container_behaviour,
+            None,
+        );
+        let window_hiding_behaviour = opt_helpers::choose_with_disable_default(
+            "Window Hiding Behaviour",
+            Some("Which Windows signal to use when hiding windows (default: Cloak)"),
+            vec![
+                t("Selected: 'Cloak' -> Use the undocumented SetCloak Win32 function to hide windows when switching workspaces").into(),
+                t("Selected: 'Hide' -> Use the SW_HIDE flag to hide windows when switching workspaces (has issues with Electron apps)").into(),
+                t("Selected: 'Minimize' -> Use the SW_MINIMIZE flag to hide windows when switching workspaces (has issues with frequent workspace switching)").into(),
+            ],
+            [HidingBehaviour::Cloak, HidingBehaviour::Hide, HidingBehaviour::Minimize],
+            config.window_hiding_behaviour.or(DEFAULT_CONFIG.window_hiding_behaviour),
+            |selected| Message::ConfigChange(ConfigChange::WindowHidingBehaviour(selected)),
+            DEFAULT_CONFIG.window_hiding_behaviour,
+            None,
+        );
+        let floating_window_aspect_ratio = opt_helpers::expandable_custom(
+            "Floating Window Aspect Ratio",
+            get_aspect_ratio_description(
+                config
+                    .floating_window_aspect_ratio
+                    .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
+                    .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
+            ),
+            |_, _| {
+                pick_list(
+                    [
+                        crate::komo_interop::aspect_ratio::AspectRatio::Standard,
+                        crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
+                        crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide,
+                        crate::komo_interop::aspect_ratio::AspectRatio::Custom(
+                            config
+                                .floating_window_aspect_ratio
+                                .map_or(4, |ar| match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => {
+                                        match predefined_aspect_ratio {
                                             PredefinedAspectRatio::Ultrawide => 21,
                                             PredefinedAspectRatio::Widescreen => 16,
                                             PredefinedAspectRatio::Standard => 4,
                                         }
-                                        AspectRatio::Custom(w, _) => w,
                                     }
+                                    AspectRatio::Custom(w, _) => w,
                                 }),
-                                config.floating_window_aspect_ratio.map_or(3, |ar| {
-                                    match ar {
-                                        AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                            config
+                                .floating_window_aspect_ratio
+                                .map_or(3, |ar| match ar {
+                                    AspectRatio::Predefined(predefined_aspect_ratio) => {
+                                        match predefined_aspect_ratio {
                                             PredefinedAspectRatio::Ultrawide => 9,
                                             PredefinedAspectRatio::Widescreen => 9,
                                             PredefinedAspectRatio::Standard => 3,
                                         }
-                                        AspectRatio::Custom(_, h) => h,
                                     }
+                                    AspectRatio::Custom(_, h) => h,
                                 }),
-                            ),
-                        ],
-                        config.floating_window_aspect_ratio
-                            .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
-                            .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
-                        |selected| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(selected.into()))),
-                    ),
-                    || [
-                        opt_helpers::number(
-                            "width:",
-                            None,
-                            config.floating_window_aspect_ratio.map_or(0, |ar| {
-                                match ar {
-                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                        ),
+                    ],
+                    config
+                        .floating_window_aspect_ratio
+                        .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
+                        .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
+                    |selected| {
+                        Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(
+                            selected.into(),
+                        )))
+                    },
+                )
+            },
+            || {
+                [
+                    opt_helpers::number(
+                        "width:",
+                        None,
+                        config
+                            .floating_window_aspect_ratio
+                            .map_or(0, |ar| match ar {
+                                AspectRatio::Predefined(predefined_aspect_ratio) => {
+                                    match predefined_aspect_ratio {
                                         PredefinedAspectRatio::Ultrawide => 21,
                                         PredefinedAspectRatio::Widescreen => 16,
                                         PredefinedAspectRatio::Standard => 4,
                                     }
-                                    AspectRatio::Custom(w, _) => w,
                                 }
+                                AspectRatio::Custom(w, _) => w,
                             }),
-                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioWidth(v)),
-                        ),
-                        opt_helpers::number(
-                            "height:",
-                            None,
-                            config.floating_window_aspect_ratio.map_or(0, |ar| {
-                                match ar {
-                                    AspectRatio::Predefined(predefined_aspect_ratio) => match predefined_aspect_ratio {
+                        |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioWidth(v)),
+                    ),
+                    opt_helpers::number(
+                        "height:",
+                        None,
+                        config
+                            .floating_window_aspect_ratio
+                            .map_or(0, |ar| match ar {
+                                AspectRatio::Predefined(predefined_aspect_ratio) => {
+                                    match predefined_aspect_ratio {
                                         PredefinedAspectRatio::Ultrawide => 9,
                                         PredefinedAspectRatio::Widescreen => 9,
                                         PredefinedAspectRatio::Standard => 3,
                                     }
-                                    AspectRatio::Custom(_, h) => h,
                                 }
+                                AspectRatio::Custom(_, h) => h,
                             }),
-                            |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
-                        ),
-                    ],
-                    config.floating_window_aspect_ratio != DEFAULT_CONFIG.floating_window_aspect_ratio,
-                    matches!(config.floating_window_aspect_ratio, Some(AspectRatio::Custom(_, _))),
-                    Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(DEFAULT_CONFIG.floating_window_aspect_ratio)),
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Floating Layer Behaviour",
-                    Some("Determines what happens to a new window when on the `FloatingLayer` (default: Tile)"),
-                    vec![
-                        t("Selected: 'Tile' -> Tile new windows (unless they match a float rule or float override is active)").into(),
-                        t("Selected: 'Float' -> Float new windows").into(),
-                    ],
-                    [FloatingLayerBehaviour::Tile, FloatingLayerBehaviour::Float],
-                    config.floating_layer_behaviour.or(DEFAULT_CONFIG.floating_layer_behaviour),
-                    |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
-                    DEFAULT_CONFIG.floating_layer_behaviour,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Toggle Float Placement",
-                    Some("Determines the placement of a window when toggling to float (default: CenterAndResize)"),
-                    vec![
-                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
-                        t("Selected: 'Center' -> Center the window without changing the size").into(),
-                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
-                    ],
-                    [Placement::None, Placement::Center, Placement::CenterAndResize],
-                    config.toggle_float_placement.or(DEFAULT_CONFIG.toggle_float_placement),
-                    |v| Message::ConfigChange(ConfigChange::ToggleFloatPlacement(v)),
-                    DEFAULT_CONFIG.toggle_float_placement,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Floating Layer Placement",
-                    Some("Determines the `Placement` to be used when spawning a window on the floating layer with the \
-                    `FloatingLayerBehaviour` set to `FloatingLayerBehaviour::Float` (default: Center)"),
-                    vec![
-                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
-                        t("Selected: 'Center' -> Center the window without changing the size").into(),
-                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
-                    ],
-                    [Placement::None, Placement::Center, Placement::CenterAndResize],
-                    config.floating_layer_placement.or(DEFAULT_CONFIG.floating_layer_placement),
-                    |v| Message::ConfigChange(ConfigChange::FloatingLayerPlacement(v)),
-                    DEFAULT_CONFIG.floating_layer_placement,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Float Override Placement",
-                    Some("Determines the `Placement` to be used when spawning a window with float override active (default: None)"),
-                    vec![
-                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
-                        t("Selected: 'Center' -> Center the window without changing the size").into(),
-                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
-                    ],
-                    [Placement::None, Placement::Center, Placement::CenterAndResize],
-                    config.float_override_placement.or(DEFAULT_CONFIG.float_override_placement),
-                    |v| Message::ConfigChange(ConfigChange::FloatOverridePlacement(v)),
-                    DEFAULT_CONFIG.float_override_placement,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Float Rule Placement",
-                    Some("Determines the `Placement` to be used when spawning a window that matches a 'floating_applications' rule (default: None)"),
-                    vec![
-                        t("Selected: 'None' -> Does not change the size or position of the window").into(),
-                        t("Selected: 'Center' -> Center the window without changing the size").into(),
-                        t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
-                    ],
-                    [Placement::None, Placement::Center, Placement::CenterAndResize],
-                    config.float_rule_placement.or(DEFAULT_CONFIG.float_rule_placement),
-                    |v| Message::ConfigChange(ConfigChange::FloatRulePlacement(v)),
-                    DEFAULT_CONFIG.float_rule_placement,
-                    None,
-                ),
-                opt_helpers::choose_with_disable_default(
-                    "Window Handling Behaviour",
-                    Some("Which Windows API behaviour to use when manipulating windows (default: Sync)"),
-                    vec![
-                        t("Selected: 'Sync' -> Uses synchronous Windows API to manipulate windows.\n\
-                        If a window hangs when komorebi is trying to access it it might hang komorebi as well.").into(),
-                        t("Selected: 'Async' -> Uses asynchronous Windows API to manipulate windows.\n\
-                        Hanging windows don't block komorebi.").into(),
-                    ],
-                    [WindowHandlingBehaviour::Sync, WindowHandlingBehaviour::Async],
-                    config.window_handling_behaviour.or(DEFAULT_CONFIG.window_handling_behaviour),
-                    |v| Message::ConfigChange(ConfigChange::WindowHandlingBehaviour(v)),
-                    DEFAULT_CONFIG.window_handling_behaviour,
-                    None,
-                ),
+                        |v| Message::ConfigChange(ConfigChange::FloatingWindowAspectRatioHeight(v)),
+                    ),
+                ]
+            },
+            config.floating_window_aspect_ratio != DEFAULT_CONFIG.floating_window_aspect_ratio,
+            matches!(
+                config.floating_window_aspect_ratio,
+                Some(AspectRatio::Custom(_, _))
+            ),
+            Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(
+                DEFAULT_CONFIG.floating_window_aspect_ratio,
+            )),
+            None,
+        );
+        let floating_layer_behaviour = || {
+            opt_helpers::choose_with_disable_default(
+            "Floating Layer Behaviour",
+            Some("Determines what happens to a new window when on the `FloatingLayer` (default: Tile)"),
+            vec![
+                t("Selected: 'Tile' -> Tile new windows (unless they match a float rule or float override is active)").into(),
+                t("Selected: 'Float' -> Float new windows").into(),
             ],
+            [FloatingLayerBehaviour::Tile, FloatingLayerBehaviour::Float],
+            config.floating_layer_behaviour.or(DEFAULT_CONFIG.floating_layer_behaviour),
+            |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
+            DEFAULT_CONFIG.floating_layer_behaviour,
+            None,
         )
+        };
+        let toggle_float_placement = opt_helpers::choose_with_disable_default(
+            "Toggle Float Placement",
+            Some("Determines the placement of a window when toggling to float (default: CenterAndResize)"),
+            vec![
+                t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                t("Selected: 'Center' -> Center the window without changing the size").into(),
+                t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+            ],
+            [Placement::None, Placement::Center, Placement::CenterAndResize],
+            config.toggle_float_placement.or(DEFAULT_CONFIG.toggle_float_placement),
+            |v| Message::ConfigChange(ConfigChange::ToggleFloatPlacement(v)),
+            DEFAULT_CONFIG.toggle_float_placement,
+            None,
+        );
+        let floating_layer_placement = opt_helpers::choose_with_disable_default(
+            "Floating Layer Placement",
+            Some("Determines the `Placement` to be used when spawning a window on the floating layer with the \
+            `FloatingLayerBehaviour` set to `FloatingLayerBehaviour::Float` (default: Center)"),
+            vec![
+                t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                t("Selected: 'Center' -> Center the window without changing the size").into(),
+                t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+            ],
+            [Placement::None, Placement::Center, Placement::CenterAndResize],
+            config.floating_layer_placement.or(DEFAULT_CONFIG.floating_layer_placement),
+            |v| Message::ConfigChange(ConfigChange::FloatingLayerPlacement(v)),
+            DEFAULT_CONFIG.floating_layer_placement,
+            None,
+        );
+        let float_override_placement = opt_helpers::choose_with_disable_default(
+            "Float Override Placement",
+            Some("Determines the `Placement` to be used when spawning a window with float override active (default: None)"),
+            vec![
+                t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                t("Selected: 'Center' -> Center the window without changing the size").into(),
+                t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+            ],
+            [Placement::None, Placement::Center, Placement::CenterAndResize],
+            config.float_override_placement.or(DEFAULT_CONFIG.float_override_placement),
+            |v| Message::ConfigChange(ConfigChange::FloatOverridePlacement(v)),
+            DEFAULT_CONFIG.float_override_placement,
+            None,
+        );
+        let float_rule_placement = opt_helpers::choose_with_disable_default(
+            "Float Rule Placement",
+            Some("Determines the `Placement` to be used when spawning a window that matches a 'floating_applications' rule (default: None)"),
+            vec![
+                t("Selected: 'None' -> Does not change the size or position of the window").into(),
+                t("Selected: 'Center' -> Center the window without changing the size").into(),
+                t("Selected: 'CenterAndResize' -> Center the window and resize it according to the `AspectRatio`").into(),
+            ],
+            [Placement::None, Placement::Center, Placement::CenterAndResize],
+            config.float_rule_placement.or(DEFAULT_CONFIG.float_rule_placement),
+            |v| Message::ConfigChange(ConfigChange::FloatRulePlacement(v)),
+            DEFAULT_CONFIG.float_rule_placement,
+            None,
+        );
+        let window_handling_behaviour = opt_helpers::choose_with_disable_default(
+            "Window Handling Behaviour",
+            Some("Which Windows API behaviour to use when manipulating windows (default: Sync)"),
+            vec![
+                t("Selected: 'Sync' -> Uses synchronous Windows API to manipulate windows.\n\
+                If a window hangs when komorebi is trying to access it it might hang komorebi as well.").into(),
+                t("Selected: 'Async' -> Uses asynchronous Windows API to manipulate windows.\n\
+                Hanging windows don't block komorebi.").into(),
+            ],
+            [WindowHandlingBehaviour::Sync, WindowHandlingBehaviour::Async],
+            config.window_handling_behaviour.or(DEFAULT_CONFIG.window_handling_behaviour),
+            |v| Message::ConfigChange(ConfigChange::WindowHandlingBehaviour(v)),
+            DEFAULT_CONFIG.window_handling_behaviour,
+            None,
+        );
+        let mut contents = vec![
+            asc_path,
+            mouse_follows_focus,
+            resize_delta,
+            opt_helpers::sub_section_view(
+                title("Gaps/Padding:"),
+                [
+                    default_container_padding,
+                    default_workspace_padding,
+                    global_work_area_offset,
+                ],
+            ),
+            opt_helpers::sub_section_view(
+                title("Behaviours:"),
+                [
+                    cross_boundary_behaviour,
+                    cross_monitor_move_behaviour,
+                    unmanaged_window_behavior,
+                    window_container_behaviour,
+                    window_hiding_behaviour,
+                    window_handling_behaviour,
+                    floating_layer_behaviour(),
+                ],
+            ),
+            opt_helpers::sub_section_view(
+                title("Floating Windows:"),
+                [
+                    float_override,
+                    floating_window_aspect_ratio,
+                    floating_layer_behaviour(),
+                    toggle_float_placement,
+                    floating_layer_placement,
+                    float_override_placement,
+                    float_rule_placement,
+                ],
+            ),
+        ];
+
+        if show_advanced {
+            contents.push(opt_helpers::sub_section_view(
+                row![
+                    text("Advanced:").size(18).font(*BOLD_FONT),
+                    text("(You shouldn't need to mess with these ones...)")
+                        .size(12)
+                        .font(*ITALIC_FONT)
+                ]
+                .padding(padding::top(20))
+                .spacing(5)
+                .align_y(iced::Center),
+                [focus_follows_mouse, slow_application_comp_time],
+            ));
+        }
+
+        opt_helpers::section_view("General:", contents)
     }
 
     fn asc_children<'a>(
@@ -717,4 +829,10 @@ fn get_aspect_ratio_description(
             "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))",
         )
     }
+}
+
+fn title(title: &str) -> container::Container<'_, Message> {
+    container(text(title).size(18).font(*BOLD_FONT))
+        .padding(padding::top(20))
+        .align_y(iced::Center)
 }
