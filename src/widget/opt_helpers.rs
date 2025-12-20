@@ -1179,11 +1179,11 @@ pub fn section_row<'a, Message: 'a>(
 ///Creates the view for a sub section of options with `title` and the `contents` to be inserted on
 ///a section_view.
 pub fn sub_section_view<'a, Message: 'a>(
-    title: Element<'a, Message>,
+    title: impl Into<Element<'a, Message>>,
     contents: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
     column![
-        title,
+        title.into(),
         rule::horizontal(2.0),
         Column::with_children(contents)
             .padding(padding::top(10).bottom(10))
