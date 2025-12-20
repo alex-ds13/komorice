@@ -1,8 +1,8 @@
 use super::workspace::{self, WorkspaceScreen};
 
 use crate::{
-    BOLD_FONT,
     config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    monitors::TitleLink,
     widget::opt_helpers::{self, description_text as t},
 };
 
@@ -11,9 +11,10 @@ use std::collections::HashMap;
 use iced::{
     Element, Subscription, Task,
     widget::{
-        Id, button,
+        Id,
         operation::{self, AbsoluteOffset},
-        row, text,
+        span, text,
+        text::Span,
     },
 };
 use komorebi_client::{FloatingLayerBehaviour, MonitorConfig, Rect, WorkspaceConfig};
@@ -27,7 +28,6 @@ lazy_static! {
 pub enum Message {
     ConfigChange(ConfigChange),
     Workspace(usize, workspace::Message),
-    SetSubScreenMonitor,
     SetSubScreenWorkspaces,
     SetSubScreenWorkspace(usize),
     DeleteWorkspace(usize),
@@ -66,8 +66,32 @@ pub enum SubScreen {
 }
 
 pub struct MonitorView<'a, M> {
-    pub title: Element<'a, M>,
+    pub title: Vec<Span<'a, TitleLink>>,
     pub contents: Vec<Element<'a, M>>,
+}
+
+pub trait SpanMapper<'a, A, B> {
+    type Output;
+    fn map(self, f: impl Fn(A) -> B + 'a) -> Self::Output;
+}
+
+impl<'a, A, B> SpanMapper<'a, A, B> for Span<'a, A> {
+    type Output = Span<'a, B>;
+
+    fn map(self, f: impl Fn(A) -> B + 'a) -> Self::Output {
+        Span {
+            text: self.text,
+            size: self.size,
+            line_height: self.line_height,
+            font: self.font,
+            color: self.color,
+            link: self.link.map(|l| f(l)),
+            highlight: self.highlight,
+            padding: self.padding,
+            underline: self.underline,
+            strikethrough: self.strikethrough,
+        }
+    }
 }
 
 impl<'a, M> MonitorView<'a, M> {
@@ -77,7 +101,7 @@ impl<'a, M> MonitorView<'a, M> {
         B: 'a,
     {
         MonitorView {
-            title: self.title.map(f.clone()),
+            title: self.title,
             contents: self
                 .contents
                 .into_iter()
@@ -236,27 +260,11 @@ impl Monitor {
                     return task.map(move |m| Message::Workspace(idx, m));
                 }
             }
-            Message::SetSubScreenMonitor => {
-                self.sub_screen = SubScreen::Monitor;
-                return operation::scroll_to(
-                    Id::new("monitors_scrollable"),
-                    AbsoluteOffset { x: 0.0, y: 0.0 },
-                );
-            }
             Message::SetSubScreenWorkspaces => {
-                self.sub_screen = SubScreen::Workspaces;
-                return operation::scroll_to(
-                    Id::new("monitors_scrollable"),
-                    AbsoluteOffset { x: 0.0, y: 0.0 },
-                );
+                return self.set_subscreen(SubScreen::Workspaces);
             }
             Message::SetSubScreenWorkspace(idx) => {
-                self.sub_screen = SubScreen::Workspace(idx);
-                self.workspaces.entry(idx).or_default().screen = workspace::Screen::Workspace;
-                return operation::scroll_to(
-                    Id::new("monitors_scrollable"),
-                    AbsoluteOffset { x: 0.0, y: 0.0 },
-                );
+                return self.set_subscreen(SubScreen::Workspace(idx));
             }
             Message::DeleteWorkspace(idx) => {
                 config.workspaces.remove(idx);
@@ -626,67 +634,88 @@ impl Monitor {
         }
     }
 
-    fn get_sub_section_title(&self, workspace: Option<&WorkspaceConfig>) -> Element<'_, Message> {
+    fn get_sub_section_title(
+        &self,
+        workspace: Option<&WorkspaceConfig>,
+    ) -> Vec<Span<'_, TitleLink>> {
         match self.sub_screen {
-            SubScreen::Monitor => text!("Monitor [{}]:", self.index)
-                .size(20)
-                .font(*BOLD_FONT)
-                .into(),
-            SubScreen::Workspaces => row![
+            SubScreen::Monitor => vec![span(format!("Monitor [{}]:", self.index))],
+            SubScreen::Workspaces => vec![
                 nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
                 ),
-                text("> Workspaces").size(20).font(*BOLD_FONT)
-            ]
-            .into(),
-            SubScreen::Workspace(idx) => row![
+                span(" > "),
+                span("Workspaces"),
+            ],
+            SubScreen::Workspace(idx) => vec![
                 nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
                 ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
-                text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name)
-                    .size(20)
-                    .font(*BOLD_FONT),
-            ]
-            .into(),
-            SubScreen::WorkspaceRules(idx) => row![
+                span(" > "),
                 nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
+                    "Workspaces",
+                    TitleLink::Monitor(self.index, SubScreen::Workspaces),
                 ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                span(" > "),
+                span(format!(
+                    "Workspace [{}] - \"{}\"",
+                    idx,
+                    workspace.unwrap().name
+                )),
+            ],
+            SubScreen::WorkspaceRules(idx) => vec![
                 nav_button(
-                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
-                    Message::SetSubScreenWorkspace(idx)
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
                 ),
-                text("> Workspace Rules").size(20).font(*BOLD_FONT),
-            ]
-            .into(),
-            SubScreen::InitialWorkspaceRules(idx) => row![
+                span(" > "),
                 nav_button(
-                    text!("Monitor [{}] ", self.index),
-                    Message::SetSubScreenMonitor
+                    "Workspaces",
+                    TitleLink::Monitor(self.index, SubScreen::Workspaces),
                 ),
-                nav_button(text("> Workspaces"), Message::SetSubScreenWorkspaces),
+                span(" > "),
                 nav_button(
-                    text!(" > Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
-                    Message::SetSubScreenWorkspace(idx)
+                    format!("Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
+                    TitleLink::Monitor(self.index, SubScreen::Workspace(idx)),
                 ),
-                text("> Initial Workspace Rules").size(20).font(*BOLD_FONT),
-            ]
-            .into(),
+                span(" > "),
+                span("Workspace Rules"),
+            ],
+            SubScreen::InitialWorkspaceRules(idx) => vec![
+                nav_button(
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
+                ),
+                span(" > "),
+                nav_button(
+                    "Workspaces",
+                    TitleLink::Monitor(self.index, SubScreen::Workspaces),
+                ),
+                span(" > "),
+                nav_button(
+                    format!("Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
+                    TitleLink::Monitor(self.index, SubScreen::Workspace(idx)),
+                ),
+                span(" > "),
+                span("Initial Workspace Rules"),
+            ],
         }
+    }
+
+    pub fn set_subscreen(&mut self, sub_screen: SubScreen) -> Task<Message> {
+        if let SubScreen::Workspace(idx) = &sub_screen {
+            self.workspaces.entry(*idx).or_default().screen = workspace::Screen::Workspace;
+        }
+        self.sub_screen = sub_screen;
+        return operation::scroll_to(
+            Id::new("monitors_scrollable"),
+            AbsoluteOffset { x: 0.0, y: 0.0 },
+        );
     }
 }
 
-fn nav_button<'a>(
-    content: impl Into<text::Text<'a>>,
-    on_press: Message,
-) -> button::Button<'a, Message> {
-    button(content.into().size(20).font(*BOLD_FONT))
-        .on_press(on_press)
-        .padding(0)
-        .style(button::text)
+fn nav_button<'a>(content: impl text::IntoFragment<'a>, link: TitleLink) -> Span<'a, TitleLink> {
+    span(content).link(link)
 }
