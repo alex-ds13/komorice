@@ -3,7 +3,7 @@ use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mod
 use crate::{
     screen::View,
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, button_with_icon, hover, icons, opt_helpers},
+    widget::{self, button_with_icon, hover, icons, opt_helpers, unfocus},
 };
 
 use std::collections::{HashMap, HashSet};
@@ -250,14 +250,14 @@ impl Bindings {
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
-                return (Action::StopWhkd, Task::none());
+                return (Action::StopWhkd, unfocus());
             }
             Message::OpenBindingKeysModal(idx) => {
                 self.modal_opened = Some(Modal::Binding(idx));
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
-                return (Action::StopWhkd, Task::none());
+                return (Action::StopWhkd, unfocus());
             }
             Message::CloseModal(save) => {
                 if save

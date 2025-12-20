@@ -3,7 +3,7 @@ use crate::widget::text_input::TextInput;
 use iced::widget::{
     Button, Row, Rule, Text, button, container, row, rule, text::IntoFragment, tooltip,
 };
-use iced::{Center, Element, Theme};
+use iced::{Center, Element, Task, Theme};
 
 pub fn label<'a, Message>(text: impl Into<Text<'a>>) -> Row<'a, Message> {
     Row::new().push(text.into()).align_y(Center).height(30.0)
@@ -60,4 +60,11 @@ pub fn create_tooltip<'a, Message: 'a>(
         tooltip::Position::Bottom,
     )
     .into()
+}
+
+/// An unfocus task to remove focus from the currently focused widget.
+pub fn unfocus<M: Send + 'static>() -> Task<M> {
+    use iced::advanced::widget;
+
+    widget::operate(widget::operation::focusable::unfocus())
 }

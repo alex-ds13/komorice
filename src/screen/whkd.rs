@@ -7,7 +7,7 @@ pub use helpers::{get_vk_key_mods, modal_content};
 use crate::{
     screen::View,
     whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, UNPADDED_SEPARATOR, WhkdBinary, Whkdrc},
-    widget::{self, hover, icons, opt_helpers},
+    widget::{self, hover, icons, opt_helpers, unfocus},
 };
 
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ impl Whkd {
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
-                return (Action::StopWhkd, Task::none());
+                return (Action::StopWhkd, unfocus());
             }
             Message::CloseModal(save) => {
                 self.bind_key = false;
