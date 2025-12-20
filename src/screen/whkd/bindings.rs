@@ -337,7 +337,10 @@ impl Bindings {
             );
 
             let add_binding_button = button_with_icon(icons::plus(), "Add")
-                .on_press(Message::AddNewBinding)
+                .on_press_maybe(
+                    (!self.new_binding.keys.is_empty() && !self.new_binding.command.is_empty())
+                        .then_some(Message::AddNewBinding),
+                )
                 .width(77);
 
             column![
