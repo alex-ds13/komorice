@@ -531,7 +531,7 @@ impl Komorice {
             Screen::Border => self.border.view(&self.config).map(Message::Border).into(),
             Screen::Stackbar => self
                 .stackbar
-                .view(self.config.stackbar.as_ref())
+                .view(self.config.stackbar.as_ref(), self.config.theme.is_some())
                 .map(Message::Stackbar)
                 .into(),
             Screen::Transparency => self
