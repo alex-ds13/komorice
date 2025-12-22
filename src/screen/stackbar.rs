@@ -1,12 +1,13 @@
 use crate::{BOLD_FONT, ITALIC_FONT, widget::opt_helpers};
 
 use iced::{
-    Center, Element, Fill,
+    Center, Color, Element, Fill,
     Length::Fixed,
     Task, padding,
     widget::{container, row, space, text},
 };
 use komorebi_client::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
+use komorebi_themes::{Base16Value, Base16Wrapper, CatppuccinValue};
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -142,7 +143,7 @@ impl Stackbar {
     pub fn view<'a>(
         &'a self,
         config: Option<&'a StackbarConfig>,
-        theme_set: bool,
+        theme: Option<&'a komorebi_client::KomorebiTheme>,
     ) -> Element<'a, Message> {
         let config = if let Some(config) = config {
             config
@@ -227,7 +228,7 @@ impl Stackbar {
                 opt_helpers::sub_section_view(
                     row![
                         text("Stackbar Colours:").size(18).font(*BOLD_FONT),
-                        theme_set.then_some(
+                        theme.is_some().then_some(
                             text(
                                 "(These colours will be ignored because you have a 'Theme' set and that \
                                 takes priority. Check the 'Theme' tab.)"
@@ -279,7 +280,7 @@ impl Stackbar {
                         None,
                     ),
                 ]),
-                tabs_demo(config),
+                tabs_demo(config, theme),
             ],
         )
     }
@@ -333,24 +334,37 @@ fn into_color(colour: Colour) -> iced::Color {
     }
 }
 
-fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
-    let background = config
-        .tabs
-        .as_ref()
-        .and_then(|t| t.background.map(into_color))
-        .unwrap_or(iced::color!(0x333333));
+fn tabs_demo<'a>(
+    config: &'a StackbarConfig,
+    theme: Option<&'a komorebi_client::KomorebiTheme>,
+) -> Element<'a, Message> {
+    let (background, focused_text, unfocused_text) = if let Some(t) = theme {
+        let StackbarColors {
+            background,
+            focused_text,
+            unfocused_text,
+        } = stackbar_colors_from_theme(t);
+        (background, focused_text, unfocused_text)
+    } else {
+        let background = config
+            .tabs
+            .as_ref()
+            .and_then(|t| t.background.map(into_color))
+            .unwrap_or(iced::color!(0x333333));
 
-    let focused_text = config
-        .tabs
-        .as_ref()
-        .and_then(|t| t.focused_text.map(into_color))
-        .unwrap_or(iced::color!(0xffffff));
+        let focused_text = config
+            .tabs
+            .as_ref()
+            .and_then(|t| t.focused_text.map(into_color))
+            .unwrap_or(iced::color!(0xffffff));
 
-    let unfocused_text = config
-        .tabs
-        .as_ref()
-        .and_then(|t| t.unfocused_text.map(into_color))
-        .unwrap_or(iced::color!(0xb3b3b3));
+        let unfocused_text = config
+            .tabs
+            .as_ref()
+            .and_then(|t| t.unfocused_text.map(into_color))
+            .unwrap_or(iced::color!(0xb3b3b3));
+        (background, focused_text, unfocused_text)
+    };
 
     let font_size = config
         .tabs
@@ -367,9 +381,19 @@ fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
     let tabs_height = config.height.map(|h| h as f32).unwrap_or(40.0);
 
     opt_helpers::sub_section_view(
-        container(text("Tabs Look:").size(18).font(*BOLD_FONT))
-            .padding(padding::top(20))
-            .align_y(iced::Center),
+        row![
+            text("Tabs Look:").size(18).font(*BOLD_FONT),
+            theme.is_some().then_some(
+                text(
+                    "(This demo is now using the selected 'Theme' colors. \
+                    Check the 'Theme' tab.)"
+                )
+                .size(12)
+                .font(*ITALIC_FONT))
+        ]
+        .padding(padding::top(20))
+        .spacing(5)
+        .align_y(iced::Center),
         [
             row![
                 space::horizontal(),
@@ -421,4 +445,77 @@ fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
             .into(),
         ]
     )
+}
+
+struct StackbarColors {
+    background: Color,
+    focused_text: Color,
+    unfocused_text: Color,
+}
+
+fn stackbar_colors_from_theme(theme: &komorebi_client::KomorebiTheme) -> StackbarColors {
+    match theme {
+        komorebi_client::KomorebiTheme::Catppuccin {
+            stackbar_focused_text,
+            stackbar_unfocused_text,
+            stackbar_background,
+            name,
+            ..
+        } => {
+            let t = name.as_theme();
+            let get_color = |c: &Option<CatppuccinValue>, d_c: Color| {
+                c.map(|c| Color::from(c.color32(t).to_normalized_gamma_f32()))
+                    .unwrap_or(d_c)
+            };
+            StackbarColors {
+                background: get_color(stackbar_background, iced::color!(0x333333)),
+                focused_text: get_color(stackbar_focused_text, iced::color!(0xffffff)),
+                unfocused_text: get_color(stackbar_unfocused_text, iced::color!(0xb3b3b3)),
+            }
+        }
+        komorebi_client::KomorebiTheme::Base16 {
+            stackbar_focused_text,
+            stackbar_unfocused_text,
+            stackbar_background,
+            name,
+            ..
+        } => {
+            let get_color = |c: &Option<Base16Value>, d_c: Color| {
+                c.map(|c| {
+                    Color::from(
+                        c.color32(Base16Wrapper::Base16(*name))
+                            .to_normalized_gamma_f32(),
+                    )
+                })
+                .unwrap_or(d_c)
+            };
+            StackbarColors {
+                background: get_color(stackbar_background, iced::color!(0x333333)),
+                focused_text: get_color(stackbar_focused_text, iced::color!(0xffffff)),
+                unfocused_text: get_color(stackbar_unfocused_text, iced::color!(0xb3b3b3)),
+            }
+        }
+        komorebi_client::KomorebiTheme::Custom {
+            stackbar_focused_text,
+            stackbar_unfocused_text,
+            stackbar_background,
+            colours,
+            ..
+        } => {
+            let get_color = |c: &Option<Base16Value>, d_c: Color| {
+                c.map(|c| {
+                    Color::from(
+                        c.color32(Base16Wrapper::Custom(colours.clone()))
+                            .to_normalized_gamma_f32(),
+                    )
+                })
+                .unwrap_or(d_c)
+            };
+            StackbarColors {
+                background: get_color(stackbar_background, iced::color!(0x333333)),
+                focused_text: get_color(stackbar_focused_text, iced::color!(0xffffff)),
+                unfocused_text: get_color(stackbar_unfocused_text, iced::color!(0xb3b3b3)),
+            }
+        }
+    }
 }
