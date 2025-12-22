@@ -1,9 +1,9 @@
 use crate::widget::opt_helpers::description_text as t;
-use crate::{BOLD_FONT, config::DEFAULT_CONFIG, widget::opt_helpers};
+use crate::{BOLD_FONT, ITALIC_FONT, config::DEFAULT_CONFIG, widget::opt_helpers};
 
 use iced::{
     Element, Task, padding,
-    widget::{container, text},
+    widget::{row, text},
 };
 use komorebi_client::{
     BorderColours, BorderImplementation, BorderStyle, Colour, Rgb, StaticConfig,
@@ -231,14 +231,14 @@ impl Border {
     }
 
     pub fn view<'a>(&'a self, config: &'a StaticConfig) -> Element<'a, Message> {
-        let config = border_config_from_static(config);
+        let b_config = border_config_from_static(config);
         opt_helpers::section_view(
             "Border:",
             [
                 opt_helpers::toggle_with_disable_default_no_option(
                     "Enable Border",
                     Some("Display an active window border (default: true)"),
-                    *config.border.unwrap_or(&false),
+                    *b_config.border.unwrap_or(&false),
                     DEFAULT_CONFIG.border.unwrap_or_default(),
                     |v| Message::ConfigChange(ConfigChange::Border(v)),
                     None,
@@ -246,7 +246,7 @@ impl Border {
                 opt_helpers::number_with_disable_default(
                     "Border Width",
                     Some("Width of the window border. (default: 8)"),
-                    *config.border_width.unwrap_or(&8),
+                    *b_config.border_width.unwrap_or(&8),
                     DEFAULT_CONFIG.border_width.unwrap_or(8),
                     |value| Message::ConfigChange(ConfigChange::BorderWidth(value)),
                     None,
@@ -254,7 +254,7 @@ impl Border {
                 opt_helpers::number_with_disable_default(
                     "Border Offset",
                     Some("Offset of the window border (default: -1)"),
-                    *config.border_offset.unwrap_or(&-1),
+                    *b_config.border_offset.unwrap_or(&-1),
                     DEFAULT_CONFIG.border_offset.unwrap_or(-1),
                     |value| Message::ConfigChange(ConfigChange::BorderOffset(value)),
                     None,
@@ -268,7 +268,7 @@ impl Border {
                         BorderStyle::Square,
                         BorderStyle::Rounded,
                     ],
-                    Some(config.border_style.map_or(BorderStyle::System, |bs| *bs)),
+                    Some(b_config.border_style.map_or(BorderStyle::System, |bs| *bs)),
                     |selected| {
                         Message::ConfigChange(ConfigChange::BorderStyle(
                             selected.unwrap_or(BorderStyle::System),
@@ -288,7 +288,7 @@ impl Border {
                         BorderImplementation::Komorebi,
                         BorderImplementation::Windows
                     ],
-                    Some(config.border_implementation.map_or(BorderImplementation::Komorebi, |bi| *bi)),
+                    Some(b_config.border_implementation.map_or(BorderImplementation::Komorebi, |bi| *bi)),
                     |selected| {
                         Message::ConfigChange(ConfigChange::BorderImplementation(
                             selected.unwrap_or(BorderImplementation::Komorebi),
@@ -298,13 +298,25 @@ impl Border {
                     None,
                 ),
                 opt_helpers::sub_section_view(
-                    title("Border Colours:"),
+                    row![
+                        text("Border Colours:").size(18).font(*BOLD_FONT),
+                        config.theme.is_some().then_some(
+                            text(
+                                "(These colours will be ignored because you have a 'Theme' set and that \
+                                takes priority. Check the 'Theme' tab.)"
+                            )
+                            .size(12)
+                            .font(*ITALIC_FONT))
+                    ]
+                    .padding(padding::top(20))
+                    .spacing(5)
+                    .align_y(iced::Center),
                     [
                         opt_helpers::color(
                             "Single Border Colour",
                             Some("Border colour when the container contains a single window and is focused"),
                             self.show_single_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.single.map(into_color)),
@@ -317,7 +329,7 @@ impl Border {
                             "Stack Border Colour",
                             Some("Border colour when the container contains multiple windows and is focused"),
                             self.show_stack_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.stack.map(into_color)),
@@ -330,7 +342,7 @@ impl Border {
                             "Monocle Border Colour",
                             Some("Border colour when the container is in monocle mode"),
                             self.show_monocle_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.monocle.map(into_color)),
@@ -343,7 +355,7 @@ impl Border {
                             "Floating Border Colour",
                             Some("Border colour when the container is in floating mode and focused"),
                             self.show_floating_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.floating.map(into_color)),
@@ -356,7 +368,7 @@ impl Border {
                             "Unfocused Border Colour",
                             Some("Border colour when the container is unfocused"),
                             self.show_unfocused_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.unfocused.map(into_color)),
@@ -369,7 +381,7 @@ impl Border {
                             "Unfocused Locked Border Colour",
                             Some("Border colour when the container is unfocused and locked in place"),
                             self.show_unfocused_locked_picker,
-                            config
+                            b_config
                                 .border_colours
                                 .as_ref()
                                 .and_then(|bc| bc.unfocused_locked.map(into_color)),
@@ -424,10 +436,4 @@ fn into_color(colour: Colour) -> iced::Color {
             iced::Color::from_rgb8(rgb.r as u8, rgb.g as u8, rgb.b as u8)
         }
     }
-}
-
-fn title(title: &str) -> container::Container<'_, Message> {
-    container(text(title).size(18).font(*BOLD_FONT))
-        .padding(padding::top(20))
-        .align_y(iced::Center)
 }
