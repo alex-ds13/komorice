@@ -1,10 +1,10 @@
-use crate::widget::opt_helpers;
+use crate::{BOLD_FONT, ITALIC_FONT, widget::opt_helpers};
 
 use iced::{
     Center, Element, Fill,
     Length::Fixed,
-    Task,
-    widget::{column, container, row, space, text},
+    Task, padding,
+    widget::{container, row, space, text},
 };
 use komorebi_client::{Colour, Rgb, StackbarConfig, StackbarLabel, StackbarMode, TabsConfig};
 
@@ -139,7 +139,11 @@ impl Stackbar {
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(&'a self, config: Option<&'a StackbarConfig>) -> Element<'a, Message> {
+    pub fn view<'a>(
+        &'a self,
+        config: Option<&'a StackbarConfig>,
+        theme_set: bool,
+    ) -> Element<'a, Message> {
         let config = if let Some(config) = config {
             config
         } else {
@@ -220,45 +224,61 @@ impl Stackbar {
                     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
                     None,
                 ),
-                opt_helpers::color(
-                    "Stackbar Background Colour",
-                    Some("Tab background colour. (default: '0x333333')"),
-                    self.show_background_picker,
-                    config
-                        .tabs
-                        .as_ref()
-                        .and_then(|t| t.background.map(into_color)),
-                    Some(iced::color!(0x333333)),
-                    Message::ToggleBackgroundPicker,
-                    |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
-                    None,
-                ),
-                opt_helpers::color(
-                    "Stackbar Focused Text Colour",
-                    Some("Focused Tab text colour. (default: '0xFFFFFF')"),
-                    self.show_focused_text_picker,
-                    config
-                        .tabs
-                        .as_ref()
-                        .and_then(|t| t.focused_text.map(into_color)),
-                    Some(iced::color!(0xffffff)),
-                    Message::ToggleFocusedTextPicker,
-                    |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
-                    None,
-                ),
-                opt_helpers::color(
-                    "Stackbar Unfocused Text Colour",
-                    Some("Unfocused Tab text colour. (default: '0xB3B3B3')"),
-                    self.show_unfocused_text_picker,
-                    config
-                        .tabs
-                        .as_ref()
-                        .and_then(|t| t.unfocused_text.map(into_color)),
-                    Some(iced::color!(0xb3b3b3)),
-                    Message::ToggleUnfocusedTextPicker,
-                    |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
-                    None,
-                ),
+                opt_helpers::sub_section_view(
+                    row![
+                        text("Stackbar Colours:").size(18).font(*BOLD_FONT),
+                        theme_set.then_some(
+                            text(
+                                "(These colours will be ignored because you have a 'Theme' set and that \
+                                takes priority. Check the 'Theme' tab.)"
+                            )
+                            .size(12)
+                            .font(*ITALIC_FONT))
+                    ]
+                    .padding(padding::top(20))
+                    .spacing(5)
+                    .align_y(iced::Center),
+                    [
+                    opt_helpers::color(
+                        "Stackbar Background Colour",
+                        Some("Tab background colour. (default: '0x333333')"),
+                        self.show_background_picker,
+                        config
+                            .tabs
+                            .as_ref()
+                            .and_then(|t| t.background.map(into_color)),
+                        Some(iced::color!(0x333333)),
+                        Message::ToggleBackgroundPicker,
+                        |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
+                        None,
+                    ),
+                    opt_helpers::color(
+                        "Stackbar Focused Text Colour",
+                        Some("Focused Tab text colour. (default: '0xFFFFFF')"),
+                        self.show_focused_text_picker,
+                        config
+                            .tabs
+                            .as_ref()
+                            .and_then(|t| t.focused_text.map(into_color)),
+                        Some(iced::color!(0xffffff)),
+                        Message::ToggleFocusedTextPicker,
+                        |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
+                        None,
+                    ),
+                    opt_helpers::color(
+                        "Stackbar Unfocused Text Colour",
+                        Some("Unfocused Tab text colour. (default: '0xB3B3B3')"),
+                        self.show_unfocused_text_picker,
+                        config
+                            .tabs
+                            .as_ref()
+                            .and_then(|t| t.unfocused_text.map(into_color)),
+                        Some(iced::color!(0xb3b3b3)),
+                        Message::ToggleUnfocusedTextPicker,
+                        |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
+                        None,
+                    ),
+                ]),
                 tabs_demo(config),
             ],
         )
@@ -346,43 +366,59 @@ fn tabs_demo(config: &StackbarConfig) -> Element<'_, Message> {
 
     let tabs_height = config.height.map(|h| h as f32).unwrap_or(40.0);
 
-    column![
-        row!["Tabs Look:", space::horizontal()],
-        row![
-            container(text("Focused Tab").size(font_size))
-                .width(Fixed(tabs_width))
-                .height(Fixed(tabs_height))
+    opt_helpers::sub_section_view(
+        container(text("Tabs Look:").size(18).font(*BOLD_FONT))
+            .padding(padding::top(20))
+            .align_y(iced::Center),
+        [
+            row![
+                space::horizontal(),
+                container(text("Focused Tab").size(font_size))
+                    .width(Fixed(tabs_width))
+                    .height(Fixed(tabs_height))
+                    .align_x(Center)
+                    .align_y(Center)
+                    .style(move |t| container::Style {
+                        background: Some(background.into()),
+                        text_color: Some(focused_text),
+                        border: iced::Border {
+                            radius: (tabs_height / 2.0).into(),
+                            ..container::rounded_box(t).border
+                        },
+                        ..container::rounded_box(t)
+                    }),
+                container(text("Unfocused Tab").size(font_size))
+                    .width(Fixed(tabs_width))
+                    .height(Fixed(tabs_height))
+                    .align_x(Center)
+                    .align_y(Center)
+                    .style(move |t| container::Style {
+                        background: Some(background.into()),
+                        text_color: Some(unfocused_text),
+                        border: iced::Border {
+                            radius: (tabs_height / 2.0).into(),
+                            ..container::rounded_box(t).border
+                        },
+                        ..container::rounded_box(t)
+                    }),
+                space::horizontal(),
+            ]
+            .width(Fill)
+            .spacing(10)
+            .into(),
+            container(
+                text(
+                    "This is just a prediction/estimate preview of how the stackbar might look like. \
+                    Use it to match colors, that look well together but know that the final result will \
+                    be different!"
+                )
                 .align_x(Center)
-                .align_y(Center)
-                .style(move |t| container::Style {
-                    background: Some(background.into()),
-                    text_color: Some(focused_text),
-                    border: iced::Border {
-                        radius: (tabs_height / 2.0).into(),
-                        ..container::rounded_box(t).border
-                    },
-                    ..container::rounded_box(t)
-                }),
-            container(text("Unfocused Tab").size(font_size))
-                .width(Fixed(tabs_width))
-                .height(Fixed(tabs_height))
-                .align_x(Center)
-                .align_y(Center)
-                .style(move |t| container::Style {
-                    background: Some(background.into()),
-                    text_color: Some(unfocused_text),
-                    border: iced::Border {
-                        radius: (tabs_height / 2.0).into(),
-                        ..container::rounded_box(t).border
-                    },
-                    ..container::rounded_box(t)
-                }),
+                .size(12)
+                .font(*ITALIC_FONT)
+            )
+            .padding(padding::top(10))
+            .center_x(Fill)
+            .into(),
         ]
-        .spacing(10),
-    ]
-    .padding(5)
-    .width(Fill)
-    .align_x(Center)
-    .spacing(10)
-    .into()
+    )
 }
