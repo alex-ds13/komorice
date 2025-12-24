@@ -759,7 +759,7 @@ pub fn home_path() -> PathBuf {
         |_| {
             dirs::home_dir()
                 .expect("there is no home directory")
-                .join(".config/")
+                .join(".config")
         },
         |home_path| {
             let home = PathBuf::from(&home_path);
