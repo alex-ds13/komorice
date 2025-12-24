@@ -17,7 +17,7 @@ use crate::screen::{
     ConfigState, ConfigType, Configuration, Screen, View, animation, border, general, home,
     live_debug, monitors, rules, sidebar, stackbar, theme, transparency,
 };
-use crate::widget::{button_with_icon, icons};
+use crate::widget::{button_with_icon, icons, opt_helpers::to_description_text};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -569,13 +569,19 @@ impl Komorice {
             .sidebar
             .view(&self.configuration.config_type)
             .map(Message::Sidebar);
-        let mut save_buttons = row![].spacing(10).padding(padding::left(10)).width(Fill);
+        let mut save_buttons = row![]
+            .spacing(10)
+            .padding(padding::left(10))
+            .width(Fill)
+            .align_y(Center);
         save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
             button("Errors")
                 .on_press(Message::OpenErrorsModal)
                 .style(button::danger)
         }));
         save_buttons = save_buttons.extend([
+            space::horizontal().into(),
+            to_description_text(text!("{}", self.configuration.path().display())).into(),
             space::horizontal().into(),
             button("Save")
                 .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
