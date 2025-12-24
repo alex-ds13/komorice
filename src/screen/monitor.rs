@@ -3,6 +3,7 @@ use super::workspace::{self, WorkspaceScreen};
 use crate::{
     config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     monitors::TitleLink,
+    screen::wallpaper::{self, WallpaperScreen},
     widget::opt_helpers::{self, description_text as t},
 };
 
@@ -17,7 +18,7 @@ use iced::{
         text::Span,
     },
 };
-use komorebi_client::{FloatingLayerBehaviour, MonitorConfig, Rect, WorkspaceConfig};
+use komorebi_client::{FloatingLayerBehaviour, MonitorConfig, Rect, Wallpaper, WorkspaceConfig};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -28,6 +29,8 @@ lazy_static! {
 pub enum Message {
     ConfigChange(ConfigChange),
     Workspace(usize, workspace::Message),
+    Wallpaper(wallpaper::Message),
+    SetSubScreenMonitorWallpaper,
     SetSubScreenWorkspaces,
     SetSubScreenWorkspace(usize),
     DeleteWorkspace(usize),
@@ -53,14 +56,17 @@ pub enum ConfigChange {
     WorkAreaOffsetRight(i32),
     WorkAreaOffsetLeft(i32),
     FloatingLayerBehaviour(Option<FloatingLayerBehaviour>),
+    Wallpaper(Option<Wallpaper>),
 }
 
 #[derive(Clone, Debug, Default)]
 pub enum SubScreen {
     #[default]
     Monitor,
+    MonitorWallpaper,
     Workspaces,
     Workspace(usize),
+    WorkspaceWallpaper(usize),
     WorkspaceRules(usize),
     InitialWorkspaceRules(usize),
 }
@@ -210,8 +216,9 @@ impl Monitor {
                     }
                 }
                 ConfigChange::FloatingLayerBehaviour(value) => {
-                    config.floating_layer_behaviour = value;
+                    config.floating_layer_behaviour = value
                 }
+                ConfigChange::Wallpaper(wallpaper) => config.wallpaper = wallpaper,
             },
             Message::Workspace(idx, message) => {
                 if let (Some(workspace_config), Some(workspace)) = (
@@ -225,6 +232,9 @@ impl Monitor {
                             workspace::Screen::Workspace => {
                                 self.sub_screen = SubScreen::Workspace(idx)
                             }
+                            workspace::Screen::WorkspaceWallpaper => {
+                                self.sub_screen = SubScreen::WorkspaceWallpaper(idx)
+                            }
                             workspace::Screen::WorkspaceRules => {
                                 self.sub_screen = SubScreen::WorkspaceRules(idx)
                             }
@@ -236,8 +246,16 @@ impl Monitor {
                     return task.map(move |m| Message::Workspace(idx, m));
                 }
             }
+            Message::Wallpaper(message) => {
+                if let Some(wp_config) = config.wallpaper.as_mut() {
+                    return WallpaperScreen::update(wp_config, message).map(Message::Wallpaper);
+                }
+            }
             Message::SetSubScreenWorkspaces => {
                 return self.set_subscreen(SubScreen::Workspaces);
+            }
+            Message::SetSubScreenMonitorWallpaper => {
+                return self.set_subscreen(SubScreen::MonitorWallpaper);
             }
             Message::SetSubScreenWorkspace(idx) => {
                 return self.set_subscreen(SubScreen::Workspace(idx));
@@ -332,8 +350,11 @@ impl Monitor {
     pub fn view<'a>(&'a self, config: &'a MonitorConfig) -> MonitorView<'a, Message> {
         match self.sub_screen {
             SubScreen::Monitor => self.monitor_view(config),
+            SubScreen::MonitorWallpaper => self.monitor_wallpaper_view(config.wallpaper.as_ref()),
             SubScreen::Workspaces => self.workspaces_view(&config.workspaces),
-            SubScreen::Workspace(idx) => self.workspace_view(idx, &config.workspaces[idx]),
+            SubScreen::Workspace(idx) | SubScreen::WorkspaceWallpaper(idx) => {
+                self.workspace_view(idx, &config.workspaces[idx])
+            }
             SubScreen::WorkspaceRules(idx) => {
                 self.workspace_rules_view(idx, &config.workspaces[idx])
             }
@@ -519,8 +540,42 @@ impl Monitor {
                     },
                 }),
             ),
+            opt_helpers::opt_button_disable_default(
+                "Wallpaper",
+                Some("Specify a wallpaper for this monitor. (default: None)"),
+                Message::SetSubScreenMonitorWallpaper,
+                config.wallpaper.is_some(),
+                Some(Message::ConfigChange(ConfigChange::Wallpaper(None))),
+                Some(opt_helpers::DisableArgs {
+                    disable: config.wallpaper.is_none(),
+                    label: Some("None"),
+                    on_toggle: |v| {
+                        Message::ConfigChange(ConfigChange::Wallpaper(
+                            (!v).then(|| wallpaper::DEFAULT_WALLPAPER.clone()),
+                        ))
+                    },
+                }),
+            ),
             opt_helpers::opt_button("Workspaces", None, Message::SetSubScreenWorkspaces),
         ];
+
+        MonitorView { title, contents }
+    }
+
+    pub fn monitor_wallpaper_view<'a>(
+        &'a self,
+        wp_config: Option<&'a Wallpaper>,
+    ) -> MonitorView<'a, Message> {
+        let title = self.get_sub_section_title(None);
+        let contents = if let Some(wp_config) = wp_config {
+            vec![
+                WallpaperScreen::view(wp_config)
+                    .map(Message::Wallpaper)
+                    .element,
+            ]
+        } else {
+            vec![]
+        };
 
         MonitorView { title, contents }
     }
@@ -597,9 +652,11 @@ impl Monitor {
 
     pub fn subscription(&self) -> Subscription<(usize, usize, Message)> {
         match self.sub_screen {
-            SubScreen::Monitor | SubScreen::Workspaces | SubScreen::Workspace(_) => {
-                Subscription::none()
-            }
+            SubScreen::Monitor
+            | SubScreen::MonitorWallpaper
+            | SubScreen::Workspaces
+            | SubScreen::Workspace(_)
+            | SubScreen::WorkspaceWallpaper(_) => Subscription::none(),
             SubScreen::WorkspaceRules(ws_idx) | SubScreen::InitialWorkspaceRules(ws_idx) => {
                 let workspace = &self.workspaces[&ws_idx];
                 workspace
@@ -616,6 +673,14 @@ impl Monitor {
     ) -> Vec<Span<'_, TitleLink>> {
         match self.sub_screen {
             SubScreen::Monitor => vec![span(format!("Monitor [{}]:", self.index))],
+            SubScreen::MonitorWallpaper => vec![
+                nav_button(
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
+                ),
+                span(" > "),
+                span("Wallpaper"),
+            ],
             SubScreen::Workspaces => vec![
                 nav_button(
                     format!("Monitor [{}]", self.index),
@@ -640,6 +705,23 @@ impl Monitor {
                     idx,
                     workspace.unwrap().name
                 )),
+            ],
+            SubScreen::WorkspaceWallpaper(idx) => vec![
+                nav_button(
+                    format!("Monitor [{}]", self.index),
+                    TitleLink::Monitor(self.index, SubScreen::Monitor),
+                ),
+                span(" > "),
+                nav_button(
+                    "Workspaces",
+                    TitleLink::Monitor(self.index, SubScreen::Workspaces),
+                ),
+                span(" > "),
+                nav_button(
+                    format!("Workspace [{}] - \"{}\"", idx, workspace.unwrap().name),
+                    TitleLink::Monitor(self.index, SubScreen::Workspace(idx)),
+                ),
+                span(" > Wallpaper"),
             ],
             SubScreen::WorkspaceRules(idx) => vec![
                 nav_button(

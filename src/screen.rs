@@ -11,6 +11,7 @@ pub mod sidebar;
 pub mod stackbar;
 pub mod theme;
 pub mod transparency;
+pub mod wallpaper;
 pub mod whkd;
 pub mod workspace;
 

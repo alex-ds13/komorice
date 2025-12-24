@@ -1,7 +1,10 @@
 use crate::{
     KOMOREBI_VERSION, Message,
     apperror::{AppError, AppErrorKind},
-    screen::monitors::DisplayInfo,
+    screen::{
+        monitors::DisplayInfo,
+        wallpaper::{DEFAULT_THEME_OPTIONS, DEFAULT_WALLPAPER},
+    },
 };
 
 use std::sync::Arc;
@@ -17,7 +20,7 @@ use komorebi_client::{
     BorderImplementation, BorderStyle, Colour, CrossBoundaryBehaviour, DefaultLayout,
     FloatingLayerBehaviour, HidingBehaviour, KomorebiTheme, MonitorConfig, MoveBehaviour,
     OperationBehaviour, PerAnimationPrefixConfig, Placement, PredefinedAspectRatio, Rgb,
-    StackbarConfig, StackbarLabel, StackbarMode, StaticConfig, TabsConfig,
+    StackbarConfig, StackbarLabel, StackbarMode, StaticConfig, TabsConfig, ThemeOptions, Wallpaper,
     WindowContainerBehaviour, WindowHandlingBehaviour, WorkspaceConfig,
 };
 use komorebi_themes::{Base16, Base16Value, Catppuccin, CatppuccinValue};
@@ -117,7 +120,6 @@ lazy_static! {
         work_area_offset: None,
         window_based_work_area_offset: None,
         window_based_work_area_offset_limit: Some(1),
-        //TODO: add to monitor screen
         wallpaper: None,
         floating_layer_behaviour: None,
     };
@@ -140,7 +142,6 @@ lazy_static! {
         tile: Some(true),
         layout_flip: None,
         floating_layer_behaviour: None,
-        //TODO: add to workspace screen
         wallpaper: None,
     };
     pub static ref DEFAULT_CATPPUCCIN_THEME: KomorebiTheme = KomorebiTheme::Catppuccin {
@@ -435,7 +436,53 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             floating_layer_behaviour: w
                                 .floating_layer_behaviour
                                 .or(DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour),
-                            wallpaper: w.wallpaper.or(DEFAULT_WORKSPACE_CONFIG.wallpaper.clone()),
+                            wallpaper: w
+                                .wallpaper
+                                .map(|wp| Wallpaper {
+                                    path: wp.path,
+                                    generate_theme: wp
+                                        .generate_theme
+                                        .or(DEFAULT_WALLPAPER.generate_theme.clone()),
+                                    theme_options: wp
+                                        .theme_options
+                                        .map(|to| ThemeOptions {
+                                            theme_variant: to
+                                                .theme_variant
+                                                .or(DEFAULT_THEME_OPTIONS.theme_variant),
+                                            single_border: to
+                                                .single_border
+                                                .or(DEFAULT_THEME_OPTIONS.single_border),
+                                            stack_border: to
+                                                .stack_border
+                                                .or(DEFAULT_THEME_OPTIONS.stack_border),
+                                            monocle_border: to
+                                                .monocle_border
+                                                .or(DEFAULT_THEME_OPTIONS.monocle_border),
+                                            floating_border: to
+                                                .floating_border
+                                                .or(DEFAULT_THEME_OPTIONS.floating_border),
+                                            unfocused_border: to
+                                                .unfocused_border
+                                                .or(DEFAULT_THEME_OPTIONS.unfocused_border),
+                                            unfocused_locked_border: to
+                                                .unfocused_locked_border
+                                                .or(DEFAULT_THEME_OPTIONS.unfocused_locked_border),
+                                            stackbar_focused_text: to
+                                                .stackbar_focused_text
+                                                .or(DEFAULT_THEME_OPTIONS.stackbar_focused_text),
+                                            stackbar_unfocused_text: to
+                                                .stackbar_unfocused_text
+                                                .or(DEFAULT_THEME_OPTIONS.stackbar_unfocused_text),
+                                            stackbar_background: to
+                                                .stackbar_background
+                                                .or(DEFAULT_THEME_OPTIONS.stackbar_background),
+                                            bar_accent: to
+                                                .bar_accent
+                                                .or(DEFAULT_THEME_OPTIONS.bar_accent),
+                                        })
+                                        .or_else(|| DEFAULT_WALLPAPER.theme_options.clone()),
+                                })
+                                .or_else(|| DEFAULT_WORKSPACE_CONFIG.wallpaper.clone()),
                         })
                         .collect(),
                     work_area_offset: m
@@ -447,7 +494,51 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                     window_based_work_area_offset_limit: m
                         .window_based_work_area_offset_limit
                         .or(DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit),
-                    wallpaper: m.wallpaper.or(DEFAULT_MONITOR_CONFIG.wallpaper.clone()),
+                    wallpaper: m
+                        .wallpaper
+                        .map(|wp| Wallpaper {
+                            path: wp.path,
+                            generate_theme: wp
+                                .generate_theme
+                                .or(DEFAULT_WALLPAPER.generate_theme.clone()),
+                            theme_options: wp
+                                .theme_options
+                                .map(|to| ThemeOptions {
+                                    theme_variant: to
+                                        .theme_variant
+                                        .or(DEFAULT_THEME_OPTIONS.theme_variant),
+                                    single_border: to
+                                        .single_border
+                                        .or(DEFAULT_THEME_OPTIONS.single_border),
+                                    stack_border: to
+                                        .stack_border
+                                        .or(DEFAULT_THEME_OPTIONS.stack_border),
+                                    monocle_border: to
+                                        .monocle_border
+                                        .or(DEFAULT_THEME_OPTIONS.monocle_border),
+                                    floating_border: to
+                                        .floating_border
+                                        .or(DEFAULT_THEME_OPTIONS.floating_border),
+                                    unfocused_border: to
+                                        .unfocused_border
+                                        .or(DEFAULT_THEME_OPTIONS.unfocused_border),
+                                    unfocused_locked_border: to
+                                        .unfocused_locked_border
+                                        .or(DEFAULT_THEME_OPTIONS.unfocused_locked_border),
+                                    stackbar_focused_text: to
+                                        .stackbar_focused_text
+                                        .or(DEFAULT_THEME_OPTIONS.stackbar_focused_text),
+                                    stackbar_unfocused_text: to
+                                        .stackbar_unfocused_text
+                                        .or(DEFAULT_THEME_OPTIONS.stackbar_unfocused_text),
+                                    stackbar_background: to
+                                        .stackbar_background
+                                        .or(DEFAULT_THEME_OPTIONS.stackbar_background),
+                                    bar_accent: to.bar_accent.or(DEFAULT_THEME_OPTIONS.bar_accent),
+                                })
+                                .or_else(|| DEFAULT_WALLPAPER.theme_options.clone()),
+                        })
+                        .or_else(|| DEFAULT_MONITOR_CONFIG.wallpaper.clone()),
                     floating_layer_behaviour: m
                         .floating_layer_behaviour
                         .or(DEFAULT_MONITOR_CONFIG.floating_layer_behaviour),
@@ -829,8 +920,93 @@ pub fn unmerge_default(config: StaticConfig) -> StaticConfig {
                             (DEFAULT_MONITOR_CONFIG.window_based_work_area_offset_limit != Some(v))
                                 .then_some(v)
                         }),
-                    wallpaper: m.wallpaper.and_then(|v| {
-                        (DEFAULT_MONITOR_CONFIG.wallpaper.as_ref() != Some(&v)).then_some(v)
+                    wallpaper: m.wallpaper.and_then(|wp| {
+                        (DEFAULT_MONITOR_CONFIG.wallpaper.as_ref() != Some(&wp)).then(|| {
+                            Wallpaper {
+                                path: wp.path,
+                                generate_theme: wp.generate_theme.and_then(|v| {
+                                    (DEFAULT_WALLPAPER.generate_theme.as_ref() != Some(&v))
+                                        .then_some(v)
+                                }),
+                                theme_options: wp.theme_options.and_then(|to| {
+                                    (DEFAULT_WALLPAPER.theme_options.as_ref() != Some(&to)).then(
+                                        || ThemeOptions {
+                                            theme_variant: to.theme_variant.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.theme_variant.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            single_border: to.single_border.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.single_border.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            stack_border: to.stack_border.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.stack_border.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            monocle_border: to.monocle_border.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.monocle_border.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            floating_border: to.floating_border.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.floating_border.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            unfocused_border: to.unfocused_border.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.unfocused_border.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                            unfocused_locked_border: to
+                                                .unfocused_locked_border
+                                                .and_then(|v| {
+                                                    (DEFAULT_THEME_OPTIONS
+                                                        .unfocused_locked_border
+                                                        .as_ref()
+                                                        != Some(&v))
+                                                    .then_some(v)
+                                                }),
+                                            stackbar_focused_text: to
+                                                .stackbar_focused_text
+                                                .and_then(|v| {
+                                                    (DEFAULT_THEME_OPTIONS
+                                                        .stackbar_focused_text
+                                                        .as_ref()
+                                                        != Some(&v))
+                                                    .then_some(v)
+                                                }),
+                                            stackbar_unfocused_text: to
+                                                .stackbar_unfocused_text
+                                                .and_then(|v| {
+                                                    (DEFAULT_THEME_OPTIONS
+                                                        .stackbar_unfocused_text
+                                                        .as_ref()
+                                                        != Some(&v))
+                                                    .then_some(v)
+                                                }),
+                                            stackbar_background: to.stackbar_background.and_then(
+                                                |v| {
+                                                    (DEFAULT_THEME_OPTIONS
+                                                        .stackbar_background
+                                                        .as_ref()
+                                                        != Some(&v))
+                                                    .then_some(v)
+                                                },
+                                            ),
+                                            bar_accent: to.bar_accent.and_then(|v| {
+                                                (DEFAULT_THEME_OPTIONS.bar_accent.as_ref()
+                                                    != Some(&v))
+                                                .then_some(v)
+                                            }),
+                                        },
+                                    )
+                                }),
+                            }
+                        })
                     }),
                     floating_layer_behaviour: m.floating_layer_behaviour.and_then(|v| {
                         (DEFAULT_MONITOR_CONFIG.floating_layer_behaviour != Some(v)).then_some(v)

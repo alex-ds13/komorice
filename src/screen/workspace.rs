@@ -4,6 +4,7 @@ use crate::config::{DEFAULT_CONFIG, DEFAULT_WORKSPACE_CONFIG};
 use crate::komo_interop::layout::{
     LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE, Layout,
 };
+use crate::screen::wallpaper::{self, WallpaperScreen};
 use crate::utils::{DisplayOption, DisplayOptionCustom};
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers::to_description_text as td;
@@ -19,7 +20,7 @@ use iced::widget::{
 use iced::{Center, Element, Fill, Subscription, Task};
 use komorebi_client::{
     Axis, DefaultLayout, FloatingLayerBehaviour, GridLayoutOptions, LayoutOptions, MatchingRule,
-    Rect, ScrollingLayoutOptions, WindowContainerBehaviour, WorkspaceConfig,
+    Rect, ScrollingLayoutOptions, Wallpaper, WindowContainerBehaviour, WorkspaceConfig,
 };
 
 #[derive(Clone, Debug)]
@@ -36,6 +37,7 @@ pub enum Message {
     AddNewBehaviourRule,
     RemoveBehaviourRule(usize),
     Rule(rule::Message),
+    Wallpaper(wallpaper::Message),
 }
 
 #[derive(Clone, Debug)]
@@ -70,6 +72,7 @@ pub enum ConfigChange {
     GridOptionRows(Option<usize>),
     ScrollingOptionColumns(Option<usize>),
     ScrollingOptionCenter(Option<bool>),
+    Wallpaper(Option<Wallpaper>),
 }
 
 #[derive(Clone, Debug)]
@@ -86,6 +89,7 @@ pub enum OverrideConfig {
 pub enum Screen {
     #[default]
     Workspace,
+    WorkspaceWallpaper,
     WorkspaceRules,
     InitialWorkspaceRules,
 }
@@ -116,13 +120,13 @@ impl WorkspaceScreen for WorkspaceConfig {
                     Screen::WorkspaceRules | Screen::InitialWorkspaceRules
                 ) {
                     workspace.rule = rule::Rule::new();
-                    workspace.screen = screen.clone();
-                    let task = operation::scroll_to(
-                        Id::new("monitors_scrollable"),
-                        AbsoluteOffset { x: 0.0, y: 0.0 },
-                    );
-                    return (Action::ScreenChange(screen), task);
                 }
+                workspace.screen = screen.clone();
+                let task = operation::scroll_to(
+                    Id::new("monitors_scrollable"),
+                    AbsoluteOffset { x: 0.0, y: 0.0 },
+                );
+                return (Action::ScreenChange(screen), task);
             }
             Message::ConfigChange(change) => match change {
                 ConfigChange::ApplyWindowBasedWorkAreaOffset(value) => {
@@ -310,6 +314,7 @@ impl WorkspaceScreen for WorkspaceConfig {
                         });
                     }
                 }
+                ConfigChange::Wallpaper(wallpaper) => self.wallpaper = wallpaper,
             },
             Message::ToggleOverrideGlobal(to_override) => match to_override {
                 OverrideConfig::ContainerPadding(disable) => {
@@ -431,6 +436,14 @@ impl WorkspaceScreen for WorkspaceConfig {
                     );
                 }
             }
+            Message::Wallpaper(message) => {
+                if let Some(wp_config) = self.wallpaper.as_mut() {
+                    return (
+                        Action::None,
+                        WallpaperScreen::update(wp_config, message).map(Message::Wallpaper),
+                    );
+                }
+            }
         }
         (Action::None, Task::none())
     }
@@ -438,6 +451,15 @@ impl WorkspaceScreen for WorkspaceConfig {
     fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message> {
         match workspace.screen {
             Screen::Workspace => workspace.workspace_view(self),
+            Screen::WorkspaceWallpaper => {
+                if let Some(wp_config) = self.wallpaper.as_ref() {
+                    WallpaperScreen::view(wp_config)
+                        .map(Message::Wallpaper)
+                        .element
+                } else {
+                    space().into()
+                }
+            }
             Screen::WorkspaceRules | Screen::InitialWorkspaceRules => workspace
                 .rule
                 .view(get_rules_from_config(self, &workspace.screen))
@@ -757,6 +779,30 @@ impl Workspace {
                 on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkAreaOffset(v)),
             }),
         );
+        let wp = opt_helpers::opt_button_disable_default(
+            "Wallpaper",
+            Some(
+                "Specify a wallpaper which will be set when switching to this workspace. (default: None)\n\n\
+                It doesn't go back to the previous wallpaper when moving to another workspace. \
+                If you don't have other workspaces with a wallpaper, then moving to this workspace will change the \
+                wallpaper and it will stay as that wallpaper forever. In order to have your wallpaper change on \
+                different workspaces you need to setup 'Wallpaper' on all of them.\n\n\
+                Changing wallpapers is really slow on Windows unfortunately, so you won't have the smoothest \
+                experience when using this setting.",
+            ),
+            Message::SetScreen(Screen::WorkspaceWallpaper),
+            ws_config.wallpaper.is_some(),
+            Some(Message::ConfigChange(ConfigChange::Wallpaper(None))),
+            Some(opt_helpers::DisableArgs {
+                disable: ws_config.wallpaper.is_none(),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::Wallpaper(
+                        (!v).then(|| wallpaper::DEFAULT_WALLPAPER.clone()),
+                    ))
+                },
+            }),
+        );
         let initial_workspace_rules_button = opt_helpers::opt_button(
             "Initial Workspace Rules",
             Some(
@@ -789,6 +835,7 @@ impl Workspace {
             window_container_behaviour_rules,
             workspace_padding,
             work_area_offset,
+            wp,
             initial_workspace_rules_button,
             workspace_rules_button,
         ]
@@ -798,7 +845,7 @@ impl Workspace {
 
     pub fn subscription(&self) -> Subscription<(usize, Message)> {
         match self.screen {
-            Screen::Workspace => Subscription::none(),
+            Screen::Workspace | Screen::WorkspaceWallpaper => Subscription::none(),
             Screen::WorkspaceRules | Screen::InitialWorkspaceRules => self
                 .rule
                 .subscription()
