@@ -39,6 +39,10 @@ pub enum ConfigChange {
     AscPathChange(usize, String),
     NewAscPathChange(String),
     AddNewAscPathChange,
+    BarConfigurations(Option<Vec<PathBuf>>),
+    BarConfigPathChange(usize, String),
+    NewBarConfigPathChange(String),
+    AddNewBarConfigPathChange,
     CrossBoundaryBehaviour(Option<CrossBoundaryBehaviour>),
     CrossMonitorMoveBehaviour(Option<MoveBehaviour>),
     DefaultContainerPadding(Option<i32>),
@@ -75,6 +79,7 @@ pub enum Action {
 #[derive(Debug, Default)]
 pub struct General {
     pub new_asc_path: String,
+    pub new_bar_config_path: String,
 }
 
 impl General {
@@ -137,6 +142,32 @@ impl General {
                         let value = std::mem::take(&mut self.new_asc_path);
                         config.app_specific_configuration_path =
                             Some(AppSpecificConfigurationPath::Single(PathBuf::from(value)));
+                    }
+                }
+                ConfigChange::BarConfigurations(bar_configs) => {
+                    config.bar_configurations = bar_configs;
+                }
+                ConfigChange::BarConfigPathChange(idx, value) => {
+                    if let Some(bar_configs) = &mut config.bar_configurations {
+                        if idx < bar_configs.len() {
+                            if value.is_empty() {
+                                bar_configs.remove(idx);
+                            } else {
+                                bar_configs[idx] = PathBuf::from(value);
+                            }
+                        }
+                    }
+                }
+                ConfigChange::NewBarConfigPathChange(value) => {
+                    self.new_bar_config_path = value;
+                }
+                ConfigChange::AddNewBarConfigPathChange => {
+                    if let Some(bar_configs) = &mut config.bar_configurations {
+                        let value = PathBuf::from(std::mem::take(&mut self.new_bar_config_path));
+                        bar_configs.push(value);
+                    } else {
+                        let value = std::mem::take(&mut self.new_bar_config_path);
+                        config.bar_configurations = Some(vec![PathBuf::from(value)]);
                     }
                 }
                 ConfigChange::CrossBoundaryBehaviour(value) => {
@@ -291,11 +322,46 @@ impl General {
                 DEFAULT_CONFIG.app_specific_configuration_path.clone(),
             )),
             Some(DisableArgs {
-                disable: config.app_specific_configuration_path.is_none(),
+                disable: config.app_specific_configuration_path.is_none()
+                    || config.app_specific_configuration_path.as_ref().is_some_and(
+                        |asc| match asc {
+                            AppSpecificConfigurationPath::Single(path_buf) => {
+                                path_buf == &PathBuf::new()
+                            }
+                            AppSpecificConfigurationPath::Multiple(path_bufs) => {
+                                path_bufs.is_empty()
+                            }
+                        },
+                    ),
                 label: Some("None"),
                 on_toggle: |v| {
                     Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
                         (!v).then_some(DEFAULT_CONFIG.app_specific_configuration_path.clone())
+                            .flatten(),
+                    ))
+                },
+            }),
+        );
+        let bar_configurations = opt_helpers::expandable(
+            "Bar Configurations",
+            Some(
+                "Komorebi status bar configuration files for multiple instances on different monitors. (default: None)",
+            ),
+            || self.bar_configurations_children(&config.bar_configurations),
+            config.bar_configurations != DEFAULT_CONFIG.bar_configurations,
+            Message::ConfigChange(ConfigChange::BarConfigurations(
+                DEFAULT_CONFIG.bar_configurations.clone(),
+            )),
+            Some(DisableArgs {
+                disable: config.bar_configurations.is_none()
+                    || config
+                        .bar_configurations
+                        .as_ref()
+                        .is_some_and(|bc| bc.is_empty()),
+                label: Some("None"),
+                on_toggle: |v| {
+                    Message::ConfigChange(ConfigChange::BarConfigurations(
+                        (!v).then_some(DEFAULT_CONFIG.bar_configurations.clone())
                             .flatten(),
                     ))
                 },
@@ -689,6 +755,7 @@ impl General {
         );
         let mut contents = vec![
             asc_path,
+            bar_configurations,
             mouse_follows_focus,
             resize_delta,
             opt_helpers::sub_section_view(
@@ -780,6 +847,50 @@ impl General {
             "",
             &self.new_asc_path,
             |v| Message::ConfigChange(ConfigChange::NewAscPathChange(v)),
+            add_new_msg.clone(),
+        );
+        let add_button = button(icons::plus().style(move |t| {
+            let color = if is_enabled {
+                t.palette().primary.into()
+            } else {
+                t.extended_palette().secondary.base.color.into()
+            };
+            text::Style { color }
+        }))
+        .on_press_maybe(add_new_msg)
+        .style(button::text);
+        let new_path_row = row![new_path, add_button].spacing(10);
+
+        let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
+            .spacing(10)
+            .padding(padding::top(10));
+        elements.push(new_path_col.into());
+        elements
+    }
+
+    fn bar_configurations_children<'a>(
+        &'a self,
+        bar_configs: &'a Option<Vec<PathBuf>>,
+    ) -> Vec<Element<'a, Message>> {
+        let mut elements = Vec::new();
+        for (idx, path_buf) in bar_configs.iter().flatten().enumerate() {
+            let path_input = widget::input(
+                "",
+                path_buf.to_str().unwrap_or_default(),
+                move |v| Message::ConfigChange(ConfigChange::BarConfigPathChange(idx, v)),
+                None,
+            );
+            elements.push(path_input.into());
+        }
+        let add_new_msg = (!self.new_bar_config_path.is_empty()).then_some(Message::ConfigChange(
+            ConfigChange::AddNewBarConfigPathChange,
+        ));
+        let is_enabled = add_new_msg.is_some();
+
+        let new_path = widget::input(
+            "",
+            &self.new_bar_config_path,
+            |v| Message::ConfigChange(ConfigChange::NewBarConfigPathChange(v)),
             add_new_msg.clone(),
         );
         let add_button = button(icons::plus().style(move |t| {
