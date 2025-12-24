@@ -1,5 +1,7 @@
 #![allow(deprecated)]
-use crate::widget::opt_helpers::{label_with_description, opt_box};
+use crate::widget::opt_helpers::{
+    DisableArgs, disable_checkbox, label_element_with_description, opt_box, reset_button,
+};
 use iced::{
     Center, Element, Renderer, padding,
     widget::{Component, component, mouse_area, row, text},
@@ -13,6 +15,9 @@ where
     name: text::Fragment<'a>,
     description: Option<&'a str>,
     on_press: Option<Message>,
+    is_dirty: bool,
+    reset_message: Option<Message>,
+    disable_args: Option<DisableArgs<'a, Message>>,
     element: Option<F>,
 }
 
@@ -27,6 +32,9 @@ where
             name: name.into_fragment(),
             description: None,
             on_press: None,
+            is_dirty: false,
+            reset_message: None,
+            disable_args: None,
             element: None,
         }
     }
@@ -63,6 +71,25 @@ where
         self.element = Some(element);
         self
     }
+
+    /// Sets the dirtiness of this `OptButton`.
+    pub fn dirty(mut self, is_dirty: bool) -> Self {
+        self.is_dirty = is_dirty;
+        self
+    }
+
+    /// Sets the `reset_message` to be sent when this `OptButton`'s reset button is
+    /// pressed.
+    pub fn reset_message(mut self, message: Option<Message>) -> Self {
+        self.reset_message = message;
+        self
+    }
+
+    /// Sets the `disable_args` of this `OptButton`.
+    pub fn disable_args(mut self, disable_args: Option<DisableArgs<'a, Message>>) -> Self {
+        self.disable_args = disable_args;
+        self
+    }
 }
 
 #[derive(Debug, Default)]
@@ -88,7 +115,12 @@ where
 
     type Event = InternalMessage<Message>;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event, _renderer: &Renderer) -> Option<Message> {
+    fn update(
+        &mut self,
+        state: &mut Self::State,
+        event: Self::Event,
+        _renderer: &Renderer,
+    ) -> Option<Message> {
         match event {
             InternalMessage::None => {}
             InternalMessage::SetHovered(hover) => state.is_hovered = hover,
@@ -98,20 +130,44 @@ where
     }
 
     fn view(&self, state: &Self::State) -> Element<'a, Self::Event> {
-        let main = row![
-            label_with_description(text(self.name.clone()), self.description)
-                .map(InternalMessage::Message),
-        ]
-        .push(
-            self.element
-                .as_ref()
-                .map(|el| el(state.is_hovered).into().map(InternalMessage::Message)),
-        )
-        .align_y(Center)
-        .padding(padding::right(10));
+        let label = if self.is_dirty {
+            row![
+                text(self.name.clone()),
+                Element::from(reset_button(self.reset_message.clone()))
+                    .map(InternalMessage::Message)
+            ]
+            .spacing(5)
+            .height(30)
+            .align_y(Center)
+        } else {
+            row![text(self.name.clone())].height(30).align_y(Center)
+        };
+        let main = row![label_element_with_description(label, self.description)]
+            .push(
+                disable_checkbox(self.disable_args.as_ref())
+                    .and_then(|el| Some(el.map(InternalMessage::Message))),
+            )
+            .push(
+                self.element
+                    .as_ref()
+                    .map(|el| el(state.is_hovered).into().map(InternalMessage::Message)),
+            )
+            .align_y(Center)
+            .spacing(10)
+            .padding(padding::right(10));
 
+        let is_disabled = self
+            .disable_args
+            .as_ref()
+            .map(|da| da.disable)
+            .unwrap_or_default();
+        let interaction = if is_disabled {
+            iced::mouse::Interaction::Idle
+        } else {
+            iced::mouse::Interaction::Pointer
+        };
         let mut area = mouse_area(opt_box(main))
-            .interaction(iced::mouse::Interaction::Pointer)
+            .interaction(interaction)
             .on_enter(InternalMessage::SetHovered(true))
             .on_exit(InternalMessage::SetHovered(false));
 

@@ -316,7 +316,7 @@ lazy_static! {
         Base16::Zenbones,
         Base16::Zenburn,
     ];
-    static ref BASE16_VALUE_OPTIONS: [Base16Value; 16] = [
+    pub static ref BASE16_VALUE_OPTIONS: [Base16Value; 16] = [
         Base16Value::Base00,
         Base16Value::Base01,
         Base16Value::Base02,

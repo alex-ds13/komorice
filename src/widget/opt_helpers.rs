@@ -273,6 +273,59 @@ pub fn opt_button<'a, Message: Clone + 'static>(
     })
 }
 
+///Creates a `button` with `name` as label and with some disable args and default state.
+///
+///If `Some(description)` is given, it adds the description below the label.
+pub fn opt_button_disable_default<'a, Message: Clone + 'static>(
+    name: &'a str,
+    description: Option<&'a str>,
+    on_press: Message,
+    is_dirty: bool,
+    reset_message: Option<Message>,
+    disable_args: Option<DisableArgs<'a, Message>>,
+) -> Element<'a, Message> {
+    let disabled = disable_args
+        .as_ref()
+        .map(|da| da.disable)
+        .unwrap_or_default();
+
+    let on_press_c = on_press.clone();
+    let button = opt_button_internal::OptButton::new(name)
+        .description(description)
+        .dirty(is_dirty)
+        .reset_message(reset_message)
+        .disable_args(disable_args)
+        .element(move |hovered| {
+            let b = button(text("›").font(*EMOJI_FONT).size(25))
+                .padding(padding::left(10).right(10))
+                .style(move |t, s| {
+                    if hovered {
+                        button::secondary(
+                            t,
+                            if disabled {
+                                button::Status::Disabled
+                            } else {
+                                button::Status::Active
+                            },
+                        )
+                    } else {
+                        button::text(t, s)
+                    }
+                });
+            if !disabled {
+                b.on_press(on_press.clone())
+            } else {
+                b
+            }
+        });
+
+    if !disabled {
+        button.on_press(on_press_c).into()
+    } else {
+        button.into()
+    }
+}
+
 ///Creates a `button` with `name` as label with "Delete", "Move Up" and "Move Down" buttons.
 ///
 ///If `Some(description)` is given, it adds the description below the label.
