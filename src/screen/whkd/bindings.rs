@@ -304,6 +304,9 @@ impl Bindings {
                 .style(button::secondary)
                 .into();
 
+        let mut new_binding_keys = self.new_binding.keys.clone();
+        new_binding_keys.sort();
+
         let new_binding = if self.show_new_binding {
             let bind_button = button(widget::icons::edit())
                 .style(button::subtle)
@@ -336,9 +339,28 @@ impl Bindings {
                 Message::ChangeNewBindingContent,
             );
 
+            let duplicated_keys = whkdrc.bindings.iter().any(|b| {
+                let mut b_keys = b.keys.clone();
+                b_keys.sort();
+                b_keys == new_binding_keys
+            });
+            let duplicated_warning = duplicated_keys.then_some(
+                text(
+                    "This key combination is already being used! \
+                    Either use another combination or change/delete \
+                    the existing one first.",
+                )
+                .width(iced::Fill)
+                .align_x(iced::Right)
+                .size(12)
+                .style(text::warning),
+            );
+
             let add_binding_button = button_with_icon(icons::plus(), "Add")
                 .on_press_maybe(
-                    (!self.new_binding.keys.is_empty() && !self.new_binding.command.is_empty())
+                    (!self.new_binding.keys.is_empty()
+                        && !self.new_binding.command.is_empty()
+                        && !duplicated_keys)
                         .then_some(Message::AddNewBinding),
                 )
                 .width(77);
@@ -346,7 +368,11 @@ impl Bindings {
             column![
                 keybind,
                 command,
-                column![add_binding_button].align_x(iced::Right).spacing(10),
+                right(
+                    row![duplicated_warning, add_binding_button]
+                        .align_y(Center)
+                        .spacing(10)
+                ),
             ]
             .spacing(10)
             .into()
@@ -360,6 +386,17 @@ impl Bindings {
             .iter()
             .enumerate()
             .fold(col, |col, (idx, binding)| {
+                let mut binding_keys = binding.keys.clone();
+                binding_keys.sort();
+                let equals_new_binding =
+                    !self.new_binding.keys.is_empty() && binding_keys == new_binding_keys;
+                let duplicated_keys = equals_new_binding
+                    || whkdrc.bindings.iter().enumerate().any(|(b_idx, b)| {
+                        let mut b_keys = b.keys.clone();
+                        b_keys.sort();
+                        b_idx != idx && b_keys == binding_keys
+                    });
+
                 if self.editing.contains(&idx) {
                     let bind_button = button(widget::icons::edit())
                         .style(button::subtle)
@@ -394,6 +431,18 @@ impl Bindings {
                         move |a| Message::ChangeBindingContent(idx, a),
                     );
 
+                    let duplicated_warning = duplicated_keys.then_some(
+                        text(
+                            "This key combination is already being used! \
+                            Either use another combination or change/delete \
+                            the existing one.",
+                        )
+                        .width(iced::Fill)
+                        .align_x(iced::Right)
+                        .size(12)
+                        .style(text::warning),
+                    );
+
                     col.push(
                         container(
                             container(
@@ -402,12 +451,14 @@ impl Bindings {
                                     command,
                                     row![
                                         space::horizontal(),
+                                        duplicated_warning,
                                         button(icons::check())
                                             .on_press(Message::FinishEditBinding(idx)),
                                         button(icons::delete())
                                             .on_press(Message::RemoveBinding(idx))
                                             .style(button::danger),
                                     ]
+                                    .align_y(Center)
                                     .spacing(10),
                                 ]
                                 .spacing(10),
@@ -434,7 +485,18 @@ impl Bindings {
                             },
                         ))
                         .padding(padding::all(2).left(4).right(4))
-                        .style(container::dark),
+                        .style(move |t: &Theme| {
+                            if duplicated_keys {
+                                let warning = t.extended_palette().warning;
+                                container::Style {
+                                    background: Some(warning.base.color.into()),
+                                    text_color: Some(warning.base.text),
+                                    ..container::dark(t)
+                                }
+                            } else {
+                                container::dark(t)
+                            }
+                        }),
                     );
                     let command = scrollable(text(&binding.command).wrapping(text::Wrapping::None))
                         .direction(scrollable::Direction::Horizontal(
