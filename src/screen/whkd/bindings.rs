@@ -16,7 +16,7 @@ use iced::{
     },
 };
 
-const SCROLLABLE_ID: &'static str = "BINDINGS_SCROLLABLE";
+const SCROLLABLE_ID: &str = "BINDINGS_SCROLLABLE";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {

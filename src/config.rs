@@ -442,7 +442,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                                     path: wp.path,
                                     generate_theme: wp
                                         .generate_theme
-                                        .or(DEFAULT_WALLPAPER.generate_theme.clone()),
+                                        .or(DEFAULT_WALLPAPER.generate_theme),
                                     theme_options: wp
                                         .theme_options
                                         .map(|to| ThemeOptions {
@@ -500,7 +500,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                             path: wp.path,
                             generate_theme: wp
                                 .generate_theme
-                                .or(DEFAULT_WALLPAPER.generate_theme.clone()),
+                                .or(DEFAULT_WALLPAPER.generate_theme),
                             theme_options: wp
                                 .theme_options
                                 .map(|to| ThemeOptions {

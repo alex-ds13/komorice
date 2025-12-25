@@ -2501,9 +2501,10 @@ impl Default for OverlayState {
 }
 
 /// The state of the currently dragged area.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum ColorBarDragged {
     /// No area is focussed.
+    #[default]
     None,
 
     /// The saturation/value area is focussed.
@@ -2525,16 +2526,11 @@ pub enum ColorBarDragged {
     Alpha,
 }
 
-impl Default for ColorBarDragged {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
 /// An enumeration of all focusable element of the [`ColorPickerOverlay`].
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum Focus {
     /// Nothing is in focus.
+    #[default]
     None,
 
     /// The overlay itself is in focus.
@@ -2597,12 +2593,6 @@ impl Focus {
             Self::Cancel => Self::Alpha,
             Self::Submit => Self::Cancel,
         }
-    }
-}
-
-impl Default for Focus {
-    fn default() -> Self {
-        Self::None
     }
 }
 

@@ -10,7 +10,7 @@ use windows_sys::Win32::UI::{
 };
 
 pub fn modal_content<'a, Message: Clone + 'a>(
-    modifiers: &'a String,
+    modifiers: &'a str,
     keys: &'a [String],
     whkd_bin: &'a WhkdBinary,
     on_close: impl Fn(bool) -> Message,
@@ -23,9 +23,9 @@ pub fn modal_content<'a, Message: Clone + 'a>(
             {
                 let key_pressed = text!(
                     "{:^10}",
-                    keys.iter().fold(modifiers.clone(), |mut str, k| {
+                    keys.iter().fold(modifiers.to_owned(), |mut str, k| {
                         if !str.is_empty() && !k.is_empty() {
-                            str.push_str(&SEPARATOR);
+                            str.push_str(SEPARATOR);
                         }
                         str.push_str(k);
                         str

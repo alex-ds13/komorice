@@ -145,12 +145,12 @@ where
         let main = row![label_element_with_description(label, self.description)]
             .push(
                 disable_checkbox(self.disable_args.as_ref())
-                    .and_then(|el| Some(el.map(InternalMessage::Message))),
+                    .map(|el| el.map(InternalMessage::Message)),
             )
             .push(
                 self.element
                     .as_ref()
-                    .map(|el| el(state.is_hovered).into().map(InternalMessage::Message)),
+                    .map(|f| f(state.is_hovered).into().map(InternalMessage::Message)),
             )
             .align_y(Center)
             .spacing(10)

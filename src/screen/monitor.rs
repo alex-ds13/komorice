@@ -767,10 +767,10 @@ impl Monitor {
             self.workspaces.entry(*idx).or_default().screen = workspace::Screen::Workspace;
         }
         self.sub_screen = sub_screen;
-        return operation::scroll_to(
+        operation::scroll_to(
             Id::new("monitors_scrollable"),
             AbsoluteOffset { x: 0.0, y: 0.0 },
-        );
+        )
     }
 }
 

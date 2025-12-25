@@ -2,13 +2,13 @@ use std::path::PathBuf;
 
 use crate::{screen::View, widget::opt_helpers};
 
-use std::cell::LazyCell;
+use std::sync::LazyLock;
 
 use iced::Task;
 use komorebi_client::{ThemeOptions, Wallpaper};
 use komorebi_themes::{Base16Value, ThemeVariant};
 
-pub const DEFAULT_WALLPAPER: LazyCell<Wallpaper> = LazyCell::new(|| Wallpaper {
+pub static DEFAULT_WALLPAPER: LazyLock<Wallpaper> = LazyLock::new(|| Wallpaper {
     path: PathBuf::new(),
     generate_theme: Some(true),
     theme_options: Some(DEFAULT_THEME_OPTIONS.clone()),
@@ -32,10 +32,10 @@ pub struct WallpaperScreen;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    PathChanged(String),
-    GenerateThemeChanged(Option<bool>),
-    ThemeVariantChanged(Option<ThemeVariant>),
-    ColorChanged(ThemeColor),
+    Path(String),
+    GenerateTheme(Option<bool>),
+    ThemeVariant(Option<ThemeVariant>),
+    Color(ThemeColor),
 }
 
 #[derive(Debug, Clone)]
@@ -55,12 +55,12 @@ pub enum ThemeColor {
 impl WallpaperScreen {
     pub fn update(wallpaper: &mut Wallpaper, message: Message) -> Task<Message> {
         match message {
-            Message::PathChanged(path) => {
+            Message::Path(path) => {
                 let path = PathBuf::from(path);
                 wallpaper.path = path;
             }
-            Message::GenerateThemeChanged(generate) => wallpaper.generate_theme = generate,
-            Message::ThemeVariantChanged(theme_variant) => {
+            Message::GenerateTheme(generate) => wallpaper.generate_theme = generate,
+            Message::ThemeVariant(theme_variant) => {
                 if let Some(theme_options) = wallpaper.theme_options.as_mut() {
                     theme_options.theme_variant = theme_variant;
                 } else {
@@ -70,7 +70,7 @@ impl WallpaperScreen {
                     })
                 }
             }
-            Message::ColorChanged(theme_color) => match theme_color {
+            Message::Color(theme_color) => match theme_color {
                 ThemeColor::SingleBorder(value) => {
                     if let Some(theme_options) = wallpaper.theme_options.as_mut() {
                         theme_options.single_border = value;
@@ -184,7 +184,7 @@ impl WallpaperScreen {
                 "",
                 wallpaper.path.to_str().unwrap_or_default(),
                 String::new(),
-                Message::PathChanged,
+                Message::Path,
                 None,
                 None,
             ),
@@ -193,7 +193,7 @@ impl WallpaperScreen {
                 Some("Generate and apply Base16 theme for this wallpaper (default: true)"),
                 wallpaper.generate_theme,
                 Some(true),
-                Message::GenerateThemeChanged,
+                Message::GenerateTheme,
                 None,
             ),
         ];
@@ -209,7 +209,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.theme_variant),
-                    Message::ThemeVariantChanged,
+                    Message::ThemeVariant,
                     DEFAULT_THEME_OPTIONS.theme_variant,
                     None,
                 ),
@@ -222,7 +222,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.single_border),
-                    |v| Message::ColorChanged(ThemeColor::SingleBorder(v)),
+                    |v| Message::Color(ThemeColor::SingleBorder(v)),
                     DEFAULT_THEME_OPTIONS.single_border,
                     None,
                 ),
@@ -235,7 +235,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.stack_border),
-                    |v| Message::ColorChanged(ThemeColor::StackBorder(v)),
+                    |v| Message::Color(ThemeColor::StackBorder(v)),
                     DEFAULT_THEME_OPTIONS.stack_border,
                     None,
                 ),
@@ -248,7 +248,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.monocle_border),
-                    |v| Message::ColorChanged(ThemeColor::MonocleBorder(v)),
+                    |v| Message::Color(ThemeColor::MonocleBorder(v)),
                     DEFAULT_THEME_OPTIONS.monocle_border,
                     None,
                 ),
@@ -261,7 +261,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.floating_border),
-                    |v| Message::ColorChanged(ThemeColor::FloatingBorder(v)),
+                    |v| Message::Color(ThemeColor::FloatingBorder(v)),
                     DEFAULT_THEME_OPTIONS.floating_border,
                     None,
                 ),
@@ -274,7 +274,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.unfocused_border),
-                    |v| Message::ColorChanged(ThemeColor::UnfocusedBorder(v)),
+                    |v| Message::Color(ThemeColor::UnfocusedBorder(v)),
                     DEFAULT_THEME_OPTIONS.unfocused_border,
                     None,
                 ),
@@ -287,7 +287,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.unfocused_locked_border),
-                    |v| Message::ColorChanged(ThemeColor::UnfocusedLockerBorder(v)),
+                    |v| Message::Color(ThemeColor::UnfocusedLockerBorder(v)),
                     DEFAULT_THEME_OPTIONS.unfocused_locked_border,
                     None,
                 ),
@@ -300,7 +300,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.stackbar_focused_text),
-                    |v| Message::ColorChanged(ThemeColor::StackbarFocusedText(v)),
+                    |v| Message::Color(ThemeColor::StackbarFocusedText(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_focused_text,
                     None,
                 ),
@@ -313,7 +313,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.stackbar_unfocused_text),
-                    |v| Message::ColorChanged(ThemeColor::StackbarUnfocusedText(v)),
+                    |v| Message::Color(ThemeColor::StackbarUnfocusedText(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_unfocused_text,
                     None,
                 ),
@@ -326,7 +326,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.stackbar_background),
-                    |v| Message::ColorChanged(ThemeColor::StackbarBackground(v)),
+                    |v| Message::Color(ThemeColor::StackbarBackground(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_background,
                     None,
                 ),
@@ -339,7 +339,7 @@ impl WallpaperScreen {
                         .theme_options
                         .as_ref()
                         .and_then(|o| o.bar_accent),
-                    |v| Message::ColorChanged(ThemeColor::BarAccent(v)),
+                    |v| Message::Color(ThemeColor::BarAccent(v)),
                     DEFAULT_THEME_OPTIONS.bar_accent,
                     None,
                 ),

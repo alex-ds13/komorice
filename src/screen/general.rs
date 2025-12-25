@@ -148,13 +148,13 @@ impl General {
                     config.bar_configurations = bar_configs;
                 }
                 ConfigChange::BarConfigPathChange(idx, value) => {
-                    if let Some(bar_configs) = &mut config.bar_configurations {
-                        if idx < bar_configs.len() {
-                            if value.is_empty() {
-                                bar_configs.remove(idx);
-                            } else {
-                                bar_configs[idx] = PathBuf::from(value);
-                            }
+                    if let Some(bar_configs) = &mut config.bar_configurations
+                        && idx < bar_configs.len()
+                    {
+                        if value.is_empty() {
+                            bar_configs.remove(idx);
+                        } else {
+                            bar_configs[idx] = PathBuf::from(value);
                         }
                     }
                 }
