@@ -512,8 +512,7 @@ impl Komorice {
             Screen::General => self
                 .general
                 .view(&self.config, self.settings.show_advanced)
-                .map(Message::General)
-                .into(),
+                .map(Message::General),
             Screen::Monitors => {
                 if let Some(monitors_config) = &self.config.monitors {
                     self.monitors

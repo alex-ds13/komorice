@@ -1,3 +1,4 @@
+use crate::screen::View;
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::{self, icons};
 use crate::{
@@ -11,7 +12,7 @@ use std::path::PathBuf;
 
 use iced::{
     Element, Task, padding,
-    widget::{button, column, container, pick_list, row, rule, text},
+    widget::{button, center, column, container, opaque, pick_list, row, rule, text},
 };
 use komorebi_client::{
     AppSpecificConfigurationPath, AspectRatio, CrossBoundaryBehaviour, FloatingLayerBehaviour,
@@ -31,6 +32,11 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
+    PickAscFile(AscFile),
+    PickBarConfigFile(BarConfigFile),
+    PickedFile(PathBuf),
+    ClosedFilePicker,
+    Nothing,
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +78,25 @@ pub enum ConfigChange {
 }
 
 #[derive(Clone, Debug)]
+pub enum AscFile {
+    ExistingSingle,
+    ExistingMultiple(usize),
+    New,
+}
+
+#[derive(Clone, Debug)]
+pub enum BarConfigFile {
+    Existing(usize),
+    New,
+}
+
+#[derive(Clone, Debug)]
+pub enum FilePicker {
+    Asc(AscFile),
+    BarConfig(BarConfigFile),
+}
+
+#[derive(Clone, Debug)]
 pub enum Action {
     None,
 }
@@ -80,6 +105,7 @@ pub enum Action {
 pub struct General {
     pub new_asc_path: String,
     pub new_bar_config_path: String,
+    pub file_picker: Option<FilePicker>,
 }
 
 impl General {
@@ -301,15 +327,56 @@ impl General {
                     config.window_handling_behaviour = value;
                 }
             },
+            Message::PickAscFile(asc_file) => {
+                self.file_picker = Some(FilePicker::Asc(asc_file));
+                return (Action::None, pick_file());
+            }
+            Message::PickBarConfigFile(bar_config_file) => {
+                self.file_picker = Some(FilePicker::BarConfig(bar_config_file));
+                return (Action::None, pick_file());
+            }
+            Message::PickedFile(path) => {
+                if let Some(picker) = self.file_picker.take() {
+                    match picker {
+                        FilePicker::Asc(asc_file) => match asc_file {
+                            AscFile::ExistingSingle => {
+                                config.app_specific_configuration_path =
+                                    Some(AppSpecificConfigurationPath::Single(path));
+                            }
+                            AscFile::ExistingMultiple(idx) => {
+                                if let Some(AppSpecificConfigurationPath::Multiple(paths)) =
+                                    config.app_specific_configuration_path.as_mut()
+                                    && let Some(p) = paths.get_mut(idx)
+                                {
+                                    *p = path;
+                                }
+                            }
+                            AscFile::New => {
+                                self.new_asc_path = format!("{}", path.display());
+                            }
+                        },
+                        FilePicker::BarConfig(bar_config_file) => match bar_config_file {
+                            BarConfigFile::Existing(idx) => {
+                                if let Some(bar_configs) = config.bar_configurations.as_mut()
+                                    && let Some(bar_config) = bar_configs.get_mut(idx)
+                                {
+                                    *bar_config = path;
+                                }
+                            }
+                            BarConfigFile::New => {
+                                self.new_bar_config_path = format!("{}", path.display());
+                            }
+                        },
+                    }
+                }
+            }
+            Message::ClosedFilePicker => self.file_picker = None,
+            Message::Nothing => {}
         }
         (Action::None, Task::none())
     }
 
-    pub fn view<'a>(
-        &'a self,
-        config: &'a StaticConfig,
-        show_advanced: bool,
-    ) -> Element<'a, Message> {
+    pub fn view<'a>(&'a self, config: &'a StaticConfig, show_advanced: bool) -> View<'a, Message> {
         let asc_path = opt_helpers::expandable(
             "App Specific Configuration Path",
             Some(
@@ -807,7 +874,8 @@ impl General {
             ));
         }
 
-        opt_helpers::section_view("General:", contents)
+        let modal = self.file_picker.is_some().then(|| opaque(center("")));
+        View::new(opt_helpers::section_view("General:", contents)).modal(modal, Message::Nothing)
     }
 
     fn asc_children<'a>(
@@ -818,23 +886,29 @@ impl General {
         if let Some(asc) = asc_path {
             match asc {
                 AppSpecificConfigurationPath::Single(path_buf) => {
+                    let file_picker = button(icons::folder())
+                        .style(subtle)
+                        .on_press(Message::PickAscFile(AscFile::ExistingSingle));
                     let path_input = widget::input(
                         "",
                         path_buf.to_str().unwrap_or_default(),
                         |v| Message::ConfigChange(ConfigChange::AscPathChange(0, v)),
                         None,
                     );
-                    elements.push(path_input.into());
+                    elements.push(row![file_picker, path_input].spacing(10).into());
                 }
                 AppSpecificConfigurationPath::Multiple(paths) => {
                     for (idx, path_buf) in paths.iter().enumerate() {
+                        let file_picker = button(icons::folder())
+                            .style(subtle)
+                            .on_press(Message::PickAscFile(AscFile::ExistingMultiple(idx)));
                         let path_input = widget::input(
                             "",
                             path_buf.to_str().unwrap_or_default(),
                             move |v| Message::ConfigChange(ConfigChange::AscPathChange(idx, v)),
                             None,
                         );
-                        elements.push(path_input.into());
+                        elements.push(row![file_picker, path_input].spacing(10).into());
                     }
                 }
             }
@@ -843,6 +917,9 @@ impl General {
             .then_some(Message::ConfigChange(ConfigChange::AddNewAscPathChange));
         let is_enabled = add_new_msg.is_some();
 
+        let file_picker = button(icons::folder())
+            .style(subtle)
+            .on_press(Message::PickAscFile(AscFile::New));
         let new_path = widget::input(
             "",
             &self.new_asc_path,
@@ -859,7 +936,7 @@ impl General {
         }))
         .on_press_maybe(add_new_msg)
         .style(button::text);
-        let new_path_row = row![new_path, add_button].spacing(10);
+        let new_path_row = row![file_picker, new_path, add_button].spacing(10);
 
         let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
             .spacing(10)
@@ -874,19 +951,25 @@ impl General {
     ) -> Vec<Element<'a, Message>> {
         let mut elements = Vec::new();
         for (idx, path_buf) in bar_configs.iter().flatten().enumerate() {
+            let file_picker = button(icons::folder())
+                .style(subtle)
+                .on_press(Message::PickBarConfigFile(BarConfigFile::Existing(idx)));
             let path_input = widget::input(
                 "",
                 path_buf.to_str().unwrap_or_default(),
                 move |v| Message::ConfigChange(ConfigChange::BarConfigPathChange(idx, v)),
                 None,
             );
-            elements.push(path_input.into());
+            elements.push(row![file_picker, path_input].spacing(10).into());
         }
         let add_new_msg = (!self.new_bar_config_path.is_empty()).then_some(Message::ConfigChange(
             ConfigChange::AddNewBarConfigPathChange,
         ));
         let is_enabled = add_new_msg.is_some();
 
+        let file_picker = button(icons::folder())
+            .style(subtle)
+            .on_press(Message::PickBarConfigFile(BarConfigFile::New));
         let new_path = widget::input(
             "",
             &self.new_bar_config_path,
@@ -903,7 +986,7 @@ impl General {
         }))
         .on_press_maybe(add_new_msg)
         .style(button::text);
-        let new_path_row = row![new_path, add_button].spacing(10);
+        let new_path_row = row![file_picker, new_path, add_button].spacing(10);
 
         let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
             .spacing(10)
@@ -946,4 +1029,30 @@ fn title(title: &str) -> container::Container<'_, Message> {
     container(text(title).size(18).font(*BOLD_FONT))
         .padding(padding::top(20))
         .align_y(iced::Center)
+}
+
+fn pick_file() -> Task<Message> {
+    let (home_dir, _) = crate::config::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .add_filter("json", &["json"])
+            .set_directory(home_dir.as_path())
+            .pick_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::PickedFile(file),
+        None => Message::ClosedFilePicker,
+    })
+}
+
+fn subtle(theme: &iced::Theme, status: button::Status) -> button::Style {
+    match status {
+        button::Status::Active => button::Style {
+            background: None,
+            ..button::subtle(theme, status)
+        },
+        button::Status::Hovered | button::Status::Pressed | button::Status::Disabled => {
+            button::subtle(theme, status)
+        }
+    }
 }
