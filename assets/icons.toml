@@ -16,6 +16,7 @@ edit = "fontawesome-edit"
 copy = "fontawesome-docs"
 paste = "fontawesome-paste"
 back = "entypo-back"
+folder = "fontawesome-folder-open-empty"
 
 # Custom Icons
 bsp = "bsp.svg"

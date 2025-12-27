@@ -1,6 +1,6 @@
 // Generated automatically by iced_fontello at build time.
 // Do not edit manually. Source: ../../assets/icons.toml
-// 211066532d29b1b03e5a7ce3f6f98d93b64abe14c4bbadba548faf209e91391f
+// d62494e001516d81ddf612ebbd24ee973452dbfe3df6d07a0d1327be7211875e
 use iced::widget::{text, Text};
 use iced::Font;
 
@@ -40,6 +40,10 @@ pub fn edit<'a>() -> Text<'a> {
 
 pub fn error<'a>() -> Text<'a> {
     icon("\u{2716}")
+}
+
+pub fn folder<'a>() -> Text<'a> {
+    icon("\u{F115}")
 }
 
 pub fn grid<'a>() -> Text<'a> {
