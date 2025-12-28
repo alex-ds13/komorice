@@ -32,8 +32,8 @@ lazy_static! {
 #[derive(Clone, Debug)]
 pub enum Message {
     ConfigChange(ConfigChange),
-    PickAscFile(AscFile),
-    PickBarConfigFile(BarConfigFile),
+    PickAscFile(AscKind),
+    PickBarConfigFile(BarConfigKind),
     PickedFile(PathBuf),
     ClosedFilePicker,
     Nothing,
@@ -44,11 +44,13 @@ pub enum ConfigChange {
     AppSpecificConfigurationPath(Option<AppSpecificConfigurationPath>),
     AscPathChange(usize, String),
     NewAscPathChange(String),
-    AddNewAscPathChange,
+    AddNewAscPath,
+    RemoveAscPath(AscKind),
     BarConfigurations(Option<Vec<PathBuf>>),
     BarConfigPathChange(usize, String),
     NewBarConfigPathChange(String),
-    AddNewBarConfigPathChange,
+    AddNewBarConfigPath,
+    RemoveBarConfigPath(usize),
     CrossBoundaryBehaviour(Option<CrossBoundaryBehaviour>),
     CrossMonitorMoveBehaviour(Option<MoveBehaviour>),
     DefaultContainerPadding(Option<i32>),
@@ -78,22 +80,22 @@ pub enum ConfigChange {
 }
 
 #[derive(Clone, Debug)]
-pub enum AscFile {
+pub enum AscKind {
     ExistingSingle,
     ExistingMultiple(usize),
     New,
 }
 
 #[derive(Clone, Debug)]
-pub enum BarConfigFile {
+pub enum BarConfigKind {
     Existing(usize),
     New,
 }
 
 #[derive(Clone, Debug)]
 pub enum FilePicker {
-    Asc(AscFile),
-    BarConfig(BarConfigFile),
+    Asc(AscKind),
+    BarConfig(BarConfigKind),
 }
 
 #[derive(Clone, Debug)]
@@ -151,7 +153,7 @@ impl General {
                 ConfigChange::NewAscPathChange(value) => {
                     self.new_asc_path = value;
                 }
-                ConfigChange::AddNewAscPathChange => {
+                ConfigChange::AddNewAscPath => {
                     if let Some(asc) = &mut config.app_specific_configuration_path {
                         match asc {
                             AppSpecificConfigurationPath::Single(path_buf) => {
@@ -170,6 +172,24 @@ impl General {
                             Some(AppSpecificConfigurationPath::Single(PathBuf::from(value)));
                     }
                 }
+                ConfigChange::RemoveAscPath(asc_kind) => match asc_kind {
+                    AscKind::ExistingSingle => config.app_specific_configuration_path = None,
+                    AscKind::ExistingMultiple(idx) => {
+                        if let Some(AppSpecificConfigurationPath::Multiple(paths)) =
+                            config.app_specific_configuration_path.as_mut()
+                            && idx < paths.len()
+                        {
+                            paths.remove(idx);
+                            if paths.is_empty() {
+                                config.app_specific_configuration_path = None;
+                            } else if paths.len() == 1 {
+                                config.app_specific_configuration_path =
+                                    Some(AppSpecificConfigurationPath::Single(paths[0].clone()));
+                            }
+                        }
+                    }
+                    AscKind::New => {}
+                },
                 ConfigChange::BarConfigurations(bar_configs) => {
                     config.bar_configurations = bar_configs;
                 }
@@ -187,13 +207,23 @@ impl General {
                 ConfigChange::NewBarConfigPathChange(value) => {
                     self.new_bar_config_path = value;
                 }
-                ConfigChange::AddNewBarConfigPathChange => {
+                ConfigChange::AddNewBarConfigPath => {
                     if let Some(bar_configs) = &mut config.bar_configurations {
                         let value = PathBuf::from(std::mem::take(&mut self.new_bar_config_path));
                         bar_configs.push(value);
                     } else {
                         let value = std::mem::take(&mut self.new_bar_config_path);
                         config.bar_configurations = Some(vec![PathBuf::from(value)]);
+                    }
+                }
+                ConfigChange::RemoveBarConfigPath(idx) => {
+                    if let Some(bar_configs) = &mut config.bar_configurations
+                        && idx < bar_configs.len()
+                    {
+                        bar_configs.remove(idx);
+                        if bar_configs.is_empty() {
+                            config.bar_configurations = DEFAULT_CONFIG.bar_configurations.clone();
+                        }
                     }
                 }
                 ConfigChange::CrossBoundaryBehaviour(value) => {
@@ -339,11 +369,11 @@ impl General {
                 if let Some(picker) = self.file_picker.take() {
                     match picker {
                         FilePicker::Asc(asc_file) => match asc_file {
-                            AscFile::ExistingSingle => {
+                            AscKind::ExistingSingle => {
                                 config.app_specific_configuration_path =
                                     Some(AppSpecificConfigurationPath::Single(path));
                             }
-                            AscFile::ExistingMultiple(idx) => {
+                            AscKind::ExistingMultiple(idx) => {
                                 if let Some(AppSpecificConfigurationPath::Multiple(paths)) =
                                     config.app_specific_configuration_path.as_mut()
                                     && let Some(p) = paths.get_mut(idx)
@@ -351,19 +381,19 @@ impl General {
                                     *p = path;
                                 }
                             }
-                            AscFile::New => {
+                            AscKind::New => {
                                 self.new_asc_path = format!("{}", path.display());
                             }
                         },
                         FilePicker::BarConfig(bar_config_file) => match bar_config_file {
-                            BarConfigFile::Existing(idx) => {
+                            BarConfigKind::Existing(idx) => {
                                 if let Some(bar_configs) = config.bar_configurations.as_mut()
                                     && let Some(bar_config) = bar_configs.get_mut(idx)
                                 {
                                     *bar_config = path;
                                 }
                             }
-                            BarConfigFile::New => {
+                            BarConfigKind::New => {
                                 self.new_bar_config_path = format!("{}", path.display());
                             }
                         },
@@ -883,43 +913,54 @@ impl General {
         asc_path: &'a Option<AppSpecificConfigurationPath>,
     ) -> Vec<Element<'a, Message>> {
         let mut elements = Vec::new();
+        elements.push(text("Current paths:").into());
         if let Some(asc) = asc_path {
             match asc {
                 AppSpecificConfigurationPath::Single(path_buf) => {
                     let file_picker = button(icons::folder())
                         .style(subtle)
-                        .on_press(Message::PickAscFile(AscFile::ExistingSingle));
+                        .on_press(Message::PickAscFile(AscKind::ExistingSingle));
                     let path_input = widget::input(
                         "",
                         path_buf.to_str().unwrap_or_default(),
                         |v| Message::ConfigChange(ConfigChange::AscPathChange(0, v)),
                         None,
                     );
-                    elements.push(row![file_picker, path_input].spacing(10).into());
+                    let remove = button(icons::delete().style(text::danger))
+                        .style(subtle)
+                        .on_press(Message::ConfigChange(ConfigChange::RemoveAscPath(
+                            AscKind::ExistingSingle,
+                        )));
+                    elements.push(row![file_picker, path_input, remove].spacing(10).into());
                 }
                 AppSpecificConfigurationPath::Multiple(paths) => {
                     for (idx, path_buf) in paths.iter().enumerate() {
                         let file_picker = button(icons::folder())
                             .style(subtle)
-                            .on_press(Message::PickAscFile(AscFile::ExistingMultiple(idx)));
+                            .on_press(Message::PickAscFile(AscKind::ExistingMultiple(idx)));
                         let path_input = widget::input(
                             "",
                             path_buf.to_str().unwrap_or_default(),
                             move |v| Message::ConfigChange(ConfigChange::AscPathChange(idx, v)),
                             None,
                         );
-                        elements.push(row![file_picker, path_input].spacing(10).into());
+                        let remove = button(icons::delete().style(text::danger))
+                            .style(subtle)
+                            .on_press(Message::ConfigChange(ConfigChange::RemoveAscPath(
+                                AscKind::ExistingMultiple(idx),
+                            )));
+                        elements.push(row![file_picker, path_input, remove].spacing(10).into());
                     }
                 }
             }
         }
         let add_new_msg = (!self.new_asc_path.is_empty())
-            .then_some(Message::ConfigChange(ConfigChange::AddNewAscPathChange));
+            .then_some(Message::ConfigChange(ConfigChange::AddNewAscPath));
         let is_enabled = add_new_msg.is_some();
 
         let file_picker = button(icons::folder())
             .style(subtle)
-            .on_press(Message::PickAscFile(AscFile::New));
+            .on_press(Message::PickAscFile(AscKind::New));
         let new_path = widget::input(
             "",
             &self.new_asc_path,
@@ -938,7 +979,7 @@ impl General {
         .style(button::text);
         let new_path_row = row![file_picker, new_path, add_button].spacing(10);
 
-        let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
+        let new_path_col = column![rule::horizontal(2), text("Add new path:"), new_path_row]
             .spacing(10)
             .padding(padding::top(10));
         elements.push(new_path_col.into());
@@ -950,26 +991,31 @@ impl General {
         bar_configs: &'a Option<Vec<PathBuf>>,
     ) -> Vec<Element<'a, Message>> {
         let mut elements = Vec::new();
+        elements.push(text("Current configurations:").into());
         for (idx, path_buf) in bar_configs.iter().flatten().enumerate() {
             let file_picker = button(icons::folder())
                 .style(subtle)
-                .on_press(Message::PickBarConfigFile(BarConfigFile::Existing(idx)));
+                .on_press(Message::PickBarConfigFile(BarConfigKind::Existing(idx)));
             let path_input = widget::input(
                 "",
                 path_buf.to_str().unwrap_or_default(),
                 move |v| Message::ConfigChange(ConfigChange::BarConfigPathChange(idx, v)),
                 None,
             );
-            elements.push(row![file_picker, path_input].spacing(10).into());
+            let remove = button(icons::delete().style(text::danger))
+                .style(subtle)
+                .on_press(Message::ConfigChange(ConfigChange::RemoveBarConfigPath(
+                    idx,
+                )));
+            elements.push(row![file_picker, path_input, remove].spacing(10).into());
         }
-        let add_new_msg = (!self.new_bar_config_path.is_empty()).then_some(Message::ConfigChange(
-            ConfigChange::AddNewBarConfigPathChange,
-        ));
+        let add_new_msg = (!self.new_bar_config_path.is_empty())
+            .then_some(Message::ConfigChange(ConfigChange::AddNewBarConfigPath));
         let is_enabled = add_new_msg.is_some();
 
         let file_picker = button(icons::folder())
             .style(subtle)
-            .on_press(Message::PickBarConfigFile(BarConfigFile::New));
+            .on_press(Message::PickBarConfigFile(BarConfigKind::New));
         let new_path = widget::input(
             "",
             &self.new_bar_config_path,
@@ -988,9 +1034,13 @@ impl General {
         .style(button::text);
         let new_path_row = row![file_picker, new_path, add_button].spacing(10);
 
-        let new_path_col = column![rule::horizontal(2), text("New path:"), new_path_row]
-            .spacing(10)
-            .padding(padding::top(10));
+        let new_path_col = column![
+            rule::horizontal(2),
+            text("Add new configuration:"),
+            new_path_row
+        ]
+        .spacing(10)
+        .padding(padding::top(10));
         elements.push(new_path_col.into());
         elements
     }
