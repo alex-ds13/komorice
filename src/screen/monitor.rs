@@ -3,7 +3,10 @@ use super::workspace::{self, WorkspaceScreen};
 use crate::{
     config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     monitors::TitleLink,
-    screen::wallpaper::{self, WallpaperScreen},
+    screen::{
+        Modal,
+        wallpaper::{self, WallpaperScreen},
+    },
     widget::opt_helpers::{self, description_text as t},
 };
 
@@ -74,9 +77,23 @@ pub enum SubScreen {
 pub struct MonitorView<'a, M> {
     pub title: Vec<Span<'a, TitleLink>>,
     pub contents: Vec<Element<'a, M>>,
+    pub modal: Option<Modal<'a, M>>,
 }
 
 impl<'a, M> MonitorView<'a, M> {
+    pub fn new(title: Vec<Span<'a, TitleLink>>, contents: Vec<Element<'a, M>>) -> Self {
+        Self {
+            title,
+            contents,
+            modal: None,
+        }
+    }
+
+    pub fn modal(mut self, element: Option<impl Into<Element<'a, M>>>, close_message: M) -> Self {
+        self.modal = Some(Modal::new(element, close_message));
+        self
+    }
+
     pub fn map<B>(self, f: impl Fn(M) -> B + Clone + 'a) -> MonitorView<'a, B>
     where
         M: 'a,
@@ -89,6 +106,7 @@ impl<'a, M> MonitorView<'a, M> {
                 .into_iter()
                 .map(|el| el.map(f.clone()))
                 .collect(),
+            modal: self.modal.map(|modal| modal.map(f)),
         }
     }
 }
@@ -98,6 +116,7 @@ pub struct Monitor {
     pub index: usize,
     pub sub_screen: SubScreen,
     pub workspaces: HashMap<usize, workspace::Workspace>,
+    pub wallpaper: WallpaperScreen,
 }
 
 impl Monitor {
@@ -248,7 +267,10 @@ impl Monitor {
             }
             Message::Wallpaper(message) => {
                 if let Some(wp_config) = config.wallpaper.as_mut() {
-                    return WallpaperScreen::update(wp_config, message).map(Message::Wallpaper);
+                    return self
+                        .wallpaper
+                        .update(wp_config, message)
+                        .map(Message::Wallpaper);
                 }
             }
             Message::SetSubScreenWorkspaces => {
@@ -559,7 +581,7 @@ impl Monitor {
             opt_helpers::opt_button("Workspaces", None, Message::SetSubScreenWorkspaces),
         ];
 
-        MonitorView { title, contents }
+        MonitorView::new(title, contents)
     }
 
     pub fn monitor_wallpaper_view<'a>(
@@ -567,17 +589,16 @@ impl Monitor {
         wp_config: Option<&'a Wallpaper>,
     ) -> MonitorView<'a, Message> {
         let title = self.get_sub_section_title(None);
-        let contents = if let Some(wp_config) = wp_config {
-            vec![
-                WallpaperScreen::view(wp_config)
-                    .map(Message::Wallpaper)
-                    .element,
-            ]
+        if let Some(wp_config) = wp_config {
+            let wp = self.wallpaper.view(wp_config).map(Message::Wallpaper);
+            if let Some(modal) = wp.modal {
+                MonitorView::new(title, vec![wp.element]).modal(modal.element, modal.close_message)
+            } else {
+                MonitorView::new(title, vec![wp.element])
+            }
         } else {
-            vec![]
-        };
-
-        MonitorView { title, contents }
+            MonitorView::new(title, vec![])
+        }
     }
 
     pub fn workspaces_view(&self, workspaces: &[WorkspaceConfig]) -> MonitorView<'_, Message> {
@@ -602,7 +623,7 @@ impl Monitor {
             })
             .collect();
 
-        MonitorView { title, contents }
+        MonitorView::new(title, contents)
     }
 
     pub fn workspace_view<'a>(
@@ -611,13 +632,16 @@ impl Monitor {
         workspace: &'a WorkspaceConfig,
     ) -> MonitorView<'a, Message> {
         let title = self.get_sub_section_title(Some(workspace));
-        let contents = vec![
-            workspace
-                .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m)),
-        ];
+        let ws_view = workspace
+            .view(&self.workspaces[&idx])
+            .map(move |m| Message::Workspace(idx, m));
+        let contents = vec![ws_view.element];
 
-        MonitorView { title, contents }
+        if let Some(modal) = ws_view.modal {
+            MonitorView::new(title, contents).modal(modal.element, modal.close_message)
+        } else {
+            MonitorView::new(title, contents)
+        }
     }
 
     pub fn workspace_rules_view<'a>(
@@ -629,10 +653,11 @@ impl Monitor {
         let contents = vec![
             workspace
                 .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m)),
+                .map(move |m| Message::Workspace(idx, m))
+                .element,
         ];
 
-        MonitorView { title, contents }
+        MonitorView::new(title, contents)
     }
 
     pub fn initial_workspace_rules_view<'a>(
@@ -644,10 +669,11 @@ impl Monitor {
         let contents = vec![
             workspace
                 .view(&self.workspaces[&idx])
-                .map(move |m| Message::Workspace(idx, m)),
+                .map(move |m| Message::Workspace(idx, m))
+                .element,
         ];
 
-        MonitorView { title, contents }
+        MonitorView::new(title, contents)
     }
 
     pub fn subscription(&self) -> Subscription<(usize, usize, Message)> {

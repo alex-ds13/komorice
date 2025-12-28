@@ -522,7 +522,6 @@ impl Komorice {
                             &self.config.display_index_preferences,
                         )
                         .map(Message::Monitors)
-                        .into()
                 } else {
                     space::horizontal().into()
                 }

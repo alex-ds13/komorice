@@ -6,6 +6,7 @@ use super::{
 use crate::{
     BOLD_FONT,
     config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    screen::View,
     widget::{icons, monitors_viewer, opt_helpers},
 };
 
@@ -77,6 +78,7 @@ impl Monitors {
                                 .enumerate()
                                 .map(|(i, _)| (i, workspace::Workspace::new(i)))
                                 .collect(),
+                            wallpaper: Default::default(),
                         },
                     )
                 })
@@ -291,7 +293,8 @@ impl Monitors {
         monitors_config: &'a [MonitorConfig],
         display_info: &'a HashMap<usize, DisplayInfo>,
         display_index_preferences: &'a Option<HashMap<usize, String>>,
-    ) -> Element<'a, Message> {
+    ) -> View<'a, Message> {
+        let mut main_modal = None;
         let mut main_title_spans = vec![
             iced::widget::span("Monitors").link_maybe(
                 self.monitor_to_config
@@ -314,9 +317,14 @@ impl Monitors {
             .map(|idx| (self.monitors.get(&idx), monitors_config.get(idx)))
         {
             let monitor_idx = self.monitor_to_config.expect("unreachable");
-            let MonitorView { title, contents } = monitor
+            let MonitorView {
+                title,
+                contents,
+                modal,
+            } = monitor
                 .view(m_config)
                 .map(move |message| Message::MonitorConfigChanged(monitor_idx, message));
+            main_modal = modal;
             main_title_spans.extend(title);
             col = col.extend(contents);
         } else if self.show_monitors_list {
@@ -398,11 +406,16 @@ impl Monitors {
             .font(*BOLD_FONT)
             .on_link_click(Message::Title);
 
-        column![main_title, rule::horizontal(2.0), show_monitors_display]
+        let main = column![main_title, rule::horizontal(2.0), show_monitors_display]
             .push(monitors_display)
             .push(contents)
-            .spacing(10)
-            .into()
+            .spacing(10);
+
+        if let Some(modal) = main_modal {
+            View::new(main).modal(modal.element, modal.close_message)
+        } else {
+            View::new(main)
+        }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {

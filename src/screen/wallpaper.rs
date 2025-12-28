@@ -1,10 +1,16 @@
 use std::path::PathBuf;
 
-use crate::{screen::View, widget::opt_helpers};
+use crate::{
+    screen::View,
+    widget::{icons, opt_helpers},
+};
 
 use std::sync::LazyLock;
 
-use iced::Task;
+use iced::{
+    Fill, Task,
+    widget::{button, center, opaque, row, space},
+};
 use komorebi_client::{ThemeOptions, Wallpaper};
 use komorebi_themes::{Base16Value, ThemeVariant};
 
@@ -28,7 +34,10 @@ pub static DEFAULT_THEME_OPTIONS: ThemeOptions = ThemeOptions {
     bar_accent: Some(Base16Value::Base0D),
 };
 
-pub struct WallpaperScreen;
+#[derive(Clone, Debug, Default)]
+pub struct WallpaperScreen {
+    show_picker: bool,
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -36,6 +45,9 @@ pub enum Message {
     GenerateTheme(Option<bool>),
     ThemeVariant(Option<ThemeVariant>),
     Color(ThemeColor),
+    PickFile,
+    PickedFile(PathBuf),
+    ClosedFilePicker,
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +65,7 @@ pub enum ThemeColor {
 }
 
 impl WallpaperScreen {
-    pub fn update(wallpaper: &mut Wallpaper, message: Message) -> Task<Message> {
+    pub fn update(&mut self, wallpaper: &mut Wallpaper, message: Message) -> Task<Message> {
         match message {
             Message::Path(path) => {
                 let path = PathBuf::from(path);
@@ -172,20 +184,39 @@ impl WallpaperScreen {
                     }
                 }
             },
+            Message::PickFile => {
+                self.show_picker = true;
+                return pick_file();
+            }
+            Message::PickedFile(path) => {
+                wallpaper.path = path;
+                self.show_picker = false;
+            }
+            Message::ClosedFilePicker => self.show_picker = false,
         }
         Task::none()
     }
 
-    pub fn view<'a>(wallpaper: &'a Wallpaper) -> View<'a, Message> {
+    pub fn view<'a>(&self, wallpaper: &'a Wallpaper) -> View<'a, Message> {
         let mut contents = vec![
-            opt_helpers::input_with_disable_default(
+            opt_helpers::opt_custom_el_disable_default(
                 "Path",
                 Some("Full path to the wallpaper image file"),
-                "",
-                wallpaper.path.to_str().unwrap_or_default(),
-                String::new(),
-                Message::Path,
-                None,
+                row![
+                    button(icons::folder())
+                        .style(subtle)
+                        .on_press(Message::PickFile),
+                    crate::widget::input(
+                        "",
+                        wallpaper.path.to_str().unwrap_or_default(),
+                        Message::Path,
+                        None,
+                    )
+                    .on_input(Message::Path)
+                ]
+                .spacing(10),
+                !wallpaper.path.to_str().unwrap_or_default().is_empty(),
+                Some(Message::Path(String::new())),
                 None,
             ),
             opt_helpers::toggle_with_disable_default(
@@ -346,6 +377,48 @@ impl WallpaperScreen {
             ]);
         }
 
-        opt_helpers::section_view("Wallpaper", contents).into()
+        let element = opt_helpers::section_view("Wallpaper", contents);
+
+        if self.show_picker {
+            View::new(element).modal(
+                Some(opaque(center(space().width(Fill).height(Fill)))),
+                Message::ClosedFilePicker,
+            )
+        } else {
+            View::new(element)
+        }
+    }
+}
+
+fn pick_file() -> Task<Message> {
+    let (home_dir, _) = crate::config::home_path();
+    Task::future(async move {
+        rfd::FileDialog::new()
+            .add_filter(
+                "image",
+                &[
+                    "jpg", "jpeg", "bmp", "dib", "png", "jfif", "jpe", "gif", "tif", "tiff", "wdp",
+                    "heic", "heif", "heics", "heifs", "hif", "avci", "avcs", "avif", "avifs",
+                    "jxr", "jxl",
+                ],
+            )
+            .set_directory(home_dir.as_path())
+            .pick_file()
+    })
+    .map(|res| match res {
+        Some(file) => Message::PickedFile(file),
+        None => Message::ClosedFilePicker,
+    })
+}
+
+fn subtle(theme: &iced::Theme, status: button::Status) -> button::Style {
+    match status {
+        button::Status::Active => button::Style {
+            background: None,
+            ..button::subtle(theme, status)
+        },
+        button::Status::Hovered | button::Status::Pressed | button::Status::Disabled => {
+            button::subtle(theme, status)
+        }
     }
 }

@@ -4,7 +4,10 @@ use crate::config::{DEFAULT_CONFIG, DEFAULT_WORKSPACE_CONFIG};
 use crate::komo_interop::layout::{
     LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE, Layout,
 };
-use crate::screen::wallpaper::{self, WallpaperScreen};
+use crate::screen::{
+    View,
+    wallpaper::{self, WallpaperScreen},
+};
 use crate::utils::{DisplayOption, DisplayOptionCustom};
 use crate::widget::opt_helpers::description_text as t;
 use crate::widget::opt_helpers::to_description_text as td;
@@ -99,6 +102,7 @@ pub struct Workspace {
     pub index: usize,
     pub screen: Screen,
     pub rule: rule::Rule,
+    pub wallpaper: WallpaperScreen,
     pub new_layout_rule_limit: usize,
     pub new_layout_rule_layout: Layout,
     pub new_behaviour_rule_limit: usize,
@@ -108,7 +112,7 @@ pub struct Workspace {
 pub trait WorkspaceScreen {
     fn update(&mut self, workspace: &mut Workspace, message: Message) -> (Action, Task<Message>);
 
-    fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message>;
+    fn view<'a>(&'a self, workspace: &'a Workspace) -> View<'a, Message>;
 }
 
 impl WorkspaceScreen for WorkspaceConfig {
@@ -440,7 +444,10 @@ impl WorkspaceScreen for WorkspaceConfig {
                 if let Some(wp_config) = self.wallpaper.as_mut() {
                     return (
                         Action::None,
-                        WallpaperScreen::update(wp_config, message).map(Message::Wallpaper),
+                        workspace
+                            .wallpaper
+                            .update(wp_config, message)
+                            .map(Message::Wallpaper),
                     );
                 }
             }
@@ -448,22 +455,21 @@ impl WorkspaceScreen for WorkspaceConfig {
         (Action::None, Task::none())
     }
 
-    fn view<'a>(&'a self, workspace: &'a Workspace) -> Element<'a, Message> {
+    fn view<'a>(&'a self, workspace: &'a Workspace) -> View<'a, Message> {
         match workspace.screen {
-            Screen::Workspace => workspace.workspace_view(self),
+            Screen::Workspace => workspace.workspace_view(self).into(),
             Screen::WorkspaceWallpaper => {
                 if let Some(wp_config) = self.wallpaper.as_ref() {
-                    WallpaperScreen::view(wp_config)
-                        .map(Message::Wallpaper)
-                        .element
+                    workspace.wallpaper.view(wp_config).map(Message::Wallpaper)
                 } else {
-                    space().into()
+                    View::new(space())
                 }
             }
             Screen::WorkspaceRules | Screen::InitialWorkspaceRules => workspace
                 .rule
                 .view(get_rules_from_config(self, &workspace.screen))
-                .map(Message::Rule),
+                .map(Message::Rule)
+                .into(),
         }
     }
 }
