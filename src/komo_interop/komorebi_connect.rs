@@ -15,13 +15,25 @@ pub fn connect() -> Subscription<Message> {
         iced::stream::channel(10, |mut output: mpsc::Sender<Message>| async move {
             let subscriber_name = "komorice";
 
-            let listener = komorebi_client::subscribe_with_options(
-                subscriber_name,
-                SubscribeOptions {
-                    filter_state_changes: true,
-                },
-            )
-            .expect("could not subscribe to komorebi notifications");
+            let listener = loop {
+                let listener_res = komorebi_client::subscribe_with_options(
+                    subscriber_name,
+                    SubscribeOptions {
+                        filter_state_changes: true,
+                    },
+                );
+                match listener_res {
+                    Ok(listener) => {
+                        break listener;
+                    }
+                    Err(error) => {
+                        println!("Failed to subscribe to komorebi:");
+                        println!("{error}");
+                        smol::future::yield_now().await;
+                        smol::Timer::after(Duration::from_secs(60)).await;
+                    }
+                }
+            };
 
             println!(
                 "subscribed to komorebi notifications: \"{}\"",
@@ -52,6 +64,7 @@ pub fn connect() -> Subscription<Message> {
                                     }
 
                                 println!("reconnected to komorebi");
+                                continue;
                             }
 
                             match String::from_utf8(buffer) {
