@@ -36,6 +36,7 @@ pub static DEFAULT_WHKDRC: Whkdrc = Whkdrc {
 #[derive(Debug, Clone)]
 pub enum Message {
     WhkdrcFileWatcherTx(Sender<Input>),
+    FileWatcherError(AppError),
     LoadedWhkdrc(Arc<Whkdrc>),
     FailedToLoadWhkdrc(AppError),
     SavedWhkdrc,
@@ -111,6 +112,9 @@ impl Whkd {
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {
         match message {
             Message::WhkdrcFileWatcherTx(sender) => self.whkdrc_watcher_tx = Some(sender),
+            Message::FileWatcherError(app_error) => {
+                return (Action::AppError(app_error), Task::none());
+            }
             Message::LoadedWhkdrc(whkdrc) => {
                 if let Some(whkdrc) = Arc::into_inner(whkdrc) {
                     // println!("Whkdrc Loaded: {whkdrc:#?}");
@@ -566,45 +570,83 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             }
                         }
 
-                        let mut debouncer = new_debouncer(Duration::from_millis(250), move |res| {
+                        let debouncer_res = new_debouncer(Duration::from_millis(250), move |res| {
                             smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
-                                match sender.send(input).await {
-                                    Ok(_) => {}
-                                    Err(error) => {
-                                        println!(
-                                            "Error sending a debounced \
-                                                event to the worker channel. \
-                                                E: {error:?}"
-                                        );
-                                    }
+                                if let Err(error) = sender.send(input).await {
+                                    println!(
+                                        "Error sending a debounced event to the worker channel.\n\
+                                        E: {error:?}"
+                                    );
                                 }
                             })
-                        })
-                        .unwrap();
+                        });
 
-                        if matches!(std::fs::exists(config_path()), Ok(false) | Err(_)) {
-                            // If the default path doesn't exist, we save the default version to create it
-                            if let Err(apperror) = save(DEFAULT_WHKDRC.clone(), config_path()).await
-                            {
-                                match output.send(Message::AppError(apperror)).await {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        println!("Error trying to send error:\n{e:?}");
+                        match debouncer_res {
+                            Ok(mut debouncer) => {
+                                if matches!(std::fs::exists(config_path()), Ok(false) | Err(_)) {
+                                    // If the default path doesn't exist, we save the default version to create it
+                                    if let Err(apperror) =
+                                        save(DEFAULT_WHKDRC.clone(), config_path()).await
+                                    {
+                                        match output.send(Message::AppError(apperror)).await {
+                                            Ok(_) => {}
+                                            Err(e) => {
+                                                println!("Error trying to send error:\n{e:?}");
+                                            }
+                                        }
+                                    }
+                                }
+
+                                match debouncer
+                                    .watcher()
+                                    .watch(&path, RecursiveMode::NonRecursive)
+                                {
+                                    Ok(_) => {
+                                        state = State::Ready(Data {
+                                            debouncer,
+                                            receiver,
+                                            ignore_event: 0,
+                                        });
+                                    }
+                                    Err(error) => {
+                                        if let Err(send_error) = output
+                                            .send(Message::FileWatcherError(AppError {
+                                                title: String::from(
+                                                    "Error trying to watch a whkdrc file",
+                                                ),
+                                                description: Some(error.to_string()),
+                                                kind: AppErrorKind::Error,
+                                            }))
+                                            .await
+                                        {
+                                            println!("Error sending an `AppError`: {}", send_error);
+                                            println!(
+                                                "Actual error it was trying to send: {}",
+                                                error
+                                            );
+                                        }
+                                        smol::Timer::after(Duration::from_secs(60)).await;
                                     }
                                 }
                             }
+                            Err(error) => {
+                                if let Err(send_error) = output
+                                    .send(Message::FileWatcherError(AppError {
+                                        title: String::from(
+                                            "Error trying to setup a whkdrc file watcher",
+                                        ),
+                                        description: Some(error.to_string()),
+                                        kind: AppErrorKind::Error,
+                                    }))
+                                    .await
+                                {
+                                    println!("Error sending an `AppError`: {}", send_error);
+                                    println!("Actual error it was trying to send: {}", error);
+                                }
+                                smol::Timer::after(Duration::from_secs(60)).await;
+                            }
                         }
-                        debouncer
-                            .watcher()
-                            .watch(&path, RecursiveMode::NonRecursive)
-                            .unwrap();
-
-                        state = State::Ready(Data {
-                            debouncer,
-                            receiver,
-                            ignore_event: 0,
-                        });
                     }
                     State::Ready(data) => {
                         let Data {

@@ -498,9 +498,7 @@ pub fn merge_default(config: StaticConfig) -> StaticConfig {
                         .wallpaper
                         .map(|wp| Wallpaper {
                             path: wp.path,
-                            generate_theme: wp
-                                .generate_theme
-                                .or(DEFAULT_WALLPAPER.generate_theme),
+                            generate_theme: wp.generate_theme.or(DEFAULT_WALLPAPER.generate_theme),
                             theme_options: wp
                                 .theme_options
                                 .map(|to| ThemeOptions {
@@ -1345,33 +1343,64 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             }
                         }
 
-                        let mut debouncer = new_debouncer(Duration::from_millis(250), move |res| {
+                        let debouncer_res = new_debouncer(Duration::from_millis(250), move |res| {
                             smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
-                                match sender.send(input).await {
-                                    Ok(_) => {}
-                                    Err(error) => {
-                                        println!(
-                                            "Error sending a debounced \
-                                                event to the worker channel. \
-                                                E: {error:?}"
-                                        );
-                                    }
+                                if let Err(error) = sender.send(input).await {
+                                    println!(
+                                        "Error sending a debounced event to the worker channel.\n\
+                                        E: {error:?}"
+                                    );
                                 }
                             })
-                        })
-                        .unwrap();
-
-                        debouncer
-                            .watcher()
-                            .watch(&path, RecursiveMode::NonRecursive)
-                            .unwrap();
-
-                        state = State::Ready(Data {
-                            debouncer,
-                            receiver,
-                            ignore_event: 0,
                         });
+
+                        match debouncer_res {
+                            Ok(mut debouncer) => match debouncer
+                                .watcher()
+                                .watch(&path, RecursiveMode::NonRecursive)
+                            {
+                                Ok(_) => {
+                                    state = State::Ready(Data {
+                                        debouncer,
+                                        receiver,
+                                        ignore_event: 0,
+                                    });
+                                }
+                                Err(error) => {
+                                    if let Err(send_error) = output
+                                        .send(Message::ConfigWatcherError(AppError {
+                                            title: String::from(
+                                                "Error trying to watch a komorebi config file",
+                                            ),
+                                            description: Some(error.to_string()),
+                                            kind: AppErrorKind::Error,
+                                        }))
+                                        .await
+                                    {
+                                        println!("Error sending an `AppError`: {}", send_error);
+                                        println!("Actual error it was trying to send: {}", error);
+                                    }
+                                    smol::Timer::after(Duration::from_secs(60)).await;
+                                }
+                            },
+                            Err(error) => {
+                                if let Err(send_error) = output
+                                    .send(Message::ConfigWatcherError(AppError {
+                                        title: String::from(
+                                            "Error trying to setup a config file watcher",
+                                        ),
+                                        description: Some(error.to_string()),
+                                        kind: AppErrorKind::Error,
+                                    }))
+                                    .await
+                                {
+                                    println!("Error sending an `AppError`: {}", send_error);
+                                    println!("Actual error it was trying to send: {}", error);
+                                }
+                                smol::Timer::after(Duration::from_secs(60)).await;
+                            }
+                        }
                     }
                     State::Ready(data) => {
                         let Data {
@@ -1443,9 +1472,9 @@ fn handle_event(
             println!("FileWatcher: loading options");
             smol::block_on(async {
                 match load(path).await {
-                    Ok(loaded_options) => {
+                    Ok(loaded_config) => {
                         let _ = output
-                            .send(Message::LoadedConfig(Arc::new(loaded_options)))
+                            .send(Message::LoadedConfig(Arc::new(loaded_config)))
                             .await;
                     }
                     Err(e) => {

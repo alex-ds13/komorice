@@ -100,6 +100,7 @@ enum Message {
     LoadedConfig(Arc<komorebi_client::StaticConfig>),
     FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(smol::channel::Sender<config::Input>),
+    ConfigWatcherError(AppError),
     DiscardChanges,
     TrySave,
     ToggleSaveModal,
@@ -435,6 +436,7 @@ impl Komorice {
             Message::ConfigFileWatcherTx(sender) => {
                 self.config_watcher_tx = Some(sender);
             }
+            Message::ConfigWatcherError(apperror) => self.add_error(apperror),
             Message::TrySave => {
                 if self.settings.show_save_warning {
                     self.show_save_modal = true;
