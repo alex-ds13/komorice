@@ -418,26 +418,7 @@ impl General {
             Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
                 DEFAULT_CONFIG.app_specific_configuration_path.clone(),
             )),
-            Some(DisableArgs {
-                disable: config.app_specific_configuration_path.is_none()
-                    || config.app_specific_configuration_path.as_ref().is_some_and(
-                        |asc| match asc {
-                            AppSpecificConfigurationPath::Single(path_buf) => {
-                                path_buf == &PathBuf::new()
-                            }
-                            AppSpecificConfigurationPath::Multiple(path_bufs) => {
-                                path_bufs.is_empty()
-                            }
-                        },
-                    ),
-                label: Some("None"),
-                on_toggle: |v| {
-                    Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
-                        (!v).then_some(DEFAULT_CONFIG.app_specific_configuration_path.clone())
-                            .flatten(),
-                    ))
-                },
-            }),
+            None,
         );
         let bar_configurations = opt_helpers::expandable(
             "Bar Configurations",
@@ -449,20 +430,7 @@ impl General {
             Message::ConfigChange(ConfigChange::BarConfigurations(
                 DEFAULT_CONFIG.bar_configurations.clone(),
             )),
-            Some(DisableArgs {
-                disable: config.bar_configurations.is_none()
-                    || config
-                        .bar_configurations
-                        .as_ref()
-                        .is_some_and(|bc| bc.is_empty()),
-                label: Some("None"),
-                on_toggle: |v| {
-                    Message::ConfigChange(ConfigChange::BarConfigurations(
-                        (!v).then_some(DEFAULT_CONFIG.bar_configurations.clone())
-                            .flatten(),
-                    ))
-                },
-            }),
+            None,
         );
         let cross_boundary_behaviour = opt_helpers::choose_with_disable_default(
             "Cross Boundary Behaviour",
