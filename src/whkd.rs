@@ -18,10 +18,12 @@ use notify_debouncer_mini::{
     notify::{ReadDirectoryChangesWatcher, RecursiveMode},
 };
 use smol::channel::{self, Receiver, Sender};
+use smol::process::{Command, ExitStatus, Output, Stdio, windows::CommandExt};
 pub use whkd_core::{HotkeyBinding, Shell, Whkdrc};
 
 pub static MODIFIERS: [&str; 4] = ["CTRL", "SHIFT", "ALT", "WIN"];
 
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 pub const SEPARATOR: &str = " + ";
 pub const UNPADDED_SEPARATOR: &str = "+";
 
@@ -369,10 +371,11 @@ pub struct WhkdBinary {
 fn find_whkd() -> Task<Message> {
     Task::perform(
         async {
-            smol::process::Command::new("whkd.exe")
+            Command::new("whkd.exe")
                 .arg("--version")
-                .stdout(smol::process::Stdio::piped())
-                .stderr(smol::process::Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .await
         },
@@ -390,40 +393,37 @@ fn find_whkd() -> Task<Message> {
 }
 
 fn whkd_status() -> Task<Message> {
-    use std::os::windows::process::CommandExt;
-
     Task::future(async {
-        smol::unblock(|| {
-            std::process::Command::new("tasklist")
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
-                .arg("/fi")
-                .raw_arg(r#""imagename eq whkd.exe""#)
-                .spawn()
-        })
-        .await
+        Command::new("tasklist")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .arg("/fi")
+            .raw_arg(r#""imagename eq whkd.exe""#)
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
     })
     .then(|output| match output {
         Ok(output) => Task::perform(
             async {
-                smol::unblock(|| {
-                    if let Some(stdout) = output.stdout {
-                        std::process::Command::new("find")
-                            .args(["/I", "/N", "/C"])
-                            .raw_arg(r#""whkd.exe""#)
-                            .stdin(std::process::Stdio::from(stdout))
-                            .stdout(std::process::Stdio::piped())
-                            .stderr(std::process::Stdio::piped())
-                            .output()
-                    } else {
-                        Ok(std::process::Output {
-                            status: std::process::ExitStatus::default(),
-                            stdout: Vec::new(),
-                            stderr: Vec::new(),
-                        })
-                    }
-                })
-                .await
+                if let Some(stdout) = output.stdout
+                    && let Ok(stdout) = stdout.into_stdio().await
+                {
+                    Command::new("find")
+                        .args(["/I", "/N", "/C"])
+                        .raw_arg(r#""whkd.exe""#)
+                        .stdin(stdout)
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .output()
+                        .await
+                } else {
+                    Ok(Output {
+                        status: ExitStatus::default(),
+                        stdout: Vec::new(),
+                        stderr: Vec::new(),
+                    })
+                }
             },
             |res| match res {
                 Ok(output) => {
@@ -445,10 +445,11 @@ fn whkd_status() -> Task<Message> {
 fn stop_whkd() -> Task<Message> {
     Task::perform(
         async {
-            smol::process::Command::new("taskkill")
+            Command::new("taskkill")
                 .args(["/f", "/im", "whkd.exe"])
-                .stdout(smol::process::Stdio::piped())
-                .stderr(smol::process::Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .creation_flags(CREATE_NO_WINDOW)
                 .status()
                 .await
         },
@@ -462,7 +463,7 @@ fn stop_whkd() -> Task<Message> {
 fn restart_whkd() -> Task<Message> {
     Task::perform(
         async move {
-            smol::process::Command::new("cmd")
+            Command::new("cmd")
                 .args([
                     "/b",
                     "/c",
@@ -477,8 +478,9 @@ fn restart_whkd() -> Task<Message> {
                     "-WindowStyle",
                     "Hidden",
                 ])
-                .stdout(smol::process::Stdio::piped())
-                .stderr(smol::process::Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .creation_flags(CREATE_NO_WINDOW)
                 .status()
                 .await
         },
