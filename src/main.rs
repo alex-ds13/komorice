@@ -561,54 +561,45 @@ impl Komorice {
             }
         };
 
-        if matches!(self.main_screen, Screen::Home) {
-            return main_screen.element;
-        }
+        let skip_side_bottom_bars = matches!(self.main_screen, Screen::Home);
 
-        let sidebar = self
-            .sidebar
-            .view(&self.configuration.config_type)
-            .map(Message::Sidebar);
-        let mut save_buttons = row![]
-            .spacing(10)
-            .padding(padding::left(10))
-            .width(Fill)
-            .align_y(Center);
-        save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
-            button("Errors")
-                .on_press(Message::OpenErrorsModal)
-                .style(button::danger)
-        }));
-        save_buttons = save_buttons.extend([
-            space::horizontal().into(),
-            to_description_text(text!("{}", self.configuration.path().display())).into(),
-            space::horizontal().into(),
-            button("Save")
-                .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
-                .into(),
-            button("Discard Changes")
-                .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
-                .style(button::secondary)
-                .into(),
-        ]);
-        let right_col = column![
-            container(main_screen.element)
-                .height(Fill)
-                .padding(padding::all(20).bottom(0)),
-            container(rule::horizontal(2.0)).padding(padding::bottom(5)),
-            save_buttons,
-        ];
+        let main_content = if !skip_side_bottom_bars {
+            let sidebar = self
+                .sidebar
+                .view(&self.configuration.config_type)
+                .map(Message::Sidebar);
+            let save_buttons = self.save_buttons();
+            let right_col = column![
+                container(main_screen.element)
+                    .height(Fill)
+                    .padding(padding::all(20).bottom(0)),
+                container(rule::horizontal(2.0)).padding(padding::bottom(5)),
+                save_buttons,
+            ];
 
-        let main_content = row![sidebar, rule::vertical(2.0), right_col].padding(10);
-        let main_content = if let Some(screen_modal) = main_screen.modal {
-            widget::modal(
-                main_content,
-                screen_modal.element,
-                screen_modal.close_message,
-            )
+            let main_content = row![sidebar, rule::vertical(2.0), right_col].padding(10);
+            let main_content = if let Some(screen_modal) = main_screen.modal {
+                widget::modal(
+                    main_content,
+                    screen_modal.element,
+                    screen_modal.close_message,
+                )
+            } else {
+                main_content.into()
+            };
+            main_content
         } else {
-            main_content.into()
+            if let Some(screen_modal) = main_screen.modal {
+                widget::modal(
+                    main_screen.element,
+                    screen_modal.element,
+                    screen_modal.close_message,
+                )
+            } else {
+                main_screen.element
+            }
         };
+
         let modal_content = self.show_save_modal.then(|| self.save_warning());
         let main_modal = widget::modal(main_content, modal_content, Message::ToggleSaveModal);
         let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());
@@ -804,5 +795,31 @@ impl Komorice {
             .center(iced::Fill)
             .height(iced::Shrink)
             .style(widget::modal::red)
+    }
+
+    fn save_buttons(&self) -> row::Row<'_, Message> {
+        let mut save_buttons = row![]
+            .spacing(10)
+            .padding(padding::left(10))
+            .width(Fill)
+            .align_y(Center);
+        save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
+            button("Errors")
+                .on_press(Message::OpenErrorsModal)
+                .style(button::danger)
+        }));
+        save_buttons = save_buttons.extend([
+            space::horizontal().into(),
+            to_description_text(text!("{}", self.configuration.path().display())).into(),
+            space::horizontal().into(),
+            button("Save")
+                .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
+                .into(),
+            button("Discard Changes")
+                .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
+                .style(button::secondary)
+                .into(),
+        ]);
+        save_buttons
     }
 }
