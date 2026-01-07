@@ -251,6 +251,10 @@ impl Komorice {
                             },
                         }
                     }
+                    home::Action::OpenErrorsModal => {
+                        self.show_errors_modal = true;
+                        Task::none()
+                    }
                 };
                 return Task::batch([task.map(Message::Home), action_task]);
             }
@@ -508,7 +512,7 @@ impl Komorice {
         let main_screen: View<Message> = match self.main_screen {
             Screen::Home => self
                 .home
-                .view(&self.configuration)
+                .view(&self.configuration, !self.errors.is_empty())
                 .map(Message::Home)
                 .into(),
             Screen::General => self
@@ -804,7 +808,7 @@ impl Komorice {
             .width(Fill)
             .align_y(Center);
         save_buttons = save_buttons.push((!self.errors.is_empty()).then(|| {
-            button("Errors")
+            button_with_icon(icons::error(), "Errors")
                 .on_press(Message::OpenErrorsModal)
                 .style(button::danger)
         }));

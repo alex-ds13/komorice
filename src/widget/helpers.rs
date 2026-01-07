@@ -26,7 +26,7 @@ pub fn button_with_icon<'a, Message: 'a>(
     icon: Text<'a>,
     text: impl Into<Text<'a>>,
 ) -> Button<'a, Message> {
-    button(row![icon, text.into(),].spacing(5).align_y(Center))
+    button(row![icon, text.into()].spacing(5).align_y(Center))
 }
 
 pub fn button_separator<'a>() -> Rule<'a> {

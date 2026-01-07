@@ -1,5 +1,5 @@
 use super::{ConfigState, ConfigType, Configuration};
-use crate::{EMOJI_FONT, config, whkd};
+use crate::{EMOJI_FONT, config, whkd, widget::icons};
 
 use iced::{
     Center, Element, Fill, Shrink, Task,
@@ -13,6 +13,7 @@ pub enum Message {
     New(ConfigType),
     ChangeConfiguration(ConfigType, ConfigState),
     ClosedDialog,
+    OpenErrorsModal,
 }
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,7 @@ pub enum Action {
     None,
     ContinueEdit,
     ChangedConfiguration,
+    OpenErrorsModal,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -88,11 +90,14 @@ impl Home {
                 return (Action::ChangedConfiguration, Task::none());
             }
             Message::ClosedDialog => self.dialog_opened = false,
+            Message::OpenErrorsModal => {
+                return (Action::OpenErrorsModal, Task::none());
+            }
         }
         (Action::None, Task::none())
     }
 
-    pub fn view(&self, configuration: &Configuration) -> Element<'_, Message> {
+    pub fn view(&self, configuration: &Configuration, show_errors: bool) -> Element<'_, Message> {
         let image = center(image("assets/komorice.png").width(256).height(256));
         let title = container(
             row![
@@ -121,8 +126,23 @@ impl Home {
             Message::Load(ConfigType::Whkd),
             Message::New(ConfigType::Whkd),
         );
-        let buttons_row = row![komorebi_buttons, whkd_buttons]
-            .spacing(50)
+        let errors_button: Element<_> = if show_errors {
+            column![
+                space().width(40),
+                text("").size(18).color(iced::Color::TRANSPARENT),
+                button(icons::error())
+                    .on_press(Message::OpenErrorsModal)
+                    .style(button::danger),
+            ]
+            .align_x(Center)
+            .width(Shrink)
+            .spacing(10)
+            .into()
+        } else {
+            space().width(40).into()
+        };
+        let buttons_row = row![komorebi_buttons, errors_button, whkd_buttons]
+            .spacing(10)
             .height(Shrink);
         let col = column![title, subtitle, image, buttons_row]
             .spacing(20)
