@@ -560,7 +560,7 @@ impl Komorice {
                 .into(),
             Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug).into(),
             Screen::Settings => self.settings.view().map(Message::Settings).into(),
-            Screen::Whkd | Screen::WhkdBinding => {
+            Screen::Whkd | Screen::WhkdBindings | Screen::WhkdAppBindings => {
                 self.whkd.view(&self.settings.theme).map(Message::Whkd)
             }
         };
@@ -623,7 +623,7 @@ impl Komorice {
             Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
             Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
             Screen::Rules => self.rules.subscription().map(Message::Rules),
-            Screen::Whkd | Screen::WhkdBinding => self
+            Screen::Whkd | Screen::WhkdBindings | Screen::WhkdAppBindings => self
                 .whkd
                 .subscription(&self.configuration)
                 .map(Message::Whkd),
@@ -707,8 +707,9 @@ impl Komorice {
                 Screen::Settings => {
                     unreachable!("should never try to reset settings screen!")
                 }
-                Screen::Whkd => self.whkd = Default::default(),
-                Screen::WhkdBinding => {}
+                Screen::Whkd | Screen::WhkdBindings | Screen::WhkdAppBindings => {
+                    self.whkd = Default::default()
+                }
             }
         }
     }

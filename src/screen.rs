@@ -35,7 +35,8 @@ pub enum Screen {
     LiveDebug,
     Settings,
     Whkd,
-    WhkdBinding,
+    WhkdBindings,
+    WhkdAppBindings,
 }
 
 impl Display for Screen {
@@ -53,7 +54,8 @@ impl Display for Screen {
             Screen::LiveDebug => write!(f, "Live Debug"),
             Screen::Settings => write!(f, "Settings"),
             Screen::Whkd => write!(f, "Whkd"),
-            Screen::WhkdBinding => write!(f, "Bindings"),
+            Screen::WhkdBindings => write!(f, "Bindings"),
+            Screen::WhkdAppBindings => write!(f, "App Bindings"),
         }
     }
 }

@@ -250,7 +250,7 @@ impl Whkd {
                     theme,
                 )
                 .map(Message::Whkd),
-            Screen::WhkdBinding => self
+            Screen::WhkdBindings => self
                 .bindings
                 .view(
                     &self.whkdrc,
@@ -267,7 +267,7 @@ impl Whkd {
     pub fn subscription(&self, configuration: &Configuration) -> Subscription<Message> {
         let screen_subscription = match self.screen {
             Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
-            Screen::WhkdBinding => self.bindings.subscription().map(Message::Bindings),
+            Screen::WhkdBindings => self.bindings.subscription().map(Message::Bindings),
             _ => Subscription::none(),
         };
 

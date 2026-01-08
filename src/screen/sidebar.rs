@@ -119,10 +119,15 @@ impl Sidebar {
             .into_iter()
             .map(|s| screen_button(s, &self.komorebi_selected).into())
             .collect(),
-            ConfigType::Whkd => [Screen::Whkd, Screen::WhkdBinding, Screen::Settings]
-                .into_iter()
-                .map(|s| screen_button(s, &self.whkd_selected).into())
-                .collect(),
+            ConfigType::Whkd => [
+                Screen::Whkd,
+                Screen::WhkdBindings,
+                Screen::WhkdAppBindings,
+                Screen::Settings,
+            ]
+            .into_iter()
+            .map(|s| screen_button(s, &self.whkd_selected).into())
+            .collect(),
         }
     }
 }
