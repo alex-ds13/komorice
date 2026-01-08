@@ -694,7 +694,7 @@ fn command_edit<'a>(
     on_command_change: impl Fn(String) -> Message + Clone + 'static,
     on_content_change: impl Fn(text_editor::Action) -> Message + Clone + 'static,
 ) -> Element<'a, Message> {
-    let (main_cmd, rest) = split_command(command, commands);
+    let (main_cmd, _rest) = split_command(command, commands);
     let on_command_change_clone = on_command_change.clone();
     widget::expandable::expandable(move |hovered, expanded| {
         let on_command_change_clone = on_command_change_clone.clone();
@@ -751,16 +751,10 @@ fn command_edit<'a>(
     })
     .bottom_elements(move || {
         let commands_box = state.map(|state| {
-            let rest = rest.to_string();
             let main_cmd = main_cmd.to_string();
             let on_command_change_clone = on_command_change.clone();
             combo_box(state, "", Some(&main_cmd), move |v| {
-                let cmd = if rest.is_empty() {
-                    format!("komorebic {v}")
-                } else {
-                    format!("komorebic {v} {rest}")
-                };
-                on_command_change_clone(cmd)
+                on_command_change_clone(format!("komorebic {v}"))
             })
         });
         let selector = container(
@@ -788,14 +782,16 @@ fn command_edit<'a>(
 }
 
 fn split_command<'a>(command: &'a str, commands: &'a [String]) -> (&'a str, &'a str) {
+    let prefix = "komorebic ";
+    let prefix_len = prefix.len();
     let mut final_command = "";
     let final_custom;
-    if let Some((cmd, custom)) = commands.iter().find_map(|c| {
-        let potential_cmd = format!("komorebic {}", c);
-        command
-            .starts_with(&potential_cmd)
-            .then(|| command.split_at(potential_cmd.len()))
-    }) {
+    if let Some(actual_command) = command.strip_prefix(prefix)
+        && let Some(actual_command) = actual_command.split_whitespace().next()
+        && let Some((cmd, custom)) = commands
+            .iter()
+            .find_map(|c| (actual_command == c).then(|| command.split_at(c.len() + prefix_len)))
+    {
         final_command = cmd;
         final_custom = custom.trim_start();
     } else {

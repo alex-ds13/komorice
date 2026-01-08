@@ -354,7 +354,7 @@ fn hook_custom<'a>(
     commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
     theme: &'a Theme,
 ) -> Element<'a, Message> {
-    let (hook_command, hook_custom) = split_pause_hook(pause_hook, commands);
+    let (hook_command, _hook_custom) = split_pause_hook(pause_hook, commands);
     let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
     widget::expandable::expandable(move |hovered, expanded| {
         let label = if is_dirty {
@@ -412,15 +412,9 @@ fn hook_custom<'a>(
         hover(main, top)
     })
     .bottom_elements(move || {
-        let rest = hook_custom.to_string();
         let main_cmd = hook_command.to_string();
         let commands_box = combo_box(state, "", Some(&main_cmd), move |v| {
-            let cmd = if rest.is_empty() {
-                format!("komorebic {v}")
-            } else {
-                format!("komorebic {v} {rest}")
-            };
-            Message::PauseHook(Some(cmd))
+            Message::PauseHook(Some(format!("komorebic {v}")))
         });
         let selector = container(
             column![
@@ -450,14 +444,17 @@ fn split_pause_hook<'a>(
     pause_hook: &'a Option<String>,
     commands: &'a [String],
 ) -> (&'a str, &'a str) {
+    let prefix = "komorebic ";
+    let prefix_len = prefix.len();
     let mut pause_hook_command = "";
     let mut pause_hook_custom = "";
     if let Some(hook) = pause_hook {
-        if let Some((command, custom)) = commands.iter().find_map(|c| {
-            let potential_cmd = format!("komorebic {}", c);
-            hook.starts_with(&potential_cmd)
-                .then(|| hook.split_at(potential_cmd.len()))
-        }) {
+        if let Some(actual_command) = hook.strip_prefix(prefix)
+            && let Some(actual_command) = actual_command.split_whitespace().next()
+            && let Some((command, custom)) = commands
+                .iter()
+                .find_map(|c| (actual_command == c).then(|| hook.split_at(c.len() + prefix_len)))
+        {
             pause_hook_command = command;
             pause_hook_custom = custom.trim_start();
         } else {
