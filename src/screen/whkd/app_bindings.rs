@@ -421,7 +421,7 @@ impl AppBindings {
                 .on_press(Message::OpenNewBindingKeysModal);
             let keybind = opt_helpers::opt_custom_el_disable_default(
                 "Keybind",
-                Some("A key combination to trigger the following command."),
+                Some("A key combination to trigger the following commands."),
                 row![
                     bind_button,
                     keys(
@@ -436,6 +436,41 @@ impl AppBindings {
                 None,
                 None,
             );
+            let commands = self.new_binding.1.iter().enumerate().fold(column![].spacing(10), |col, (binding_idx, binding)| {
+                let process_fn = move |v| {
+                    let value = if v {
+                        String::from("Default")
+                    } else {
+                        String::new()
+                    };
+                    Message::ChangeNewBindingProcess(binding_idx, value)
+                };
+                let process = opt_helpers::input_with_disable_default(
+                    "Process Name",
+                    Some("Name of the process on which the following command will run when this key combination is pressed."),
+                    "",
+                    binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
+                    String::new(),
+                    |v| Message::ChangeNewBindingProcess(binding_idx, v),
+                    None,
+                    Some(opt_helpers::DisableArgs {
+                        disable: binding.process_name.is_some_and(|p| p == "Default"),
+                        label: Some("Default"),
+                        on_toggle: process_fn,
+                    }),
+                );
+                let command = command_edit(
+                    Some(&self.new_binding_state[binding_idx]),
+                    &self.new_binding_content[binding_idx],
+                    &binding.command,
+                    commands,
+                    commands_desc,
+                    theme,
+                    |s| Message::ChangeNewBindingCommand(binding_idx, s),
+                    |a| Message::ChangeNewBindingContent(binding_idx, a),
+                );
+                col.push(opt_helpers::opt_box(column![process, command].spacing(10)))
+            });
             let command = command_edit(
                 Some(&self.new_binding_state[0]),
                 &self.new_binding_content[0],

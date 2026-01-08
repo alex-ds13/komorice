@@ -309,7 +309,7 @@ impl Animation {
                         .map(|a| a.enabled != config.enabled)
                         .unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::EnableGlobal(false)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::expandable(
                     "Duration",

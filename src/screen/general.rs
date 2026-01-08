@@ -546,7 +546,7 @@ impl General {
             Some(DisableArgs {
                 disable: config.global_work_area_offset.is_none(),
                 label: Some("None"),
-                on_toggle: |v| {
+                on_toggle: |v: bool| {
                     Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(
                         (!v).then_some(Rect::default()),
                     ))

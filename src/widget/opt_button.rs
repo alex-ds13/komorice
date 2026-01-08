@@ -7,24 +7,26 @@ use iced::{
     widget::{Component, component, mouse_area, row, text},
 };
 
-pub struct OptButton<'a, Message, F, I>
+pub struct OptButton<'a, Message, F, I, G>
 where
     F: Fn(bool) -> I,
     I: Into<Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     name: text::Fragment<'a>,
     description: Option<&'a str>,
     on_press: Option<Message>,
     is_dirty: bool,
     reset_message: Option<Message>,
-    disable_args: Option<DisableArgs<'a, Message>>,
+    disable_args: Option<DisableArgs<'a, Message, G>>,
     element: Option<F>,
 }
 
-impl<'a, Message, F, I> OptButton<'a, Message, F, I>
+impl<'a, Message, F, I, G> OptButton<'a, Message, F, I, G>
 where
     F: Fn(bool) -> I,
     I: Into<Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     /// Create a new `OptButton` with the specified name as a title
     pub fn new(name: impl text::IntoFragment<'a>) -> Self {
@@ -86,7 +88,7 @@ where
     }
 
     /// Sets the `disable_args` of this `OptButton`.
-    pub fn disable_args(mut self, disable_args: Option<DisableArgs<'a, Message>>) -> Self {
+    pub fn disable_args(mut self, disable_args: Option<DisableArgs<'a, Message, G>>) -> Self {
         self.disable_args = disable_args;
         self
     }
@@ -105,11 +107,12 @@ pub enum InternalMessage<Message> {
     Message(Message),
 }
 
-impl<'a, Message, F, I> Component<'a, Message> for OptButton<'a, Message, F, I>
+impl<'a, Message, F, I, G> Component<'a, Message> for OptButton<'a, Message, F, I, G>
 where
     Message: Clone + 'static,
     F: Fn(bool) -> I,
     I: Into<Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     type State = State;
 
@@ -179,24 +182,26 @@ where
     }
 }
 
-impl<'a, Message, F, I> From<OptButton<'a, Message, F, I>> for Element<'a, Message>
+impl<'a, Message, F, I, G> From<OptButton<'a, Message, F, I, G>> for Element<'a, Message>
 where
     Message: Clone + 'static,
     F: Fn(bool) -> I + 'a,
     I: Into<Element<'a, Message>> + 'a,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
-    fn from(value: OptButton<'a, Message, F, I>) -> Self {
+    fn from(value: OptButton<'a, Message, F, I, G>) -> Self {
         component(value)
     }
 }
 
-pub fn opt_button<'a, Message, F, I>(
+pub fn opt_button<'a, Message, F, I, G>(
     name: impl text::IntoFragment<'a>,
-) -> OptButton<'a, Message, F, I>
+) -> OptButton<'a, Message, F, I, G>
 where
     Message: Clone + 'static,
     F: Fn(bool) -> I + 'a,
     I: Into<Element<'a, Message>> + 'a,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     OptButton::new(name)
 }
