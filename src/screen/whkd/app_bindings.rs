@@ -425,7 +425,7 @@ impl AppBindings {
                 row![
                     bind_button,
                     keys(
-                        &self.new_binding.1[0], //TODO: fix this
+                        &self.new_binding.0,
                         Message::ChangeNewBindingKey,
                         Message::ChangeNewBindingMod,
                     )
@@ -515,8 +515,7 @@ impl AppBindings {
                         row![
                             bind_button,
                             keys(
-                                //TODO: fix this
-                                &app_binding.1[0],
+                                &app_binding.0,
                                 move |k| Message::ChangeBindingKey(idx, k),
                                 move |pos, m| Message::ChangeBindingMod(idx, (pos, m)),
                             )
@@ -829,11 +828,11 @@ fn mod_choose<'a>(
 }
 
 fn keys<'a>(
-    binding: &'a HotkeyBinding,
+    keys: &'a [String],
     on_key_change: impl Fn(String) -> Message + 'a,
     on_mod_change: impl Fn(usize, String) -> Message + Clone + 'a,
 ) -> Element<'a, Message> {
-    let sb = split_binding(binding);
+    let sb = split_keys(keys);
     let joined_keys = sb.keys.join(UNPADDED_SEPARATOR);
     let hidden_str = if joined_keys.chars().count() <= 8 {
         format!("{:n^8}", "n".repeat(joined_keys.len()))
@@ -997,27 +996,14 @@ impl<'a> From<(&'a [String; 0], &'a [String; 0])> for SplitBinding<'a> {
     }
 }
 
-fn split_binding(binding: &HotkeyBinding) -> SplitBinding<'_> {
-    if let Some(split_at) = binding
-        .keys
+fn split_keys(keys: &[String]) -> SplitBinding<'_> {
+    if let Some(split_at) = keys
         .iter()
         .enumerate()
         .find_map(|(i, k)| (!is_mod(k)).then_some(i))
     {
-        binding.keys.split_at(split_at).into()
+        keys.split_at(split_at).into()
     } else {
-        binding.keys.split_at(binding.keys.len()).into()
-    }
-}
-
-fn split_keys(binding: &Vec<String>) -> SplitBinding<'_> {
-    if let Some(split_at) = binding
-        .iter()
-        .enumerate()
-        .find_map(|(i, k)| (!is_mod(k)).then_some(i))
-    {
-        binding.split_at(split_at).into()
-    } else {
-        binding.split_at(binding.len()).into()
+        keys.split_at(keys.len()).into()
     }
 }
