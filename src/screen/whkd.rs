@@ -1,6 +1,8 @@
+pub mod app_bindings;
 pub mod bindings;
 pub mod helpers;
 
+pub use app_bindings::AppBindings;
 pub use bindings::Bindings;
 pub use helpers::{get_vk_key_mods, modal_content};
 

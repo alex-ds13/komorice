@@ -53,6 +53,7 @@ pub enum Message {
     // Messages related to screens
     Whkd(screen::whkd::Message),
     Bindings(screen::whkd::bindings::Message),
+    AppBindings(screen::whkd::app_bindings::Message),
 
     // Messages related to whkd binary
     WhkdFoundOnPath,
@@ -81,6 +82,7 @@ pub struct Whkd {
     pub is_dirty: bool,
     pub whkd: screen::whkd::Whkd,
     pub bindings: screen::whkd::Bindings,
+    pub app_bindings: screen::whkd::AppBindings,
     pub screen: Screen,
     pub loaded_commands: bool,
     commands: Vec<String>,
@@ -97,6 +99,7 @@ impl Default for Whkd {
             is_dirty: false,
             whkd: Default::default(),
             bindings: Default::default(),
+            app_bindings: Default::default(),
             screen: Screen::Whkd,
             loaded_commands: false,
             commands: Default::default(),
@@ -205,11 +208,45 @@ impl Whkd {
                     Task::batch([task.map(Message::Bindings), action_task]),
                 );
             }
+            Message::AppBindings(message) => {
+                let (action, task) =
+                    self.app_bindings
+                        .update(message, &mut self.whkdrc, &self.commands);
+                let action_task = match action {
+                    screen::whkd::app_bindings::Action::None => Task::none(),
+                    screen::whkd::app_bindings::Action::StopWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running_initial
+                            && self.whkd_bin.running_current
+                        {
+                            stop_whkd()
+                        } else {
+                            Task::none()
+                        }
+                    }
+                    screen::whkd::app_bindings::Action::StartWhkd => {
+                        if self.whkd_bin.found
+                            && self.whkd_bin.running_initial
+                            && !self.whkd_bin.running_current
+                        {
+                            restart_whkd()
+                        } else {
+                            Task::none()
+                        }
+                    }
+                };
+                self.check_changes();
+                return (
+                    Action::None,
+                    Task::batch([task.map(Message::AppBindings), action_task]),
+                );
+            }
             Message::LoadedCommands(commands) => {
                 // println!("{commands:?}");
                 self.commands = commands;
                 self.whkd.load_new_commands(&self.commands);
                 self.bindings.load_new_commands(&self.commands);
+                self.app_bindings.load_new_commands(&self.commands);
                 self.loaded_commands = true;
                 return (Action::None, self.load_commands_description());
             }
@@ -260,6 +297,16 @@ impl Whkd {
                     theme,
                 )
                 .map(Message::Bindings),
+            Screen::WhkdAppBindings => self
+                .app_bindings
+                .view(
+                    &self.whkdrc,
+                    &self.whkd_bin,
+                    &self.commands,
+                    &self.commands_desc,
+                    theme,
+                )
+                .map(Message::AppBindings),
             _ => space::horizontal().into(),
         }
     }
@@ -268,6 +315,7 @@ impl Whkd {
         let screen_subscription = match self.screen {
             Screen::Whkd => self.whkd.subscription().map(Message::Whkd),
             Screen::WhkdBindings => self.bindings.subscription().map(Message::Bindings),
+            Screen::WhkdAppBindings => self.app_bindings.subscription().map(Message::AppBindings),
             _ => Subscription::none(),
         };
 
@@ -296,8 +344,9 @@ impl Whkd {
     }
 
     pub fn load_default(&mut self) {
-        // Clear any editing states from bindings
+        // Clear any editing states from bindings and app bindings
         self.bindings.clear_editing();
+        self.app_bindings.clear_editing();
 
         // Set whkdrc to default
         self.whkdrc = DEFAULT_WHKDRC.clone();
@@ -312,6 +361,7 @@ impl Whkd {
     pub fn refresh(&mut self) {
         self.whkd.refresh(&self.whkdrc);
         self.bindings.refresh(&self.whkdrc);
+        self.app_bindings.refresh(&self.whkdrc);
     }
 
     pub fn load_commands_description(&self) -> Task<Message> {
