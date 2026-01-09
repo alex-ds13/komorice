@@ -520,6 +520,12 @@ impl AppBindings {
                 DisableArgs::none(),
             );
             let commands_col = self.new_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+                let is_default = binding.process_name.as_ref().is_some_and(|p| p == "Default");
+                let can_be_default = is_default ||
+                    !self.new_binding.1.iter().enumerate().filter_map(|(i, b)| {
+                        (b.process_name == Some("Default".into())).then_some(i)
+                    }).any(|i| i != binding_idx);
+
                 let process = opt_helpers::opt_custom_el_disable_default(
                     "Process Name",
                     Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
@@ -533,7 +539,7 @@ impl AppBindings {
                             move |v| Message::ChangeNewBindingProcess(binding_idx, v),
                             None,
                         )
-                        .on_input_maybe(binding.process_name.as_ref().is_none_or(|p| p != "Default").then_some(
+                        .on_input_maybe((!is_default).then_some(
                             move |v| Message::ChangeNewBindingProcess(binding_idx, v),
                         ))
                     )
@@ -541,8 +547,8 @@ impl AppBindings {
                     .align_right(Fill),
                     false,
                     None,
-                    Some(DisableArgs::new(
-                        binding.process_name.as_ref().is_some_and(|p| p == "Default"),
+                    can_be_default.then_some(DisableArgs::new(
+                        is_default,
                         Some("Default"),
                         move |v| {
                             let value = if v {
@@ -687,6 +693,12 @@ impl AppBindings {
                         DisableArgs::none(),
                     );
                     let commands_col = app_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+                        let is_default = binding.process_name.as_ref().is_some_and(|p| p == "Default");
+                        let can_be_default = is_default ||
+                            !app_binding.1.iter().enumerate().filter_map(|(i, b)| {
+                                (b.process_name == Some("Default".into())).then_some(i)
+                            }).any(|i| i != binding_idx);
+
                         let process = opt_helpers::opt_custom_el_disable_default(
                             "Process Name",
                             Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
@@ -700,7 +712,7 @@ impl AppBindings {
                                     move |v| Message::ChangeBindingProcess(idx, binding_idx, v),
                                     None,
                                 )
-                                .on_input_maybe(binding.process_name.as_ref().is_none_or(|p| p != "Default").then_some(
+                                .on_input_maybe((!is_default).then_some(
                                     move |v| Message::ChangeBindingProcess(idx, binding_idx, v),
                                 ))
                             )
@@ -708,8 +720,8 @@ impl AppBindings {
                             .align_right(Fill),
                             false,
                             None,
-                            Some(DisableArgs::new(
-                                binding.process_name.as_ref().is_some_and(|p| p == "Default"),
+                            can_be_default.then_some(DisableArgs::new(
+                                is_default,
                                 Some("Default"),
                                 move |v| {
                                     let value = if v {
