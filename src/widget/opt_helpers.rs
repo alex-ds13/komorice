@@ -20,6 +20,7 @@ use iced::{
 };
 use num_traits::{Bounded, Num, NumAssignOps};
 
+#[derive(Debug, Clone)]
 pub struct DisableArgs<'a, Message, F>
 where
     F: Fn(bool) -> Message + Clone + 'a,
@@ -39,10 +40,6 @@ where
             label,
             on_toggle: Box::new(on_toggle),
         }
-    }
-
-    pub fn on_toggle(&self) -> impl Fn(bool) -> Message {
-        self.on_toggle.clone()
     }
 }
 
