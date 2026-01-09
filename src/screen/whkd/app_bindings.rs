@@ -31,12 +31,15 @@ pub enum Message {
     ChangeNewBindingCommand(usize, String),
     ChangeNewBindingContent(usize, text_editor::Action),
     ChangeNewBindingProcess(usize, String),
+    RemoveNewBindingSubBinding(usize),
     ToggleShowNewBinding,
     AddNewBindingCommand,
     AddNewBinding,
 
     // App Bindings messages
     RemoveBinding(usize),
+    RemoveBindingSubBinding(usize, usize),
+    AddBindingCommand(usize),
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
     ChangeBindingCommand(usize, usize, String),
@@ -249,6 +252,38 @@ impl AppBindings {
                 self.editing_states.remove(&idx);
                 self.editing_commands.remove(&idx);
             }
+            Message::RemoveBindingSubBinding(idx, binding_idx) => {
+                if let Some(((binding, states), commands)) = whkdrc
+                    .app_bindings
+                    .get_mut(idx)
+                    .zip(self.editing_states.get_mut(&idx))
+                    .zip(self.editing_commands.get_mut(&idx))
+                {
+                    if binding.1.len() > binding_idx {
+                        binding.1.remove(binding_idx);
+                    }
+                    states.remove(&binding_idx);
+                    commands.remove(&binding_idx);
+                }
+            }
+            Message::AddBindingCommand(idx) => {
+                if let Some((((binding, states), edit_commands), processes)) = whkdrc
+                    .app_bindings
+                    .get_mut(idx)
+                    .zip(self.editing_states.get_mut(&idx))
+                    .zip(self.editing_commands.get_mut(&idx))
+                    .zip(self.editing_processes.get_mut(&idx))
+                {
+                    binding.1.push(HotkeyBinding {
+                        keys: binding.0.clone(),
+                        command: String::new(),
+                        process_name: None,
+                    });
+                    states.insert(states.len(), combo_box::State::new(commands.to_vec()));
+                    edit_commands.insert(edit_commands.len(), text_editor::Content::new());
+                    processes.insert(processes.len(), text_editor::Content::new());
+                }
+            }
             Message::UrlClicked(url) => {
                 println!("Clicked url: {}", url);
             }
@@ -337,6 +372,20 @@ impl AppBindings {
                 self.new_binding_content.push(text_editor::Content::new());
                 self.new_binding_process.push(text_editor::Content::new());
             }
+            Message::RemoveNewBindingSubBinding(binding_idx) => {
+                if self.new_binding.1.len() > binding_idx {
+                    self.new_binding.1.remove(binding_idx);
+                }
+                if self.new_binding_state.len() > binding_idx {
+                    self.new_binding_state.remove(binding_idx);
+                }
+                if self.new_binding_content.len() > binding_idx {
+                    self.new_binding_content.remove(binding_idx);
+                }
+                if self.new_binding_process.len() > binding_idx {
+                    self.new_binding_process.remove(binding_idx);
+                }
+            }
             Message::ToggleShowNewBinding => self.show_new_binding = !self.show_new_binding,
             Message::EditBinding(idx) => {
                 self.editing.insert(idx);
@@ -347,15 +396,27 @@ impl AppBindings {
                             .entry(idx)
                             .or_insert(HashMap::new())
                             .insert(i, combo_box::State::new(commands.to_vec()));
-                        let content = if let Some(binding) = app_binding.1.get(i) {
-                            text_editor::Content::with_text(&binding.command)
+                        let (command, process) = if let Some(binding) = app_binding.1.get(i) {
+                            (
+                                text_editor::Content::with_text(&binding.command),
+                                binding
+                                    .process_name
+                                    .as_ref()
+                                    .map_or(text_editor::Content::new(), |process| {
+                                        text_editor::Content::with_text(process)
+                                    }),
+                            )
                         } else {
-                            text_editor::Content::new()
+                            (text_editor::Content::new(), text_editor::Content::new())
                         };
                         self.editing_commands
                             .entry(idx)
                             .or_insert(HashMap::new())
-                            .insert(i, content);
+                            .insert(i, command);
+                        self.editing_processes
+                            .entry(idx)
+                            .or_insert(HashMap::new())
+                            .insert(i, process);
                     }
                 }
             }
@@ -476,8 +537,8 @@ impl AppBindings {
                             move |v| Message::ChangeNewBindingProcess(binding_idx, v),
                         ))
                     )
-                    .max_width(700)
-                    .align_right(iced::FillPortion(3)),
+                    .max_width(400)
+                    .align_right(Fill),
                     false,
                     None,
                     Some(DisableArgs::new(
@@ -512,7 +573,25 @@ impl AppBindings {
                         }
                     )),
                 );
-                col.push(column![process, rule::horizontal(2.0), command].into());
+
+                let delete_button = right(
+                    button(icons::delete())
+                        .on_press(Message::RemoveNewBindingSubBinding(binding_idx))
+                        .style(button::danger)
+                )
+                .padding(10);
+
+                col.push(
+                    hover(
+                        column![
+                            process,
+                            rule::horizontal(2.0),
+                            command,
+                        ],
+                        delete_button
+                    )
+                    .into()
+                );
                 col
             });
 
@@ -549,7 +628,10 @@ impl AppBindings {
 
             column![
                 keybind,
-                opt_helpers::sub_section_view(text("App Commands:").font(*BOLD_FONT), commands_col),
+                opt_helpers::sub_section_view(
+                    text("App Specific Commands:").font(*BOLD_FONT),
+                    commands_col
+                ),
                 row![
                     add_command_button,
                     space::horizontal(),
@@ -604,21 +686,85 @@ impl AppBindings {
                         None,
                         DisableArgs::none(),
                     );
-                    let command = command_edit(
-                        self.editing_states.get(&idx).and_then(|es| es.get(&0)),
-                        self.editing_commands
-                            .get(&idx)
-                            .expect("should have editing content")
-                            .get(&0)
-                            .expect("should have editing content"),
-                        &app_binding.1[0].command,
-                        commands,
-                        commands_desc,
-                        theme,
-                        move |c| Message::ChangeBindingCommand(idx, 0, c),
-                        move |a| Message::ChangeBindingContent(idx, 0, a),
-                        DisableArgs::none(),
-                    );
+                    let commands_col = app_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+                        let process = opt_helpers::opt_custom_el_disable_default(
+                            "Process Name",
+                            Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
+                                If you set it to 'Default', it means the command will run on all apps. If you only have one command \
+                                for 'Default' it is the same as a normal 'Binding'.
+                                "),
+                            container(
+                                widget::input(
+                                    "",
+                                    binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
+                                    move |v| Message::ChangeBindingProcess(idx, binding_idx, v),
+                                    None,
+                                )
+                                .on_input_maybe(binding.process_name.as_ref().is_none_or(|p| p != "Default").then_some(
+                                    move |v| Message::ChangeBindingProcess(idx, binding_idx, v),
+                                ))
+                            )
+                            .max_width(400)
+                            .align_right(Fill),
+                            false,
+                            None,
+                            Some(DisableArgs::new(
+                                binding.process_name.as_ref().is_some_and(|p| p == "Default"),
+                                Some("Default"),
+                                move |v| {
+                                    let value = if v {
+                                        String::from("Default")
+                                    } else {
+                                        String::new()
+                                    };
+                                    Message::ChangeBindingProcess(idx, binding_idx, value)
+                                },
+                            )),
+                        );
+
+                        let command = command_edit(
+                            self.editing_states.get(&idx).and_then(|es| es.get(&binding_idx)),
+                            self.editing_commands
+                                .get(&idx)
+                                .expect("should have editing content")
+                                .get(&binding_idx)
+                                .expect("should have editing content"),
+                            &binding.command,
+                            commands,
+                            commands_desc,
+                            theme,
+                            move |s| Message::ChangeBindingCommand(idx, binding_idx, s),
+                            move |a| Message::ChangeBindingContent(idx, binding_idx, a),
+                            Some(DisableArgs::new(
+                                binding.command.as_str() == "Ignore",
+                                Some("Ignore"),
+                                move |v| {
+                                    let value = if v { String::from("Ignore") } else { String::new() };
+                                    Message::ChangeBindingCommand(idx, binding_idx, value)
+                                }
+                            )),
+                        );
+
+                        let delete_button = right(
+                            button(icons::delete())
+                                .on_press(Message::RemoveBindingSubBinding(idx, binding_idx))
+                                .style(button::danger)
+                        )
+                        .padding(10);
+
+                        col.push(
+                            hover(
+                                column![
+                                    process,
+                                    rule::horizontal(2.0),
+                                    command,
+                                ],
+                                delete_button
+                            )
+                            .into()
+                        );
+                        col
+                    });
 
                     let duplicated_warning = duplicated_keys.then_some(
                         text(
@@ -632,13 +778,19 @@ impl AppBindings {
                         .style(text::warning),
                     );
 
+                    let add_command_button =
+                        button_with_icon(icons::level_down(), text("Add App Command").size(12))
+                            .style(button::secondary)
+                            .on_press(Message::AddBindingCommand(idx));
+
                     col.push(
                         container(
                             container(
                                 column![
                                     keybind,
-                                    command,
+                                    opt_helpers::sub_section_view(text("App Specific Commands:").font(*BOLD_FONT), commands_col),
                                     row![
+                                        add_command_button,
                                         space::horizontal(),
                                         duplicated_warning,
                                         button(icons::check())
@@ -841,15 +993,27 @@ impl AppBindings {
                 if let Some(app_binding) = whkdrc.app_bindings.get(*idx) {
                     let bindings_count = app_binding.1.len();
                     for i in 0..bindings_count {
-                        let content = if let Some(binding) = app_binding.1.get(i) {
-                            text_editor::Content::with_text(&binding.command)
+                        let (command, process) = if let Some(binding) = app_binding.1.get(i) {
+                            (
+                                text_editor::Content::with_text(&binding.command),
+                                binding
+                                    .process_name
+                                    .as_ref()
+                                    .map_or(text_editor::Content::new(), |process| {
+                                        text_editor::Content::with_text(process)
+                                    }),
+                            )
                         } else {
-                            text_editor::Content::new()
+                            (text_editor::Content::new(), text_editor::Content::new())
                         };
                         self.editing_commands
                             .entry(*idx)
                             .or_insert(HashMap::new())
-                            .insert(i, content);
+                            .insert(i, command);
+                        self.editing_processes
+                            .entry(*idx)
+                            .or_insert(HashMap::new())
+                            .insert(i, process);
                     }
                 }
             });
@@ -971,8 +1135,8 @@ where
                 editor = editor.on_action(on_content_change.clone());
             }
             container(editor)
-                .max_width(700)
-                .align_right(iced::FillPortion(3))
+                .max_width(400)
+                .align_right(Fill)
         })
         .align_y(Center)
         .spacing(10);
@@ -1016,11 +1180,11 @@ where
                     .spacing(5)
                     .align_y(Center),
             ]
-            .max_width(700)
+            .max_width(400)
             .padding(padding::bottom(10))
             .spacing(10),
         )
-        .align_left(iced::FillPortion(3))
+        .align_left(Fill)
         .into();
 
         if let Some(items) =
