@@ -7,7 +7,10 @@ use crate::{
     BOLD_FONT,
     config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     screen::View,
-    widget::{icons, monitors_viewer, opt_helpers},
+    widget::{
+        icons, monitors_viewer,
+        opt_helpers::{self, DisableArgs},
+    },
 };
 
 use std::collections::{BTreeMap, HashMap};
@@ -369,13 +372,11 @@ impl Monitors {
                 || self.display_index_preference_children(display_index_preferences),
                 display_index_preferences.is_some(),
                 Message::ChangeDisplayIndexPreferences(None),
-                Some(opt_helpers::DisableArgs {
-                    disable: display_index_preferences.is_none(),
-                    label: Some("None"),
-                    on_toggle: |v| {
-                        Message::ChangeDisplayIndexPreferences((!v).then_some(HashMap::new()))
-                    },
-                }),
+                Some(DisableArgs::new(
+                    display_index_preferences.is_none(),
+                    Some("None"),
+                    |v| Message::ChangeDisplayIndexPreferences((!v).then_some(HashMap::new())),
+                )),
             )
         });
 

@@ -418,7 +418,7 @@ impl General {
             Message::ConfigChange(ConfigChange::AppSpecificConfigurationPath(
                 DEFAULT_CONFIG.app_specific_configuration_path.clone(),
             )),
-            None,
+            DisableArgs::none(),
         );
         let bar_configurations = opt_helpers::expandable(
             "Bar Configurations",
@@ -430,7 +430,7 @@ impl General {
             Message::ConfigChange(ConfigChange::BarConfigurations(
                 DEFAULT_CONFIG.bar_configurations.clone(),
             )),
-            None,
+            DisableArgs::none(),
         );
         let cross_boundary_behaviour = opt_helpers::choose_with_disable_default(
             "Cross Boundary Behaviour",
@@ -443,7 +443,7 @@ impl General {
             config.cross_boundary_behaviour.or(DEFAULT_CONFIG.cross_boundary_behaviour),
             |selected| Message::ConfigChange(ConfigChange::CrossBoundaryBehaviour(selected)),
             DEFAULT_CONFIG.cross_boundary_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let cross_monitor_move_behaviour = opt_helpers::choose_with_disable_default(
             "Cross Monitor Move Behaviour",
@@ -457,7 +457,7 @@ impl General {
             config.cross_monitor_move_behaviour.or(DEFAULT_CONFIG.cross_monitor_move_behaviour),
             |selected| Message::ConfigChange(ConfigChange::CrossMonitorMoveBehaviour(selected)),
             DEFAULT_CONFIG.cross_monitor_move_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let default_container_padding = opt_helpers::number_with_disable_default_option(
             "Default Container Padding",
@@ -467,7 +467,7 @@ impl General {
                 .or(DEFAULT_CONFIG.default_container_padding),
             DEFAULT_CONFIG.default_container_padding,
             |value| Message::ConfigChange(ConfigChange::DefaultContainerPadding(value)),
-            None,
+            DisableArgs::none(),
         );
         let default_workspace_padding = opt_helpers::number_with_disable_default_option(
             "Default Workspace Padding",
@@ -477,7 +477,7 @@ impl General {
                 .or(DEFAULT_CONFIG.default_workspace_padding),
             DEFAULT_CONFIG.default_workspace_padding,
             |value| Message::ConfigChange(ConfigChange::DefaultWorkspacePadding(value)),
-            None,
+            DisableArgs::none(),
         );
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
@@ -487,7 +487,7 @@ impl General {
             config.float_override.or(DEFAULT_CONFIG.float_override),
             DEFAULT_CONFIG.float_override,
             |value| Message::ConfigChange(ConfigChange::FloatOverride(value)),
-            None,
+            DisableArgs::none(),
         );
         let focus_follows_mouse = opt_helpers::choose_with_disable_default(
             "Focus Follows Mouse",
@@ -502,7 +502,7 @@ impl General {
             Some(DisplayOption(config.focus_follows_mouse)),
             |selected| Message::ConfigChange(ConfigChange::FocusFollowsMouse(selected.and_then(|v| v.0))),
             Some(DisplayOption(DEFAULT_CONFIG.focus_follows_mouse)),
-            None,
+            DisableArgs::none(),
         );
         let global_work_area_offset = opt_helpers::expandable(
             "Global Work Area Offset",
@@ -543,15 +543,15 @@ impl General {
             },
             config.global_work_area_offset.is_some(),
             Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(None)),
-            Some(DisableArgs {
-                disable: config.global_work_area_offset.is_none(),
-                label: Some("None"),
-                on_toggle: |v: bool| {
+            Some(DisableArgs::new(
+                config.global_work_area_offset.is_none(),
+                Some("None"),
+                |v| {
                     Message::ConfigChange(ConfigChange::GlobalWorkAreaOffset(
                         (!v).then_some(Rect::default()),
                     ))
                 },
-            }),
+            )),
         );
         let mouse_follows_focus = opt_helpers::toggle_with_disable_default(
             "Mouse Follows Focus",
@@ -561,7 +561,7 @@ impl General {
                 .or(DEFAULT_CONFIG.mouse_follows_focus),
             DEFAULT_CONFIG.mouse_follows_focus,
             |value| Message::ConfigChange(ConfigChange::MouseFollowsFocus(value)),
-            None,
+            DisableArgs::none(),
         );
         let resize_delta = opt_helpers::number_with_disable_default_option(
             "Resize Delta",
@@ -569,7 +569,7 @@ impl General {
             config.resize_delta.or(DEFAULT_CONFIG.resize_delta),
             DEFAULT_CONFIG.resize_delta,
             |value| Message::ConfigChange(ConfigChange::ResizeDelta(value)),
-            None,
+            DisableArgs::none(),
         );
         let slow_application_comp_time = opt_helpers::number_with_disable_default_option(
             "Slow Application Compensation Time",
@@ -583,7 +583,7 @@ impl General {
                 .or(DEFAULT_CONFIG.slow_application_compensation_time),
             DEFAULT_CONFIG.slow_application_compensation_time,
             |value| Message::ConfigChange(ConfigChange::SlowApplicationCompensationTime(value)),
-            None,
+            DisableArgs::none(),
         );
         let unmanaged_window_behavior = opt_helpers::choose_with_disable_default(
             "Unmanaged Window Behaviour",
@@ -596,7 +596,7 @@ impl General {
             config.unmanaged_window_operation_behaviour.or(DEFAULT_CONFIG.unmanaged_window_operation_behaviour),
             |selected| Message::ConfigChange(ConfigChange::UnmanagedWindowBehaviour(selected)),
             DEFAULT_CONFIG.unmanaged_window_operation_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let window_container_behaviour = opt_helpers::choose_with_disable_default(
             "Window Container Behaviour",
@@ -615,7 +615,7 @@ impl General {
                 .or(DEFAULT_CONFIG.window_container_behaviour),
             |selected| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(selected)),
             DEFAULT_CONFIG.window_container_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let window_hiding_behaviour = opt_helpers::choose_with_disable_default(
             "Window Hiding Behaviour",
@@ -629,7 +629,7 @@ impl General {
             config.window_hiding_behaviour.or(DEFAULT_CONFIG.window_hiding_behaviour),
             |selected| Message::ConfigChange(ConfigChange::WindowHidingBehaviour(selected)),
             DEFAULT_CONFIG.window_hiding_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let floating_window_aspect_ratio = opt_helpers::expandable_custom(
             "Floating Window Aspect Ratio",
@@ -729,7 +729,7 @@ impl General {
             Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(
                 DEFAULT_CONFIG.floating_window_aspect_ratio,
             )),
-            None,
+            DisableArgs::none(),
         );
         let floating_layer_behaviour = || {
             opt_helpers::choose_with_disable_default(
@@ -743,8 +743,8 @@ impl General {
             config.floating_layer_behaviour.or(DEFAULT_CONFIG.floating_layer_behaviour),
             |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
             DEFAULT_CONFIG.floating_layer_behaviour,
-            None,
-        )
+            DisableArgs::none(),
+            )
         };
         let toggle_float_placement = opt_helpers::choose_with_disable_default(
             "Toggle Float Placement",
@@ -758,7 +758,7 @@ impl General {
             config.toggle_float_placement.or(DEFAULT_CONFIG.toggle_float_placement),
             |v| Message::ConfigChange(ConfigChange::ToggleFloatPlacement(v)),
             DEFAULT_CONFIG.toggle_float_placement,
-            None,
+            DisableArgs::none(),
         );
         let floating_layer_placement = opt_helpers::choose_with_disable_default(
             "Floating Layer Placement",
@@ -773,7 +773,7 @@ impl General {
             config.floating_layer_placement.or(DEFAULT_CONFIG.floating_layer_placement),
             |v| Message::ConfigChange(ConfigChange::FloatingLayerPlacement(v)),
             DEFAULT_CONFIG.floating_layer_placement,
-            None,
+            DisableArgs::none(),
         );
         let float_override_placement = opt_helpers::choose_with_disable_default(
             "Float Override Placement",
@@ -787,7 +787,7 @@ impl General {
             config.float_override_placement.or(DEFAULT_CONFIG.float_override_placement),
             |v| Message::ConfigChange(ConfigChange::FloatOverridePlacement(v)),
             DEFAULT_CONFIG.float_override_placement,
-            None,
+            DisableArgs::none(),
         );
         let float_rule_placement = opt_helpers::choose_with_disable_default(
             "Float Rule Placement",
@@ -801,7 +801,7 @@ impl General {
             config.float_rule_placement.or(DEFAULT_CONFIG.float_rule_placement),
             |v| Message::ConfigChange(ConfigChange::FloatRulePlacement(v)),
             DEFAULT_CONFIG.float_rule_placement,
-            None,
+            DisableArgs::none(),
         );
         let window_handling_behaviour = opt_helpers::choose_with_disable_default(
             "Window Handling Behaviour",
@@ -816,7 +816,7 @@ impl General {
             config.window_handling_behaviour.or(DEFAULT_CONFIG.window_handling_behaviour),
             |v| Message::ConfigChange(ConfigChange::WindowHandlingBehaviour(v)),
             DEFAULT_CONFIG.window_handling_behaviour,
-            None,
+            DisableArgs::none(),
         );
         let mut contents = vec![
             asc_path,

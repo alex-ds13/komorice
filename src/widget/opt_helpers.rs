@@ -33,10 +33,10 @@ impl<'a, Message, F> DisableArgs<'a, Message, F>
 where
     F: Fn(bool) -> Message + Clone + 'a,
 {
-    pub fn new(disable: bool, label: &'a str, on_toggle: F) -> Self {
+    pub fn new(disable: bool, label: Option<&'a str>, on_toggle: F) -> Self {
         Self {
             disable,
-            label: Some(label),
+            label,
             on_toggle: Box::new(on_toggle),
         }
     }
@@ -44,9 +44,11 @@ where
     pub fn on_toggle(&self) -> impl Fn(bool) -> Message {
         self.on_toggle.clone()
     }
+}
 
-    pub fn none<'b, M>() -> Option<DisableArgs<'b, M, fn(bool) -> M>> {
-        None::<DisableArgs<'b, M, fn(bool) -> M>>
+impl<M> DisableArgs<'_, M, fn(bool) -> M> {
+    pub fn none() -> Option<Self> {
+        None
     }
 }
 
@@ -276,7 +278,13 @@ where
     F: Fn(bool) -> I + 'a,
     I: Into<Element<'a, Message>> + 'a,
 {
-    opt_button_internal::OptButton::with(name, description, on_press, element).into()
+    opt_button_internal::OptButton::<Message, F, I, fn(bool) -> Message>::with(
+        name,
+        description,
+        on_press,
+        element,
+    )
+    .into()
 }
 
 ///Creates a `button` with `name` as label.

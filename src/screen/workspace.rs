@@ -9,8 +9,7 @@ use crate::screen::{
     wallpaper::{self, WallpaperScreen},
 };
 use crate::utils::{DisplayOption, DisplayOptionCustom};
-use crate::widget::opt_helpers::description_text as t;
-use crate::widget::opt_helpers::to_description_text as td;
+use crate::widget::opt_helpers::{DisableArgs, description_text as t, to_description_text as td};
 use crate::widget::{ICONS, icons, opt_helpers};
 
 use std::collections::{BTreeMap, HashMap};
@@ -505,7 +504,7 @@ impl Workspace {
                 DEFAULT_WORKSPACE_CONFIG.layout.map(Into::into),
                 "[None] (Floating)",
             )),
-            None,
+            DisableArgs::none(),
         );
         let grid_option_rows = matches!(ws_config.layout, Some(DefaultLayout::Grid)).then_some(
             opt_helpers::number_with_disable_default_option(
@@ -522,16 +521,14 @@ impl Workspace {
                     .layout_options
                     .and_then(|lo| lo.grid.map(|g| g.rows)),
                 |v| Message::ConfigChange(ConfigChange::GridOptionRows(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: ws_config
+                Some(DisableArgs::new(
+                    ws_config
                         .layout_options
                         .and_then(|lo| lo.grid.map(|g| g.rows))
                         .is_none(),
-                    label: Some("None"),
-                    on_toggle: |v| {
-                        Message::ConfigChange(ConfigChange::GridOptionRows((!v).then_some(2)))
-                    },
-                }),
+                    Some("None"),
+                    |v| Message::ConfigChange(ConfigChange::GridOptionRows((!v).then_some(2))),
+                )),
             ),
         );
         let scrolling_option_columns = matches!(ws_config.layout, Some(DefaultLayout::Scrolling))
@@ -545,18 +542,18 @@ impl Workspace {
                     .layout_options
                     .and_then(|lo| lo.scrolling.map(|g| g.columns)),
                 |v| Message::ConfigChange(ConfigChange::ScrollingOptionColumns(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: ws_config
+                Some(DisableArgs::new(
+                    ws_config
                         .layout_options
                         .and_then(|lo| lo.scrolling.map(|g| g.columns))
                         .is_none(),
-                    label: Some("None"),
-                    on_toggle: |v| {
+                    Some("None"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::ScrollingOptionColumns(
                             (!v).then_some(3),
                         ))
                     },
-                }),
+                )),
             ));
         let scrolling_option_center = matches!(ws_config.layout, Some(DefaultLayout::Scrolling)).then_some(opt_helpers::toggle_with_disable_default(
             "Scrolling Layout Center Focused Column",
@@ -570,18 +567,18 @@ impl Workspace {
                 .layout_options
                 .and_then(|lo| lo.scrolling.and_then(|g| g.center_focused_column)),
             |v| Message::ConfigChange(ConfigChange::ScrollingOptionCenter(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config
+            Some(DisableArgs::new(
+                ws_config
                     .layout_options
                     .and_then(|lo| lo.scrolling.and_then(|g| g.center_focused_column))
                     .is_none(),
-                label: Some("None"),
-                on_toggle: |v| {
+                Some("None"),
+                |v| {
                     Message::ConfigChange(ConfigChange::ScrollingOptionCenter(
                         (!v).then_some(false),
                     ))
                 },
-            }),
+            )),
         ));
         let layout_flip = opt_helpers::choose_with_disable_default(
             "Layout Flip",
@@ -596,7 +593,7 @@ impl Workspace {
             Some(DisplayOption(ws_config.layout_flip)),
             |v| Message::ConfigChange(ConfigChange::LayoutFlip(v.and_then(|v| v.0))),
             Some(DisplayOption(DEFAULT_WORKSPACE_CONFIG.layout_flip)),
-            None,
+            DisableArgs::none(),
         );
         let apply_window_based_offset = opt_helpers::toggle_with_disable_default(
             "Apply Window Based Work Area Offset",
@@ -606,7 +603,7 @@ impl Workspace {
                 .or(DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset),
             DEFAULT_WORKSPACE_CONFIG.apply_window_based_work_area_offset,
             |v| Message::ConfigChange(ConfigChange::ApplyWindowBasedWorkAreaOffset(v)),
-            None,
+            DisableArgs::none(),
         );
         let container_padding = opt_helpers::number_with_disable_default_option(
             "Container Padding",
@@ -614,11 +611,11 @@ impl Workspace {
             ws_config.container_padding,
             DEFAULT_WORKSPACE_CONFIG.container_padding,
             |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.container_padding.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
-            }),
+            Some(DisableArgs::new(
+                ws_config.container_padding.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::ContainerPadding(v)),
+            )),
         );
         let float_override = opt_helpers::toggle_with_disable_default(
             "Float Override",
@@ -628,11 +625,11 @@ impl Workspace {
             ws_config.float_override,
             DEFAULT_WORKSPACE_CONFIG.float_override,
             |v| Message::ConfigChange(ConfigChange::FloatOverride(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.float_override.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
-            }),
+            Some(DisableArgs::new(
+                ws_config.float_override.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatOverride(v)),
+            )),
         );
         let floating_layer_behaviour = opt_helpers::choose_with_disable_default(
             "Floating Layer Behaviour",
@@ -649,11 +646,11 @@ impl Workspace {
             ws_config.floating_layer_behaviour,
             |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
             DEFAULT_WORKSPACE_CONFIG.floating_layer_behaviour,
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.floating_layer_behaviour.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatingLayerBehaviour(v)),
-            }),
+            Some(DisableArgs::new(
+                ws_config.floating_layer_behaviour.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::FloatingLayerBehaviour(v)),
+            )),
         );
         let layout_rules = opt_helpers::expandable(
             "Layout Rules",
@@ -668,13 +665,13 @@ impl Workspace {
             || layout_rules_children(&ws_config.layout_rules, self),
             ws_config.layout_rules.is_some(),
             Message::ConfigChange(ConfigChange::LayoutRules(None)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.layout_rules.is_none(),
-                label: Some("None"),
-                on_toggle: |v| {
+            Some(DisableArgs::new(
+                ws_config.layout_rules.is_none(),
+                Some("None"),
+                |v| {
                     Message::ConfigChange(ConfigChange::LayoutRules((!v).then_some(HashMap::new())))
                 },
-            }),
+            )),
         );
         let window_container_behaviour = opt_helpers::choose_with_disable_default(
             "Window Container Behaviour",
@@ -691,13 +688,11 @@ impl Workspace {
             ws_config.window_container_behaviour,
             |v| Message::ConfigChange(ConfigChange::WindowContainerBehaviour(v)),
             DEFAULT_WORKSPACE_CONFIG.window_container_behaviour,
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.window_container_behaviour.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| {
-                    Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v))
-                },
-            }),
+            Some(DisableArgs::new(
+                ws_config.window_container_behaviour.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::WindowContainerBehaviour(v)),
+            )),
         );
         let window_container_behaviour_rules = opt_helpers::expandable(
             "Window Container Behaviour Rules",
@@ -712,15 +707,15 @@ impl Workspace {
             || behaviour_rules_children(&ws_config.window_container_behaviour_rules, self),
             ws_config.window_container_behaviour_rules.is_some(),
             Message::ConfigChange(ConfigChange::BehaviourRules(None)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.window_container_behaviour_rules.is_none(),
-                label: Some("None"),
-                on_toggle: |v| {
+            Some(DisableArgs::new(
+                ws_config.window_container_behaviour_rules.is_none(),
+                Some("None"),
+                |v| {
                     Message::ConfigChange(ConfigChange::BehaviourRules(
                         (!v).then_some(HashMap::new()),
                     ))
                 },
-            }),
+            )),
         );
         let workspace_padding = opt_helpers::number_with_disable_default_option(
             "Workspace Padding",
@@ -728,11 +723,11 @@ impl Workspace {
             ws_config.workspace_padding,
             DEFAULT_WORKSPACE_CONFIG.workspace_padding,
             |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.workspace_padding.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
-            }),
+            Some(DisableArgs::new(
+                ws_config.workspace_padding.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkspacePadding(v)),
+            )),
         );
         let tile = opt_helpers::toggle_with_disable_default(
             "Tile Workspace",
@@ -740,7 +735,7 @@ impl Workspace {
             ws_config.tile,
             DEFAULT_WORKSPACE_CONFIG.tile,
             |v| Message::ConfigChange(ConfigChange::Tile(v)),
-            None,
+            DisableArgs::none(),
         );
         let work_area_offset = opt_helpers::expandable(
             "Work Area Offset",
@@ -779,11 +774,11 @@ impl Workspace {
             },
             ws_config.work_area_offset.is_some(),
             Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.work_area_offset.is_none(),
-                label: Some("Global"),
-                on_toggle: |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkAreaOffset(v)),
-            }),
+            Some(DisableArgs::new(
+                ws_config.work_area_offset.is_none(),
+                Some("Global"),
+                |v| Message::ToggleOverrideGlobal(OverrideConfig::WorkAreaOffset(v)),
+            )),
         );
         let wp = opt_helpers::opt_button_disable_default(
             "Wallpaper",
@@ -799,15 +794,15 @@ impl Workspace {
             Message::SetScreen(Screen::WorkspaceWallpaper),
             ws_config.wallpaper.is_some(),
             Some(Message::ConfigChange(ConfigChange::Wallpaper(None))),
-            Some(opt_helpers::DisableArgs {
-                disable: ws_config.wallpaper.is_none(),
-                label: Some("None"),
-                on_toggle: |v| {
+            Some(DisableArgs::new(
+                ws_config.wallpaper.is_none(),
+                Some("None"),
+                |v| {
                     Message::ConfigChange(ConfigChange::Wallpaper(
                         (!v).then(|| wallpaper::DEFAULT_WALLPAPER.clone()),
                     ))
                 },
-            }),
+            )),
         );
         let initial_workspace_rules_button = opt_helpers::opt_button(
             "Initial Workspace Rules",

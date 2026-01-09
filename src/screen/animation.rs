@@ -1,6 +1,9 @@
 use crate::{
     config::DEFAULT_CONFIG,
-    widget::{number_input, opt_helpers},
+    widget::{
+        number_input,
+        opt_helpers::{self, DisableArgs},
+    },
 };
 
 use std::collections::HashMap;
@@ -367,7 +370,7 @@ impl Animation {
                                                     ),
                                                 )
                                             },
-                                            None,
+                                            DisableArgs::none(),
                                         )
                                     } else {
                                         space::horizontal().into()
@@ -395,7 +398,7 @@ impl Animation {
                                                     ),
                                                 )
                                             },
-                                            None,
+                                            DisableArgs::none(),
                                         )
                                     } else {
                                         space::horizontal().into()
@@ -414,7 +417,7 @@ impl Animation {
                         .map(|a| a.duration != config.duration)
                         .unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::DurationGlobal(250)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::expandable(
                     "Style",
@@ -510,7 +513,7 @@ impl Animation {
                         .map(|a| a.style != config.style)
                         .unwrap_or_default(),
                     Message::ConfigChange(ConfigChange::StyleGlobal(AnimationStyle::Linear)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default_option(
                     "FPS",
@@ -518,7 +521,7 @@ impl Animation {
                     config.fps,
                     DEFAULT_CONFIG.animation.as_ref().and_then(|a| a.fps),
                     |v| Message::ConfigChange(ConfigChange::Fps(v)),
-                    None,
+                    DisableArgs::none(),
                 ),
             ],
         )

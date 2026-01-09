@@ -3,7 +3,11 @@ use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mod
 use crate::{
     screen::View,
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, button_with_icon, hover, icons, opt_helpers, unfocus},
+    widget::{
+        self, button_with_icon, hover, icons,
+        opt_helpers::{self, DisableArgs},
+        unfocus,
+    },
 };
 
 use std::collections::{HashMap, HashSet};
@@ -326,7 +330,7 @@ impl Bindings {
                 .align_y(Center),
                 false,
                 None,
-                None,
+                DisableArgs::none(),
             );
             let command = command_edit(
                 Some(&self.new_binding_state),
@@ -416,7 +420,7 @@ impl Bindings {
                         .align_y(Center),
                         false,
                         None,
-                        None,
+                        DisableArgs::none(),
                     );
                     let command = command_edit(
                         self.editing_states.get(&idx),
@@ -714,7 +718,9 @@ fn command_edit<'a>(
             label,
             Some("A command that should run when the keybind above is triggered.")
         )]
-        .push(widget::opt_helpers::disable_checkbox(None))
+        .push(widget::opt_helpers::disable_checkbox(
+            DisableArgs::none().as_ref(),
+        ))
         .push({
             let custom = text_editor(content).on_action(on_content_change.clone());
             container(custom)

@@ -9,7 +9,11 @@ pub use helpers::{get_vk_key_mods, modal_content};
 use crate::{
     screen::View,
     whkd::{DEFAULT_WHKDRC, MODIFIERS, SEPARATOR, Shell, UNPADDED_SEPARATOR, WhkdBinary, Whkdrc},
-    widget::{self, hover, icons, opt_helpers, unfocus},
+    widget::{
+        self, hover, icons,
+        opt_helpers::{self, DisableArgs},
+        unfocus,
+    },
 };
 
 use std::collections::HashMap;
@@ -188,7 +192,7 @@ impl Whkd {
             Some(whkdrc.shell),
             |v| Message::Shell(v.unwrap_or(DEFAULT_WHKDRC.shell)),
             Some(DEFAULT_WHKDRC.shell),
-            None,
+            DisableArgs::none(),
         );
         let bind_button = button(widget::icons::edit())
             .style(button::subtle)
@@ -201,7 +205,7 @@ impl Whkd {
                 .align_y(Center),
             whkdrc.pause_binding.is_some(),
             Some(Message::PauseBinding(None)),
-            None,
+            DisableArgs::none(),
         );
         let pause_hook = hook_custom(
             &self.pause_hook_state,
@@ -378,7 +382,9 @@ fn hook_custom<'a>(
                 You can use this to pause komorebi along with whkd for example."
             )
         )]
-        .push(widget::opt_helpers::disable_checkbox(None))
+        .push(widget::opt_helpers::disable_checkbox(
+            DisableArgs::none().as_ref(),
+        ))
         .push({
             let custom = text_editor(content).on_action(Message::PauseHookContentChange);
             container(custom)

@@ -3,7 +3,11 @@ use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mod
 use crate::{
     screen::View,
     whkd::{HotkeyBinding, Whkdrc},
-    widget::{self, button_with_icon, hover, icons, opt_helpers, unfocus},
+    widget::{
+        self, button_with_icon, hover, icons,
+        opt_helpers::{self, DisableArgs},
+        unfocus,
+    },
 };
 
 use std::collections::{HashMap, HashSet};
@@ -434,30 +438,29 @@ impl AppBindings {
                 .align_y(Center),
                 false,
                 None,
-                None,
+                DisableArgs::none(),
             );
-            let commands = self.new_binding.1.iter().enumerate().fold(column![].spacing(10), |col, (binding_idx, binding)| {
-                let process_fn = move |v| {
-                    let value = if v {
-                        String::from("Default")
-                    } else {
-                        String::new()
-                    };
-                    Message::ChangeNewBindingProcess(binding_idx, value)
-                };
+            let commands_col = self.new_binding.1.iter().enumerate().fold(column![].spacing(10), |col, (binding_idx, binding)| {
                 let process = opt_helpers::input_with_disable_default(
                     "Process Name",
                     Some("Name of the process on which the following command will run when this key combination is pressed."),
                     "",
                     binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
                     String::new(),
-                    |v| Message::ChangeNewBindingProcess(binding_idx, v),
+                    move |v| Message::ChangeNewBindingProcess(binding_idx, v),
                     None,
-                    Some(opt_helpers::DisableArgs {
-                        disable: binding.process_name.is_some_and(|p| p == "Default"),
-                        label: Some("Default"),
-                        on_toggle: process_fn,
-                    }),
+                    Some(DisableArgs::new(
+                        binding.process_name.as_ref().is_some_and(|p| p == "Default"),
+                        Some("Default"),
+                        move |v| {
+                            let value = if v {
+                                String::from("Default")
+                            } else {
+                                String::new()
+                            };
+                            Message::ChangeNewBindingProcess(binding_idx, value)
+                        },
+                    )),
                 );
                 let command = command_edit(
                     Some(&self.new_binding_state[binding_idx]),
@@ -466,8 +469,8 @@ impl AppBindings {
                     commands,
                     commands_desc,
                     theme,
-                    |s| Message::ChangeNewBindingCommand(binding_idx, s),
-                    |a| Message::ChangeNewBindingContent(binding_idx, a),
+                    move |s| Message::ChangeNewBindingCommand(binding_idx, s),
+                    move |a| Message::ChangeNewBindingContent(binding_idx, a),
                 );
                 col.push(opt_helpers::opt_box(column![process, command].spacing(10)))
             });
@@ -559,7 +562,7 @@ impl AppBindings {
                         .align_y(Center),
                         false,
                         None,
-                        None,
+                        DisableArgs::none(),
                     );
                     let command = command_edit(
                         self.editing_states.get(&idx).and_then(|es| es.get(&0)),
@@ -924,7 +927,9 @@ fn command_edit<'a>(
             label,
             Some("A command that should run when the keybind above is triggered.")
         )]
-        .push(widget::opt_helpers::disable_checkbox(None))
+        .push(widget::opt_helpers::disable_checkbox(
+            DisableArgs::none().as_ref(),
+        ))
         .push({
             let custom = text_editor(content).on_action(on_content_change.clone());
             container(custom)

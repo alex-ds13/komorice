@@ -1,4 +1,7 @@
-use crate::{BOLD_FONT, ITALIC_FONT, widget::opt_helpers};
+use crate::{
+    BOLD_FONT, ITALIC_FONT,
+    widget::opt_helpers::{self, DisableArgs},
+};
 
 use iced::{
     Center, Color, Element, Fill,
@@ -159,7 +162,7 @@ impl Stackbar {
                     config.height.unwrap_or(40),
                     40,
                     |value| Message::ConfigChange(ConfigChange::Height(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Label",
@@ -173,7 +176,7 @@ impl Stackbar {
                         ))
                     },
                     Some(StackbarLabel::Title),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Mode",
@@ -191,7 +194,7 @@ impl Stackbar {
                         ))
                     },
                     Some(StackbarMode::OnStack),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default(
                     "Stackbar Tabs Width",
@@ -199,7 +202,7 @@ impl Stackbar {
                     config.tabs.as_ref().and_then(|t| t.width).unwrap_or(200),
                     200,
                     |value| Message::ConfigChange(ConfigChange::Width(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::input_with_disable_default(
                     "Stackbar Font Family",
@@ -215,7 +218,7 @@ impl Stackbar {
                     String::from(""),
                     |value| Message::ConfigChange(ConfigChange::FontFamily(value)),
                     None,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default(
                     "Stackbar Font Size",
@@ -223,7 +226,7 @@ impl Stackbar {
                     config.tabs.as_ref().and_then(|t| t.font_size).unwrap_or(0),
                     0,
                     |value| Message::ConfigChange(ConfigChange::FontSize(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::sub_section_view(
                     row![
@@ -251,7 +254,7 @@ impl Stackbar {
                         Some(iced::color!(0x333333)),
                         Message::ToggleBackgroundPicker,
                         |v| Message::ConfigChange(ConfigChange::BackgroundColor(v)),
-                        None,
+                        DisableArgs::none(),
                     ),
                     opt_helpers::color(
                         "Stackbar Focused Text Colour",
@@ -264,7 +267,7 @@ impl Stackbar {
                         Some(iced::color!(0xffffff)),
                         Message::ToggleFocusedTextPicker,
                         |v| Message::ConfigChange(ConfigChange::FocusedTextColor(v)),
-                        None,
+                        DisableArgs::none(),
                     ),
                     opt_helpers::color(
                         "Stackbar Unfocused Text Colour",
@@ -277,7 +280,7 @@ impl Stackbar {
                         Some(iced::color!(0xb3b3b3)),
                         Message::ToggleUnfocusedTextPicker,
                         |v| Message::ConfigChange(ConfigChange::UnfocusedTextColor(v)),
-                        None,
+                        DisableArgs::none(),
                     ),
                 ]),
                 tabs_demo(config, theme),

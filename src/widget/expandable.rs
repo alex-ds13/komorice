@@ -8,11 +8,12 @@ use iced::{
     widget::{Column, Component, column, component, mouse_area, row, rule, text},
 };
 
-pub struct Expandable<'a, Message, F, E, I>
+pub struct Expandable<'a, Message, F, E, I, G>
 where
     F: Fn(bool, bool) -> E,
     E: Into<Element<'a, Message>>,
     I: IntoIterator<Item = Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     name: Option<text::Fragment<'a>>,
     description: Option<&'a str>,
@@ -22,16 +23,17 @@ where
     on_default: Option<Message>,
     is_dirty: bool,
     force_expand: bool,
-    disable_args: Option<DisableArgs<'a, Message>>,
+    disable_args: Option<DisableArgs<'a, Message, G>>,
     top_element: F,
     bottom_elements: Option<Box<dyn Fn() -> I + 'a>>,
 }
 
-impl<'a, Message, F, E, I> Expandable<'a, Message, F, E, I>
+impl<'a, Message, F, E, I, G> Expandable<'a, Message, F, E, I, G>
 where
     F: Fn(bool, bool) -> E,
     E: Into<Element<'a, Message>>,
     I: IntoIterator<Item = Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     /// Create a new `Expandable` with the specified top element function/closure that takes
     /// in an 'hovered' bool and returns an `Element`.
@@ -58,7 +60,7 @@ where
         on_default: Option<Message>,
         is_dirty: bool,
         force_expand: bool,
-        disable_args: Option<DisableArgs<'a, Message>>,
+        disable_args: Option<DisableArgs<'a, Message, G>>,
         top_element: F,
         bottom_elements: impl Fn() -> I + 'a,
     ) -> Self {
@@ -120,11 +122,11 @@ where
         self
     }
 
-    pub fn disable_args(self, disable_args: DisableArgs<'a, Message>) -> Self {
+    pub fn disable_args(self, disable_args: DisableArgs<'a, Message, G>) -> Self {
         self.disable_args_maybe(Some(disable_args))
     }
 
-    pub fn disable_args_maybe(mut self, disable_args: Option<DisableArgs<'a, Message>>) -> Self {
+    pub fn disable_args_maybe(mut self, disable_args: Option<DisableArgs<'a, Message, G>>) -> Self {
         self.disable_args = disable_args;
         self
     }
@@ -152,12 +154,13 @@ pub enum InternalMessage<Message> {
     Message(Message),
 }
 
-impl<'a, Message, F, E, I> Component<'a, Message> for Expandable<'a, Message, F, E, I>
+impl<'a, Message, F, E, I, G> Component<'a, Message> for Expandable<'a, Message, F, E, I, G>
 where
     Message: Clone + 'static,
     F: Fn(bool, bool) -> E,
     E: Into<Element<'a, Message>>,
     I: IntoIterator<Item = Element<'a, Message>>,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     type State = State;
 
@@ -281,19 +284,22 @@ where
     }
 }
 
-impl<'a, Message, F, E, I> From<Expandable<'a, Message, F, E, I>> for Element<'a, Message>
+impl<'a, Message, F, E, I, G> From<Expandable<'a, Message, F, E, I, G>> for Element<'a, Message>
 where
     Message: Clone + 'static,
     F: Fn(bool, bool) -> E + 'a,
     E: Into<Element<'a, Message>> + 'a,
     I: IntoIterator<Item = Element<'a, Message>> + 'a,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
-    fn from(value: Expandable<'a, Message, F, E, I>) -> Self {
+    fn from(value: Expandable<'a, Message, F, E, I, G>) -> Self {
         component(value)
     }
 }
 
-pub fn expandable<'a, Message, F, E, I>(top_element: F) -> Expandable<'a, Message, F, E, I>
+pub fn expandable<'a, Message, F, E, I>(
+    top_element: F,
+) -> Expandable<'a, Message, F, E, I, fn(bool) -> Message>
 where
     Message: Clone + 'a,
     F: Fn(bool, bool) -> E + 'a,

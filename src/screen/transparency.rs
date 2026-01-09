@@ -1,7 +1,10 @@
 use super::rule::{self, Rule};
 
 use crate::config::DEFAULT_CONFIG;
-use crate::{BOLD_FONT, widget::opt_helpers};
+use crate::{
+    BOLD_FONT,
+    widget::opt_helpers::{self, DisableArgs},
+};
 
 use iced::{
     Element, Fill, Subscription, Task, padding,
@@ -120,7 +123,7 @@ impl Transparency {
                     config.transparency.or(DEFAULT_CONFIG.transparency),
                     DEFAULT_CONFIG.transparency,
                     |value| Message::ConfigChange(ConfigChange::Transparency(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default_option(
                     "Transparency Alpha",
@@ -133,7 +136,7 @@ impl Transparency {
                         .or(DEFAULT_CONFIG.transparency_alpha),
                     DEFAULT_CONFIG.transparency_alpha,
                     |value| Message::ConfigChange(ConfigChange::TransparencyAlpha(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::opt_button(
                     "Transparency Ignore Rules",

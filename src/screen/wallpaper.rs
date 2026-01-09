@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use crate::{
     screen::View,
-    widget::{icons, opt_helpers},
+    widget::{
+        icons,
+        opt_helpers::{self, DisableArgs},
+    },
 };
 
 use std::sync::LazyLock;
@@ -217,7 +220,7 @@ impl WallpaperScreen {
                 .spacing(10),
                 !wallpaper.path.to_str().unwrap_or_default().is_empty(),
                 Some(Message::Path(String::new())),
-                None,
+                DisableArgs::none(),
             ),
             opt_helpers::toggle_with_disable_default(
                 "Generate Theme",
@@ -225,7 +228,7 @@ impl WallpaperScreen {
                 wallpaper.generate_theme,
                 Some(true),
                 Message::GenerateTheme,
-                None,
+                DisableArgs::none(),
             ),
         ];
 
@@ -242,7 +245,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.theme_variant),
                     Message::ThemeVariant,
                     DEFAULT_THEME_OPTIONS.theme_variant,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Single Border",
@@ -255,7 +258,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.single_border),
                     |v| Message::Color(ThemeColor::SingleBorder(v)),
                     DEFAULT_THEME_OPTIONS.single_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stack Border",
@@ -268,7 +271,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.stack_border),
                     |v| Message::Color(ThemeColor::StackBorder(v)),
                     DEFAULT_THEME_OPTIONS.stack_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Monocle Border",
@@ -281,7 +284,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.monocle_border),
                     |v| Message::Color(ThemeColor::MonocleBorder(v)),
                     DEFAULT_THEME_OPTIONS.monocle_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Floating Border",
@@ -294,7 +297,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.floating_border),
                     |v| Message::Color(ThemeColor::FloatingBorder(v)),
                     DEFAULT_THEME_OPTIONS.floating_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Unfocused Border",
@@ -307,7 +310,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.unfocused_border),
                     |v| Message::Color(ThemeColor::UnfocusedBorder(v)),
                     DEFAULT_THEME_OPTIONS.unfocused_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Unfocused Locked Border",
@@ -320,7 +323,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.unfocused_locked_border),
                     |v| Message::Color(ThemeColor::UnfocusedLockerBorder(v)),
                     DEFAULT_THEME_OPTIONS.unfocused_locked_border,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Focused Text",
@@ -333,7 +336,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.stackbar_focused_text),
                     |v| Message::Color(ThemeColor::StackbarFocusedText(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_focused_text,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Unfocused Text",
@@ -346,7 +349,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.stackbar_unfocused_text),
                     |v| Message::Color(ThemeColor::StackbarUnfocusedText(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_unfocused_text,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Stackbar Background",
@@ -359,7 +362,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.stackbar_background),
                     |v| Message::Color(ThemeColor::StackbarBackground(v)),
                     DEFAULT_THEME_OPTIONS.stackbar_background,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Bar Acccent",
@@ -372,7 +375,7 @@ impl WallpaperScreen {
                         .and_then(|o| o.bar_accent),
                     |v| Message::Color(ThemeColor::BarAccent(v)),
                     DEFAULT_THEME_OPTIONS.bar_accent,
-                    None,
+                    DisableArgs::none(),
                 ),
             ]);
         }

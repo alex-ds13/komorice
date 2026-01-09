@@ -7,7 +7,7 @@ use crate::{
         Modal,
         wallpaper::{self, WallpaperScreen},
     },
-    widget::opt_helpers::{self, description_text as t},
+    widget::opt_helpers::{self, DisableArgs, description_text as t},
 };
 
 use std::collections::HashMap;
@@ -395,13 +395,13 @@ impl Monitor {
                 config.container_padding,
                 DEFAULT_MONITOR_CONFIG.container_padding,
                 |v| Message::ConfigChange(ConfigChange::ContainerPadding(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.container_padding.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.container_padding.is_none(),
+                    Some("Global"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::ContainerPadding((!v).then_some(10)))
                     },
-                }),
+                )),
             ),
             opt_helpers::number_with_disable_default_option(
                 "Workspace Padding",
@@ -409,13 +409,13 @@ impl Monitor {
                 config.workspace_padding,
                 DEFAULT_MONITOR_CONFIG.workspace_padding,
                 |v| Message::ConfigChange(ConfigChange::WorkspacePadding(v)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.workspace_padding.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.workspace_padding.is_none(),
+                    Some("Global"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::WorkspacePadding((!v).then_some(10)))
                     },
-                }),
+                )),
             ),
             opt_helpers::expandable(
                 "Window Based Work Area Offset",
@@ -466,15 +466,15 @@ impl Monitor {
                 },
                 config.window_based_work_area_offset.is_some(),
                 Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(None)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.window_based_work_area_offset.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.window_based_work_area_offset.is_none(),
+                    Some("Global"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffset(
                             (!v).then_some(Rect::default()),
                         ))
                     },
-                }),
+                )),
             ),
             opt_helpers::number_with_disable_default(
                 "Window Based Work Area Offset Limit",
@@ -488,7 +488,7 @@ impl Monitor {
                 move |value| {
                     Message::ConfigChange(ConfigChange::WindowBasedWorkAreaOffsetLimit(value))
                 },
-                None,
+                DisableArgs::none(),
             ),
             opt_helpers::expandable(
                 "Work Area Offset",
@@ -531,15 +531,15 @@ impl Monitor {
                 },
                 config.work_area_offset.is_some(),
                 Message::ConfigChange(ConfigChange::WorkAreaOffset(None)),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.work_area_offset.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.work_area_offset.is_none(),
+                    Some("Global"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::WorkAreaOffset(
                             (!v).then_some(Rect::default()),
                         ))
                     },
-                }),
+                )),
             ),
             opt_helpers::choose_with_disable_default(
                 "Floating Layer Behaviour",
@@ -552,15 +552,15 @@ impl Monitor {
                 config.floating_layer_behaviour.or(DEFAULT_MONITOR_CONFIG.floating_layer_behaviour),
                 |v| Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(v)),
                 DEFAULT_MONITOR_CONFIG.floating_layer_behaviour,
-                Some(opt_helpers::DisableArgs {
-                    disable: config.floating_layer_behaviour.is_none(),
-                    label: Some("Global"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.floating_layer_behaviour.is_none(),
+                    Some("Global"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::FloatingLayerBehaviour(
                             (!v).then(|| DEFAULT_CONFIG.floating_layer_behaviour).flatten()
                         ))
                     },
-                }),
+                )),
             ),
             opt_helpers::opt_button_disable_default(
                 "Wallpaper",
@@ -568,15 +568,15 @@ impl Monitor {
                 Message::SetSubScreenMonitorWallpaper,
                 config.wallpaper.is_some(),
                 Some(Message::ConfigChange(ConfigChange::Wallpaper(None))),
-                Some(opt_helpers::DisableArgs {
-                    disable: config.wallpaper.is_none(),
-                    label: Some("None"),
-                    on_toggle: |v| {
+                Some(DisableArgs::new(
+                    config.wallpaper.is_none(),
+                    Some("None"),
+                    |v| {
                         Message::ConfigChange(ConfigChange::Wallpaper(
                             (!v).then(|| wallpaper::DEFAULT_WALLPAPER.clone()),
                         ))
                     },
-                }),
+                )),
             ),
             opt_helpers::opt_button("Workspaces", None, Message::SetSubScreenWorkspaces),
         ];

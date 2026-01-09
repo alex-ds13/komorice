@@ -1,5 +1,9 @@
 use crate::widget::opt_helpers::description_text as t;
-use crate::{BOLD_FONT, ITALIC_FONT, config::DEFAULT_CONFIG, widget::opt_helpers};
+use crate::{
+    BOLD_FONT, ITALIC_FONT,
+    config::DEFAULT_CONFIG,
+    widget::opt_helpers::{self, DisableArgs},
+};
 
 use iced::{
     Element, Task, padding,
@@ -241,7 +245,7 @@ impl Border {
                     *b_config.border.unwrap_or(&false),
                     DEFAULT_CONFIG.border.unwrap_or_default(),
                     |v| Message::ConfigChange(ConfigChange::Border(v)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default(
                     "Border Width",
@@ -249,7 +253,7 @@ impl Border {
                     *b_config.border_width.unwrap_or(&8),
                     DEFAULT_CONFIG.border_width.unwrap_or(8),
                     |value| Message::ConfigChange(ConfigChange::BorderWidth(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::number_with_disable_default(
                     "Border Offset",
@@ -257,7 +261,7 @@ impl Border {
                     *b_config.border_offset.unwrap_or(&-1),
                     DEFAULT_CONFIG.border_offset.unwrap_or(-1),
                     |value| Message::ConfigChange(ConfigChange::BorderOffset(value)),
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Border Style",
@@ -275,7 +279,7 @@ impl Border {
                         ))
                     },
                     DEFAULT_CONFIG.border_style,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::choose_with_disable_default(
                     "Border Implementation",
@@ -295,7 +299,7 @@ impl Border {
                         ))
                     },
                     DEFAULT_CONFIG.border_implementation,
-                    None,
+                    DisableArgs::none(),
                 ),
                 opt_helpers::sub_section_view(
                     row![
@@ -323,7 +327,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.single.map(into_color)),
                             Message::ToggleSinglePicker,
                             |v| Message::ConfigChange(ConfigChange::SingleColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                         opt_helpers::color(
                             "Stack Border Colour",
@@ -336,7 +340,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.stack.map(into_color)),
                             Message::ToggleStackPicker,
                             |v| Message::ConfigChange(ConfigChange::StackColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                         opt_helpers::color(
                             "Monocle Border Colour",
@@ -349,7 +353,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.monocle.map(into_color)),
                             Message::ToggleMonoclePicker,
                             |v| Message::ConfigChange(ConfigChange::MonocleColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                         opt_helpers::color(
                             "Floating Border Colour",
@@ -362,7 +366,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.floating.map(into_color)),
                             Message::ToggleFloatingPicker,
                             |v| Message::ConfigChange(ConfigChange::FloatingColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                         opt_helpers::color(
                             "Unfocused Border Colour",
@@ -375,7 +379,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused.map(into_color)),
                             Message::ToggleUnfocusedPicker,
                             |v| Message::ConfigChange(ConfigChange::UnfocusedColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                         opt_helpers::color(
                             "Unfocused Locked Border Colour",
@@ -388,7 +392,7 @@ impl Border {
                             DEFAULT_CONFIG.border_colours.as_ref().and_then(|bc| bc.unfocused_locked.map(into_color)),
                             Message::ToggleUnfocusedLockedPicker,
                             |v| Message::ConfigChange(ConfigChange::UnfocusedLockedColor(v)),
-                            None,
+                            DisableArgs::none(),
                         ),
                     ]
                 ),
