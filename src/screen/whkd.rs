@@ -445,6 +445,7 @@ fn hook_custom<'a>(
         }
     })
     .dirty(is_dirty)
+    .disable_args_maybe(DisableArgs::none())
     .into()
 }
 

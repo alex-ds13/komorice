@@ -784,6 +784,7 @@ fn command_edit<'a>(
             vec![selector]
         }
     })
+    .disable_args_maybe(DisableArgs::none())
     .into()
 }
 

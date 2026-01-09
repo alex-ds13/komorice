@@ -297,14 +297,13 @@ where
     }
 }
 
-pub fn expandable<'a, Message, F, E, I>(
-    top_element: F,
-) -> Expandable<'a, Message, F, E, I, fn(bool) -> Message>
+pub fn expandable<'a, Message, F, E, I, G>(top_element: F) -> Expandable<'a, Message, F, E, I, G>
 where
     Message: Clone + 'a,
     F: Fn(bool, bool) -> E + 'a,
     E: Into<Element<'a, Message>> + 'a,
     I: IntoIterator<Item = Element<'a, Message>> + 'a,
+    G: Fn(bool) -> Message + Clone + 'a,
 {
     Expandable::new(top_element)
 }

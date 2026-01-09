@@ -1,6 +1,7 @@
 use super::{MODIFIERS, SEPARATOR, UNPADDED_SEPARATOR, WhkdBinary, get_vk_key_mods, modal_content};
 
 use crate::{
+    BOLD_FONT,
     screen::View,
     whkd::{HotkeyBinding, Whkdrc},
     widget::{
@@ -13,10 +14,10 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use iced::{
-    Center, Element, Subscription, Task, Theme, Top, padding,
+    Center, Element, Fill, Subscription, Task, Theme, Top, padding,
     widget::{
         bottom_center, button, column, combo_box, container, markdown, operation, pick_list, right,
-        row, scrollable, space, stack, text, text_editor,
+        right_center, row, rule, scrollable, space, stack, text, text_editor,
     },
 };
 
@@ -24,13 +25,17 @@ const SCROLLABLE_ID: &str = "BINDINGS_SCROLLABLE";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
+    // New Binding messages
     ChangeNewBindingMod(usize, String),
     ChangeNewBindingKey(String),
     ChangeNewBindingCommand(usize, String),
     ChangeNewBindingContent(usize, text_editor::Action),
     ChangeNewBindingProcess(usize, String),
     ToggleShowNewBinding,
+    AddNewBindingCommand,
     AddNewBinding,
+
+    // App Bindings messages
     RemoveBinding(usize),
     ChangeBindingMod(usize, (usize, String)),
     ChangeBindingKey(usize, String),
@@ -40,11 +45,13 @@ pub enum Message {
     EditBinding(usize),
     FinishEditBinding(usize),
 
+    // Keybind modal messages
     KeyPress(String, String),
     KeyRelease(String, String),
     OpenNewBindingKeysModal,
     OpenBindingKeysModal(usize),
     CloseModal(bool),
+
     UrlClicked(markdown::Url),
 }
 
@@ -319,6 +326,17 @@ impl AppBindings {
                     binding.process_name = Some(process);
                 }
             }
+            Message::AddNewBindingCommand => {
+                self.new_binding.1.push(HotkeyBinding {
+                    keys: self.new_binding.0.clone(),
+                    command: String::new(),
+                    process_name: None,
+                });
+                self.new_binding_state
+                    .push(combo_box::State::new(commands.to_vec()));
+                self.new_binding_content.push(text_editor::Content::new());
+                self.new_binding_process.push(text_editor::Content::new());
+            }
             Message::ToggleShowNewBinding => self.show_new_binding = !self.show_new_binding,
             Message::EditBinding(idx) => {
                 self.editing.insert(idx);
@@ -440,14 +458,27 @@ impl AppBindings {
                 None,
                 DisableArgs::none(),
             );
-            let commands_col = self.new_binding.1.iter().enumerate().fold(column![].spacing(10), |col, (binding_idx, binding)| {
-                let process = opt_helpers::input_with_disable_default(
+            let commands_col = self.new_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+                let process = opt_helpers::opt_custom_el_disable_default(
                     "Process Name",
-                    Some("Name of the process on which the following command will run when this key combination is pressed."),
-                    "",
-                    binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
-                    String::new(),
-                    move |v| Message::ChangeNewBindingProcess(binding_idx, v),
+                    Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
+                        If you set it to 'Default', it means the command will run on all apps. If you only have one command \
+                        for 'Default' it is the same as a normal 'Binding'.
+                        "),
+                    container(
+                        widget::input(
+                            "",
+                            binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
+                            move |v| Message::ChangeNewBindingProcess(binding_idx, v),
+                            None,
+                        )
+                        .on_input_maybe(binding.process_name.as_ref().is_none_or(|p| p != "Default").then_some(
+                            move |v| Message::ChangeNewBindingProcess(binding_idx, v),
+                        ))
+                    )
+                    .max_width(700)
+                    .align_right(iced::FillPortion(3)),
+                    false,
                     None,
                     Some(DisableArgs::new(
                         binding.process_name.as_ref().is_some_and(|p| p == "Default"),
@@ -462,6 +493,7 @@ impl AppBindings {
                         },
                     )),
                 );
+
                 let command = command_edit(
                     Some(&self.new_binding_state[binding_idx]),
                     &self.new_binding_content[binding_idx],
@@ -471,19 +503,18 @@ impl AppBindings {
                     theme,
                     move |s| Message::ChangeNewBindingCommand(binding_idx, s),
                     move |a| Message::ChangeNewBindingContent(binding_idx, a),
+                    Some(DisableArgs::new(
+                        self.new_binding_content[binding_idx].text().as_str() == "Ignore",
+                        Some("Ignore"),
+                        move |v| {
+                            let value = if v { String::from("Ignore") } else { String::new() };
+                            Message::ChangeNewBindingCommand(binding_idx, value)
+                        }
+                    )),
                 );
-                col.push(opt_helpers::opt_box(column![process, command].spacing(10)))
+                col.push(column![process, rule::horizontal(2.0), command].into());
+                col
             });
-            let command = command_edit(
-                Some(&self.new_binding_state[0]),
-                &self.new_binding_content[0],
-                &self.new_binding.1[0].command,
-                commands,
-                commands_desc,
-                theme,
-                |s| Message::ChangeNewBindingCommand(0, s),
-                |a| Message::ChangeNewBindingContent(0, a),
-            );
 
             let duplicated_keys = whkdrc.app_bindings.iter().any(|b| {
                 let mut b_keys = b.0.clone();
@@ -496,7 +527,7 @@ impl AppBindings {
                     Either use another combination or change/delete \
                     the existing one first.",
                 )
-                .width(iced::Fill)
+                .width(Fill)
                 .align_x(iced::Right)
                 .size(12)
                 .style(text::warning),
@@ -511,14 +542,23 @@ impl AppBindings {
                 )
                 .width(77);
 
+            let add_command_button =
+                button_with_icon(icons::level_down(), text("Add App Command").size(12))
+                    .style(button::secondary)
+                    .on_press(Message::AddNewBindingCommand);
+
             column![
                 keybind,
-                command,
-                right(
-                    row![duplicated_warning, add_binding_button]
-                        .align_y(Center)
-                        .spacing(10)
-                ),
+                opt_helpers::sub_section_view(text("App Commands:").font(*BOLD_FONT), commands_col),
+                row![
+                    add_command_button,
+                    space::horizontal(),
+                    right(
+                        row![duplicated_warning, add_binding_button]
+                            .align_y(Center)
+                            .spacing(10)
+                    ),
+                ]
             ]
             .spacing(10)
             .into()
@@ -577,6 +617,7 @@ impl AppBindings {
                         theme,
                         move |c| Message::ChangeBindingCommand(idx, 0, c),
                         move |a| Message::ChangeBindingContent(idx, 0, a),
+                        DisableArgs::none(),
                     );
 
                     let duplicated_warning = duplicated_keys.then_some(
@@ -713,13 +754,12 @@ impl AppBindings {
                         row![keybind, text(" -> ").align_y(Center).height(30), commands]
                             .align_y(Top)
                             .padding(padding::right(60).top(2.5).bottom(2.5)),
-                        right(
+                        right_center(
                             button(icons::edit())
                                 .on_press(Message::EditBinding(idx))
                                 .style(button::secondary),
                         )
-                        .padding(padding::right(5))
-                        .align_y(Center),
+                        .padding(padding::right(5)),
                     );
 
                     col.push(b)
@@ -897,7 +937,7 @@ fn keys<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn command_edit<'a>(
+fn command_edit<'a, F>(
     state: Option<&'a combo_box::State<String>>,
     content: &'a text_editor::Content,
     command: &'a str,
@@ -906,33 +946,31 @@ fn command_edit<'a>(
     theme: &'a Theme,
     on_command_change: impl Fn(String) -> Message + Clone + 'static,
     on_content_change: impl Fn(text_editor::Action) -> Message + Clone + 'static,
-) -> Element<'a, Message> {
+    disable_args: Option<DisableArgs<'a, Message, F>>,
+) -> Element<'a, Message>
+where
+    F: Fn(bool) -> Message + Clone + 'a,
+{
     let (main_cmd, _rest) = split_command(command, commands);
-    let on_command_change_clone = on_command_change.clone();
+    let disable_args_clone = disable_args.clone();
     widget::expandable::expandable(move |hovered, expanded| {
-        let on_command_change_clone = on_command_change_clone.clone();
-        let label = if false {
-            row![text("Command")]
-                .push(widget::opt_helpers::reset_button(Some(
-                    on_command_change_clone(String::new()),
-                )))
-                .spacing(5)
-                .height(30)
-                .align_y(Center)
-        } else {
-            row![text("Command")].height(30).align_y(Center)
-        };
+        let label = row![text("Command")].height(30).align_y(Center);
 
         let main = row![widget::opt_helpers::label_element_with_description(
             label,
-            Some("A command that should run when the keybind above is triggered.")
+            Some("A command that should run when the keybind above is triggered and the focus is on this process. \
+                If you set it to 'Ignore', it means this keybind will be ignored when this process is focused."),
         )]
         .push(widget::opt_helpers::disable_checkbox(
-            DisableArgs::none().as_ref(),
+            disable_args_clone.as_ref(),
         ))
         .push({
-            let custom = text_editor(content).on_action(on_content_change.clone());
-            container(custom)
+            let mut editor = text_editor(content);
+            let disabled = disable_args_clone.as_ref().is_some_and(|args| args.disable);
+            if !disabled {
+                editor = editor.on_action(on_content_change.clone());
+            }
+            container(editor)
                 .max_width(700)
                 .align_right(iced::FillPortion(3))
         })
@@ -993,6 +1031,7 @@ fn command_edit<'a>(
             vec![selector]
         }
     })
+    .disable_args_maybe(disable_args)
     .into()
 }
 
