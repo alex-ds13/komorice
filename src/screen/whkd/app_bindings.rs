@@ -14,14 +14,16 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 use iced::{
-    Center, Element, Fill, Subscription, Task, Theme, Top, padding,
+    Center, Element, Fill, Shrink, Subscription, Task, Theme, Top, padding,
     widget::{
         bottom_center, button, column, combo_box, container, markdown, operation, pick_list, right,
         right_center, row, rule, scrollable, space, stack, text, text_editor,
     },
 };
+use smol::process::{Command, Stdio, windows::CommandExt};
 
 const SCROLLABLE_ID: &str = "BINDINGS_SCROLLABLE";
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -55,6 +57,13 @@ pub enum Message {
     OpenBindingKeysModal(usize),
     CloseModal(bool),
 
+    // ProcessNames messages
+    GotProcessNames(HashMap<String, String>),
+    FailedToGetProcessNames,
+    SelectNewBindingProcessName(usize),
+    SelectBindingProcessName(usize, usize),
+    SelectedProcessName(String),
+
     UrlClicked(markdown::Url),
 }
 
@@ -67,8 +76,14 @@ pub enum Action {
 
 #[derive(Debug)]
 enum Modal {
-    NewBinding,
-    Binding(usize),
+    Keys(BindType),
+    ProcessName(BindType, usize),
+}
+
+#[derive(Debug)]
+enum BindType {
+    New,
+    Existing(usize),
 }
 
 #[derive(Debug)]
@@ -86,6 +101,9 @@ pub struct AppBindings {
     editing_states: HashMap<usize, HashMap<usize, combo_box::State<String>>>,
     editing_commands: HashMap<usize, HashMap<usize, text_editor::Content>>,
     editing_processes: HashMap<usize, HashMap<usize, text_editor::Content>>,
+    process_names: Option<HashMap<String, String>>,
+    selected_process_name: Option<String>,
+    selecting_process_state: combo_box::State<String>,
 }
 
 impl Default for AppBindings {
@@ -111,6 +129,9 @@ impl Default for AppBindings {
             editing_states: Default::default(),
             editing_commands: Default::default(),
             editing_processes: Default::default(),
+            process_names: Default::default(),
+            selected_process_name: Default::default(),
+            selecting_process_state: Default::default(),
         }
     }
 }
@@ -426,56 +447,110 @@ impl AppBindings {
                 self.editing_commands.remove(&idx);
             }
             Message::OpenNewBindingKeysModal => {
-                self.modal_opened = Some(Modal::NewBinding);
+                self.modal_opened = Some(Modal::Keys(BindType::New));
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
                 return (Action::StopWhkd, unfocus());
             }
             Message::OpenBindingKeysModal(idx) => {
-                self.modal_opened = Some(Modal::Binding(idx));
+                self.modal_opened = Some(Modal::Keys(BindType::Existing(idx)));
                 self.pressed_mod = String::new();
                 self.pressed_keys = Vec::new();
                 self.pressed_keys_temp = Vec::new();
                 return (Action::StopWhkd, unfocus());
             }
             Message::CloseModal(save) => {
-                if save
-                    && (!self.pressed_mod.is_empty() || !self.pressed_keys.is_empty())
-                    && let Some(modal) = self.modal_opened.as_ref()
-                {
-                    let modifiers = std::mem::take(&mut self.pressed_mod);
-                    let mods = modifiers.split(&SEPARATOR).map(|s| s.to_string());
-                    let keys = self.pressed_keys.drain(..);
-                    let key_combination = mods.chain(keys).collect::<Vec<_>>();
+                if save && let Some(modal) = self.modal_opened.as_ref() {
                     match modal {
-                        Modal::NewBinding => {
-                            for k in self
-                                .new_binding
-                                .1
-                                .iter_mut()
-                                .map(|b| &mut b.keys)
-                                .chain(std::iter::once(&mut self.new_binding.0))
-                            {
-                                *k = key_combination.clone();
+                        Modal::Keys(bind_type) => {
+                            if !self.pressed_mod.is_empty() || !self.pressed_keys.is_empty() {
+                                let modifiers = std::mem::take(&mut self.pressed_mod);
+                                let mods = modifiers.split(&SEPARATOR).map(|s| s.to_string());
+                                let keys = self.pressed_keys.drain(..);
+                                let key_combination = mods.chain(keys).collect::<Vec<_>>();
+                                match bind_type {
+                                    BindType::New => {
+                                        for k in self
+                                            .new_binding
+                                            .1
+                                            .iter_mut()
+                                            .map(|b| &mut b.keys)
+                                            .chain(std::iter::once(&mut self.new_binding.0))
+                                        {
+                                            *k = key_combination.clone();
+                                        }
+                                    }
+                                    BindType::Existing(idx) => {
+                                        if let Some(app_binding) = whkdrc.app_bindings.get_mut(*idx)
+                                        {
+                                            for k in app_binding
+                                                .1
+                                                .iter_mut()
+                                                .map(|b| &mut b.keys)
+                                                .chain(std::iter::once(&mut app_binding.0))
+                                            {
+                                                *k = key_combination.clone();
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                        Modal::Binding(idx) => {
-                            if let Some(app_binding) = whkdrc.app_bindings.get_mut(*idx) {
-                                for k in app_binding
-                                    .1
-                                    .iter_mut()
-                                    .map(|b| &mut b.keys)
-                                    .chain(std::iter::once(&mut app_binding.0))
-                                {
-                                    *k = key_combination.clone();
+                        Modal::ProcessName(bind_type, binding_idx) => {
+                            if let Some(selected) = self.selected_process_name.take()
+                                && let Some((_, app_name)) = selected.split_once(" -> ")
+                            {
+                                match bind_type {
+                                    BindType::New => {
+                                        if let Some(process_name) = self
+                                            .new_binding
+                                            .1
+                                            .get_mut(*binding_idx)
+                                            .map(|b| &mut b.process_name)
+                                        {
+                                            *process_name = Some(app_name.to_string());
+                                        }
+                                    }
+                                    BindType::Existing(idx) => {
+                                        if let Some(app_binding) = whkdrc.app_bindings.get_mut(*idx)
+                                            && let Some(process_name) = app_binding
+                                                .1
+                                                .get_mut(*binding_idx)
+                                                .map(|b| &mut b.process_name)
+                                        {
+                                            *process_name = Some(app_name.to_string());
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
                 self.modal_opened = None;
+                self.selected_process_name = None;
                 return (Action::StartWhkd, Task::none());
+            }
+            Message::GotProcessNames(process_names) => {
+                let mut options = process_names
+                    .iter()
+                    .map(|(process_name, app_name)| format!("{process_name} -> {app_name}"))
+                    .collect::<Vec<_>>();
+                options.sort();
+                self.selecting_process_state = combo_box::State::new(options);
+                self.process_names = Some(process_names);
+            }
+            Message::FailedToGetProcessNames => {}
+            Message::SelectNewBindingProcessName(binding_idx) => {
+                self.modal_opened = Some(Modal::ProcessName(BindType::New, binding_idx));
+                return (Action::None, get_current_process_names());
+            }
+            Message::SelectBindingProcessName(idx, binding_idx) => {
+                self.modal_opened = Some(Modal::ProcessName(BindType::Existing(idx), binding_idx));
+                return (Action::None, get_current_process_names());
+            }
+            Message::SelectedProcessName(process_name) => {
+                self.selected_process_name = Some(process_name);
             }
         }
         (Action::None, Task::none())
@@ -580,12 +655,19 @@ impl AppBindings {
                     )),
                 );
 
-                let delete_button = right(
+                let process_names_button = widget::create_tooltip(
+                    button(icons::info())
+                        .on_press(Message::SelectNewBindingProcessName(binding_idx))
+                        .style(button::secondary),
+                    "Select a process name from the currently running processes",
+                );
+
+                let delete_button = widget::create_tooltip(
                     button(icons::delete())
                         .on_press(Message::RemoveNewBindingSubBinding(binding_idx))
-                        .style(button::danger)
-                )
-                .padding(10);
+                        .style(button::danger),
+                    "Delete this app command"
+                );
 
                 col.push(
                     hover(
@@ -594,7 +676,14 @@ impl AppBindings {
                             rule::horizontal(2.0),
                             command,
                         ],
-                        delete_button
+                        right(
+                            row![
+                                process_names_button,
+                                delete_button,
+                            ]
+                            .spacing(10)
+                        )
+                        .padding(10),
                     )
                     .into()
                 );
@@ -757,12 +846,19 @@ impl AppBindings {
                             )),
                         );
 
-                        let delete_button = right(
+                        let process_names_button = widget::create_tooltip(
+                            button(icons::info())
+                                .on_press(Message::SelectBindingProcessName(idx, binding_idx))
+                                .style(button::secondary),
+                            "Select a process name from the currently running processes",
+                        );
+
+                        let delete_button = widget::create_tooltip(
                             button(icons::delete())
                                 .on_press(Message::RemoveBindingSubBinding(idx, binding_idx))
-                                .style(button::danger)
-                        )
-                        .padding(10);
+                                .style(button::danger),
+                            "Delete this app command from this app binding"
+                        );
 
                         col.push(
                             hover(
@@ -771,7 +867,14 @@ impl AppBindings {
                                     rule::horizontal(2.0),
                                     command,
                                 ],
-                                delete_button
+                                right(
+                                    row![
+                                        process_names_button,
+                                        delete_button,
+                                    ]
+                                    .spacing(10)
+                                )
+                                .padding(10),
                             )
                             .into()
                         );
@@ -937,15 +1040,7 @@ impl AppBindings {
         ]
         .spacing(10);
 
-        View::new(content).modal(
-            self.modal_opened.is_some().then_some(modal_content(
-                &self.pressed_mod,
-                &self.pressed_keys,
-                whkd_bin,
-                Message::CloseModal,
-            )),
-            Message::CloseModal(false),
-        )
+        View::new(content).modal(self.view_modal(whkd_bin), Message::CloseModal(false))
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -1041,6 +1136,56 @@ impl AppBindings {
         self.editing.clear();
         self.editing_states.clear();
         self.editing_commands.clear();
+    }
+
+    fn view_modal<'a>(&'a self, whkd_bin: &'a WhkdBinary) -> Option<Element<'a, Message>> {
+        self.modal_opened.as_ref().map(|modal| match modal {
+            Modal::Keys(_) => modal_content(
+                &self.pressed_mod,
+                &self.pressed_keys,
+                whkd_bin,
+                Message::CloseModal,
+            ),
+            Modal::ProcessName(_, _) => {
+                if self.process_names.is_some()
+                    && !self.selecting_process_state.options().is_empty()
+                {
+                    let pick = pick_list(
+                        self.selecting_process_state.options(),
+                        self.selected_process_name.as_ref(),
+                        Message::SelectedProcessName,
+                    );
+                    let combobox = combo_box(
+                        &self.selecting_process_state,
+                        "",
+                        self.selected_process_name.as_ref(),
+                        Message::SelectedProcessName,
+                    );
+                    let picker = stack!(pick, combobox);
+
+                    container(
+                        column![
+                            text("Select a process name:").size(18).font(*BOLD_FONT),
+                            rule::horizontal(2.0),
+                            container(text("Currently running processes:"))
+                                .padding(padding::top(10)),
+                            row![picker, button("Select").on_press(Message::CloseModal(true))]
+                                .spacing(10),
+                        ]
+                        .width(Shrink)
+                        .spacing(10),
+                    )
+                    .style(container::bordered_box)
+                    .padding(50)
+                    .into()
+                } else {
+                    container("Loading currently running process names...")
+                        .style(container::bordered_box)
+                        .padding(50)
+                        .into()
+                }
+            }
+        })
     }
 }
 
@@ -1261,4 +1406,47 @@ fn split_keys(keys: &[String]) -> SplitBinding<'_> {
     } else {
         keys.split_at(keys.len()).into()
     }
+}
+
+fn get_current_process_names() -> Task<Message> {
+    Task::perform(
+        async {
+            Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-C")
+                .raw_arg("\"Get-Process | Select ProcessName, Description\"")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .await
+        },
+        |output| match output {
+            Ok(output) => {
+                if output.status.success() {
+                    let output = String::from_utf8_lossy(&output.stdout);
+                    let mut process_names = HashMap::new();
+                    dbg!(&output);
+                    output.trim().lines().skip(2).for_each(|line| {
+                        let trimmed_line = line.trim();
+                        let process_name =
+                            trimmed_line.split_whitespace().next().unwrap_or_default();
+                        if !process_name.is_empty() {
+                            let (_, process_app_name) =
+                                trimmed_line.split_at(process_name.chars().count());
+                            let process_app_name = process_app_name.trim();
+                            if !process_app_name.is_empty() {
+                                process_names
+                                    .insert(process_name.to_string(), process_app_name.to_string());
+                            }
+                        }
+                    });
+                    Message::GotProcessNames(process_names)
+                } else {
+                    Message::FailedToGetProcessNames
+                }
+            }
+            _ => Message::FailedToGetProcessNames,
+        },
+    )
 }
