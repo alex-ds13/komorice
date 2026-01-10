@@ -225,7 +225,6 @@ where
                         .map(InternalMessage::Message),
                 )
                 .align_y(Center)
-                .padding(padding::right(10))
                 .spacing(10)
         } else {
             row![
@@ -234,7 +233,6 @@ where
                     .map(InternalMessage::Message),
             ]
             .align_y(Center)
-            .padding(padding::right(10))
         };
 
         let area = |el| -> Element<_> {
