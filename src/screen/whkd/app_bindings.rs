@@ -528,7 +528,7 @@ impl AppBindings {
 
                 let process = opt_helpers::opt_custom_el_disable_default(
                     "Process Name",
-                    Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
+                    Some("Name of the process on which the following command will run when this key combination is pressed. \
                         If you set it to 'Default', it means the command will run on all apps. If you only have one command \
                         for 'Default' it is the same as a normal 'Binding'.
                         "),
@@ -547,7 +547,7 @@ impl AppBindings {
                     .align_right(Fill),
                     false,
                     None,
-                    can_be_default.then_some(DisableArgs::new(
+                    Some(DisableArgs::new(
                         is_default,
                         Some("Default"),
                         move |v| {
@@ -558,7 +558,7 @@ impl AppBindings {
                             };
                             Message::ChangeNewBindingProcess(binding_idx, value)
                         },
-                    )),
+                    ).blocked(!can_be_default)),
                 );
 
                 let command = command_edit(
@@ -701,7 +701,7 @@ impl AppBindings {
 
                         let process = opt_helpers::opt_custom_el_disable_default(
                             "Process Name",
-                            Some("Name of the process on which the following command will run when this key combination is pressed.\n\n\
+                            Some("Name of the process on which the following command will run when this key combination is pressed. \
                                 If you set it to 'Default', it means the command will run on all apps. If you only have one command \
                                 for 'Default' it is the same as a normal 'Binding'.
                                 "),
@@ -720,7 +720,7 @@ impl AppBindings {
                             .align_right(Fill),
                             false,
                             None,
-                            can_be_default.then_some(DisableArgs::new(
+                            Some(DisableArgs::new(
                                 is_default,
                                 Some("Default"),
                                 move |v| {
@@ -731,7 +731,7 @@ impl AppBindings {
                                     };
                                     Message::ChangeBindingProcess(idx, binding_idx, value)
                                 },
-                            )),
+                            ).blocked(!can_be_default)),
                         );
 
                         let command = command_edit(

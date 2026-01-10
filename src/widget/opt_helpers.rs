@@ -28,6 +28,7 @@ where
     pub disable: bool,
     pub label: Option<&'a str>,
     pub on_toggle: Box<F>,
+    pub blocked: bool,
 }
 
 impl<'a, Message, F> DisableArgs<'a, Message, F>
@@ -39,7 +40,13 @@ where
             disable,
             label,
             on_toggle: Box::new(on_toggle),
+            blocked: false,
         }
+    }
+
+    pub fn blocked(mut self, blocked: bool) -> Self {
+        self.blocked = blocked;
+        self
     }
 }
 
@@ -145,18 +152,21 @@ pub fn disable_checkbox<'a, Message: Clone + 'a, F: Fn(bool) -> Message + Clone 
     disable_args: Option<&DisableArgs<'a, Message, F>>,
 ) -> Option<Element<'a, Message>> {
     disable_args.map(|args| {
-        mouse_area(
+        let mut area = mouse_area(
             row![
                 text(args.label.unwrap_or_default()),
                 checkbox("", args.disable)
                     .spacing(0)
-                    .on_toggle(args.on_toggle.clone())
+                    .on_toggle_maybe((!args.blocked).then_some(args.on_toggle.clone()))
             ]
             .spacing(10),
-        )
-        .on_press((args.on_toggle)(!args.disable))
-        .interaction(iced::mouse::Interaction::Pointer)
-        .into()
+        );
+        if !args.blocked {
+            area = area
+                .on_press((args.on_toggle)(!args.disable))
+                .interaction(iced::mouse::Interaction::Pointer);
+        }
+        area.into()
     })
 }
 
