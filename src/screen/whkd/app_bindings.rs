@@ -656,15 +656,17 @@ impl AppBindings {
                 );
 
                 let process_names_button = widget::create_tooltip(
-                    button(icons::info())
+                    button(icons::info().size(14))
                         .on_press(Message::SelectNewBindingProcessName(binding_idx))
+                        .padding(padding::all(2.5).left(5).right(5))
                         .style(button::secondary),
                     "Select a process name from the currently running processes",
                 );
 
                 let delete_button = widget::create_tooltip(
-                    button(icons::delete())
+                    button(icons::delete().size(14))
                         .on_press(Message::RemoveNewBindingSubBinding(binding_idx))
+                        .padding(padding::all(2.5).left(5).right(5))
                         .style(button::danger),
                     "Delete this app command"
                 );
@@ -847,15 +849,17 @@ impl AppBindings {
                         );
 
                         let process_names_button = widget::create_tooltip(
-                            button(icons::info())
+                            button(icons::info().size(14))
                                 .on_press(Message::SelectBindingProcessName(idx, binding_idx))
+                                .padding(padding::all(2.5).left(5).right(5))
                                 .style(button::secondary),
                             "Select a process name from the currently running processes",
                         );
 
                         let delete_button = widget::create_tooltip(
-                            button(icons::delete())
+                            button(icons::delete().size(14))
                                 .on_press(Message::RemoveBindingSubBinding(idx, binding_idx))
+                                .padding(padding::all(2.5).left(5).right(5))
                                 .style(button::danger),
                             "Delete this app command from this app binding"
                         );
