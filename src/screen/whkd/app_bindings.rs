@@ -716,7 +716,10 @@ impl AppBindings {
             let add_binding_button = button_with_icon(icons::plus(), "Add")
                 .on_press_maybe(
                     (!self.new_binding.0.is_empty()
-                        && !self.new_binding.1.is_empty()
+                        && !self.new_binding.1.iter().any(|ap| {
+                            ap.process_name.as_ref().is_none_or(String::is_empty)
+                                || ap.command.is_empty()
+                        })
                         && !duplicated_keys)
                         .then_some(Message::AddNewBinding),
                 )
