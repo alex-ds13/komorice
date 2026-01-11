@@ -347,6 +347,10 @@ impl Bindings {
                 let mut b_keys = b.keys.clone();
                 b_keys.sort();
                 b_keys == new_binding_keys
+            }) || whkdrc.app_bindings.iter().any(|b| {
+                let mut b_keys = b.0.clone();
+                b_keys.sort();
+                b_keys == new_binding_keys
             });
             let duplicated_warning = duplicated_keys.then_some(
                 text(
@@ -399,6 +403,11 @@ impl Bindings {
                         let mut b_keys = b.keys.clone();
                         b_keys.sort();
                         b_idx != idx && b_keys == binding_keys
+                    })
+                    || whkdrc.app_bindings.iter().any(|b| {
+                        let mut b_keys = b.0.clone();
+                        b_keys.sort();
+                        b_keys == binding_keys
                     });
 
                 if self.editing.contains(&idx) {

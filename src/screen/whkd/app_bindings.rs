@@ -696,6 +696,10 @@ impl AppBindings {
                 let mut b_keys = b.0.clone();
                 b_keys.sort();
                 b_keys == new_binding_keys
+            }) || whkdrc.bindings.iter().any(|b| {
+                let mut b_keys = b.keys.clone();
+                b_keys.sort();
+                b_keys == new_binding_keys
             });
             let duplicated_warning = duplicated_keys.then_some(
                 text(
@@ -760,6 +764,11 @@ impl AppBindings {
                         let mut b_keys = b.0.clone();
                         b_keys.sort();
                         b_idx != idx && b_keys == binding_keys
+                    })
+                    || whkdrc.bindings.iter().any(|b| {
+                        let mut b_keys = b.keys.clone();
+                        b_keys.sort();
+                        b_keys == binding_keys
                     });
 
                 if self.editing.contains(&idx) {
@@ -978,14 +987,7 @@ impl AppBindings {
                             .padding(padding::all(2).left(4).right(4))
                             .style(move |t: &Theme| {
                                 let palette = theme.extended_palette();
-                                if duplicated_keys {
-                                    let warning = t.extended_palette().warning;
-                                    container::Style {
-                                        background: Some(warning.base.color.into()),
-                                        text_color: Some(warning.base.text),
-                                        ..container::dark(t)
-                                    }
-                                } else if is_default {
+                                if is_default {
                                     container::background(palette.background.weaker.color)
                                 } else {
                                     container::background(palette.background.strongest.color)
