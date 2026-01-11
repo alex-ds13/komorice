@@ -38,11 +38,11 @@ pub fn button_separator<'a>() -> Rule<'a> {
 
 ///Wraps the `element` on a tooltip widget with `description`.
 pub fn create_tooltip<'a, Message: 'a>(
-    element: Element<'a, Message>,
+    element: impl Into<Element<'a, Message>>,
     description: &'a str,
 ) -> Element<'a, Message> {
     tooltip(
-        element,
+        element.into(),
         container(Text::new(description))
             .padding(5.0)
             .max_width(700.0)
