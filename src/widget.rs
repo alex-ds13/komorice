@@ -6,14 +6,16 @@ pub mod icons;
 pub mod modal;
 pub mod monitors_viewer;
 pub mod number_input;
+pub mod opaque_maybe;
 pub mod opt_button;
 pub mod opt_helpers;
 pub mod text_input;
 
 pub use helpers::*;
-pub use modal::modal;
-pub use opt_button::opt_button;
 pub use hover::hover;
+pub use modal::modal;
+pub use opaque_maybe::opaque_maybe;
+pub use opt_button::opt_button;
 
 use std::fmt::Display;
 use std::str::FromStr;

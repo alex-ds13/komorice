@@ -1,3 +1,4 @@
+use crate::widget::opaque_maybe;
 use iced::widget::{center, container, mouse_area, opaque, stack};
 use iced::{Border, Color, Element, Theme};
 
@@ -9,7 +10,7 @@ pub fn modal<'a, Message>(
 where
     Message: Clone + 'a,
 {
-    stack![base.into()]
+    stack![opaque_maybe(base, content.is_some())]
         .push(content.map(|content| {
             mouse_area(center(opaque(content)).style(|_theme| {
                 container::Style {
