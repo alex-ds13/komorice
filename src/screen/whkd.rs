@@ -34,12 +34,6 @@ pub enum Message {
     PauseBinding(Option<Vec<String>>),
     PauseHook(Option<String>),
     PauseHookContentChange(text_editor::Action),
-    // AppBindings(Vec<(Vec<String>, Vec<HotkeyBinding>)>),
-    // AddNewAppBinding,
-    // RemoveAppBinding(usize),
-    // ChangeAppBindingKeys(usize, Vec<String>),
-    // ChangeAppBindingProcessName(usize, String),
-    // ChangeAppBindingCommand(usize, String),
     BindKey,
     CloseModal(bool),
     KeyPress(String, String),
@@ -163,7 +157,11 @@ impl Whkd {
             }
             Message::PauseHookContentChange(action) => {
                 self.pause_hook_content.perform(action);
-                whkdrc.pause_hook = Some(self.pause_hook_content.text());
+                if !self.pause_hook_content.text().is_empty() {
+                    whkdrc.pause_hook = Some(self.pause_hook_content.text());
+                } else {
+                    whkdrc.pause_hook = None;
+                }
             }
             Message::Navigate(nav) => match nav {
                 NavMessage::Forward => {}
