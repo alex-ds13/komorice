@@ -986,7 +986,7 @@ impl AppBindings {
                             })
                             .padding(padding::all(2).left(4).right(4))
                             .style(move |t: &Theme| {
-                                let palette = theme.extended_palette();
+                                let palette = t.extended_palette();
                                 if is_default {
                                     container::background(palette.background.weaker.color)
                                 } else {
