@@ -594,7 +594,10 @@ impl AppBindings {
                 None,
                 DisableArgs::none(),
             );
-            let commands_col = self.new_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+
+            let mut commands_col = column![].padding(padding::top(10).bottom(10)).spacing(20);
+
+            commands_col = self.new_binding.1.iter().enumerate().fold(commands_col,|col, (binding_idx, binding)| {
                 let is_default = binding.process_name.as_ref().is_some_and(|p| p == "Default");
                 let can_be_default = is_default ||
                     !self.new_binding.1.iter().enumerate().filter_map(|(i, b)| {
@@ -687,9 +690,7 @@ impl AppBindings {
                         )
                         .padding(10),
                     )
-                    .into()
-                );
-                col
+                )
             });
 
             let duplicated_keys = whkdrc.app_bindings.iter().any(|b| {
@@ -725,17 +726,27 @@ impl AppBindings {
                 )
                 .width(77);
 
-            let add_command_button =
-                button_with_icon(icons::level_down(), text("Add App Command").size(12))
-                    .style(button::secondary)
-                    .on_press(Message::AddNewBindingCommand);
+            let add_command_button = button(
+                row![
+                    text("Add App Command").size(12),
+                    icons::level_down().size(12)
+                ]
+                .spacing(5)
+                .align_y(Center),
+            )
+            .style(button::secondary)
+            .on_press(Message::AddNewBindingCommand);
+
+            let app_commands = column![
+                text("App Specific Commands:").font(*BOLD_FONT),
+                rule::horizontal(2.0),
+                commands_col,
+            ]
+            .spacing(10);
 
             column![
                 keybind,
-                opt_helpers::sub_section_view(
-                    text("App Specific Commands:").font(*BOLD_FONT),
-                    commands_col
-                ),
+                app_commands,
                 row![
                     add_command_button,
                     space::horizontal(),
@@ -795,7 +806,12 @@ impl AppBindings {
                         None,
                         DisableArgs::none(),
                     );
-                    let commands_col = app_binding.1.iter().enumerate().fold(Vec::new(), |mut col, (binding_idx, binding)| {
+
+                    let mut commands_col = column![]
+                        .padding(padding::top(10).bottom(10))
+                        .spacing(20);
+
+                    commands_col = app_binding.1.iter().enumerate().fold(commands_col, |col, (binding_idx, binding)| {
                         let is_default = binding.process_name.as_ref().is_some_and(|p| p == "Default");
                         let can_be_default = is_default ||
                             !app_binding.1.iter().enumerate().filter_map(|(i, b)| {
@@ -892,9 +908,7 @@ impl AppBindings {
                                 )
                                 .padding(10),
                             )
-                            .into()
-                        );
-                        col
+                        )
                     });
 
                     let duplicated_warning = duplicated_keys.then_some(
@@ -909,17 +923,30 @@ impl AppBindings {
                         .style(text::warning),
                     );
 
-                    let add_command_button =
-                        button_with_icon(icons::level_down(), text("Add App Command").size(12))
-                            .style(button::secondary)
-                            .on_press(Message::AddBindingCommand(idx));
+                    let add_command_button = button(
+                        row![
+                            text("Add App Command").size(12),
+                            icons::level_down().size(12)
+                        ]
+                        .spacing(5)
+                        .align_y(Center),
+                    )
+                    .style(button::secondary)
+                    .on_press(Message::AddBindingCommand(idx));
+
+                    let app_commands = column![
+                        text("App Specific Commands:").font(*BOLD_FONT),
+                        rule::horizontal(2.0),
+                        commands_col,
+                    ]
+                    .spacing(10);
 
                     col.push(
                         container(
                             container(
                                 column![
                                     keybind,
-                                    opt_helpers::sub_section_view(text("App Specific Commands:").font(*BOLD_FONT), commands_col),
+                                    app_commands,
                                     row![
                                         add_command_button,
                                         space::horizontal(),
