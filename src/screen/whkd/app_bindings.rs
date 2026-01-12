@@ -98,9 +98,9 @@ pub struct AppBindings {
     new_binding_process: Vec<text_editor::Content>,
     show_new_binding: bool,
     editing: HashSet<usize>,
-    editing_states: HashMap<usize, HashMap<usize, combo_box::State<String>>>,
-    editing_commands: HashMap<usize, HashMap<usize, text_editor::Content>>,
-    editing_processes: HashMap<usize, HashMap<usize, text_editor::Content>>,
+    editing_states: Vec<Vec<combo_box::State<String>>>,
+    editing_commands: Vec<Vec<text_editor::Content>>,
+    editing_processes: Vec<Vec<text_editor::Content>>,
     process_names: Option<HashMap<String, String>>,
     selected_process_name: Option<String>,
     selecting_process_state: combo_box::State<String>,
@@ -212,8 +212,8 @@ impl AppBindings {
                     .and_then(|ab| ab.1.get_mut(binding_idx))
                     .zip(
                         self.editing_commands
-                            .get_mut(&idx)
-                            .and_then(|ec| ec.get_mut(&binding_idx)),
+                            .get_mut(idx)
+                            .and_then(|ec| ec.get_mut(binding_idx)),
                     )
                 {
                     *content = text_editor::Content::with_text(&command);
@@ -227,8 +227,8 @@ impl AppBindings {
                     .and_then(|ab| ab.1.get_mut(binding_idx))
                     .zip(
                         self.editing_commands
-                            .get_mut(&idx)
-                            .and_then(|ec| ec.get_mut(&binding_idx)),
+                            .get_mut(idx)
+                            .and_then(|ec| ec.get_mut(binding_idx)),
                     )
                 {
                     content.perform(action);
@@ -242,8 +242,8 @@ impl AppBindings {
                     .and_then(|ab| ab.1.get_mut(binding_idx))
                     .zip(
                         self.editing_processes
-                            .get_mut(&idx)
-                            .and_then(|ep| ep.get_mut(&binding_idx)),
+                            .get_mut(idx)
+                            .and_then(|ep| ep.get_mut(binding_idx)),
                     )
                 {
                     *content = text_editor::Content::with_text(&process);
@@ -260,7 +260,10 @@ impl AppBindings {
                     }],
                 );
                 let new_binding = std::mem::replace(&mut self.new_binding, default_binding);
+                self.new_binding_state = vec![combo_box::State::new(commands.to_vec())];
                 self.new_binding_content = vec![text_editor::Content::new()];
+                self.new_binding_process = vec![text_editor::Content::new()];
+
                 self.show_new_binding = false;
                 whkdrc.app_bindings.push(new_binding);
                 return (Action::None, operation::snap_to_end(SCROLLABLE_ID));
@@ -270,39 +273,39 @@ impl AppBindings {
                     whkdrc.app_bindings.remove(idx);
                 }
                 self.editing.remove(&idx);
-                self.editing_states.remove(&idx);
-                self.editing_commands.remove(&idx);
+                self.editing_states.remove(idx);
+                self.editing_commands.remove(idx);
             }
             Message::RemoveBindingSubBinding(idx, binding_idx) => {
                 if let Some(((binding, states), commands)) = whkdrc
                     .app_bindings
                     .get_mut(idx)
-                    .zip(self.editing_states.get_mut(&idx))
-                    .zip(self.editing_commands.get_mut(&idx))
+                    .zip(self.editing_states.get_mut(idx))
+                    .zip(self.editing_commands.get_mut(idx))
                 {
                     if binding.1.len() > binding_idx {
                         binding.1.remove(binding_idx);
                     }
-                    states.remove(&binding_idx);
-                    commands.remove(&binding_idx);
+                    states.remove(binding_idx);
+                    commands.remove(binding_idx);
                 }
             }
             Message::AddBindingCommand(idx) => {
                 if let Some((((binding, states), edit_commands), processes)) = whkdrc
                     .app_bindings
                     .get_mut(idx)
-                    .zip(self.editing_states.get_mut(&idx))
-                    .zip(self.editing_commands.get_mut(&idx))
-                    .zip(self.editing_processes.get_mut(&idx))
+                    .zip(self.editing_states.get_mut(idx))
+                    .zip(self.editing_commands.get_mut(idx))
+                    .zip(self.editing_processes.get_mut(idx))
                 {
                     binding.1.push(HotkeyBinding {
                         keys: binding.0.clone(),
                         command: String::new(),
                         process_name: None,
                     });
-                    states.insert(states.len(), combo_box::State::new(commands.to_vec()));
-                    edit_commands.insert(edit_commands.len(), text_editor::Content::new());
-                    processes.insert(processes.len(), text_editor::Content::new());
+                    states.push(combo_box::State::new(commands.to_vec()));
+                    edit_commands.push(text_editor::Content::new());
+                    processes.push(text_editor::Content::new());
                 }
             }
             Message::UrlClicked(url) => {
@@ -413,10 +416,17 @@ impl AppBindings {
                 if let Some(app_binding) = whkdrc.app_bindings.get(idx) {
                     let bindings_count = app_binding.1.len();
                     for i in 0..bindings_count {
-                        self.editing_states
-                            .entry(idx)
-                            .or_insert(HashMap::new())
-                            .insert(i, combo_box::State::new(commands.to_vec()));
+                        if let Some(states) = self.editing_states.get_mut(idx) {
+                            states.push(combo_box::State::new(commands.to_vec()));
+                        } else {
+                            let missing = whkdrc.app_bindings.len() - self.editing_states.len();
+                            self.editing_states.extend(vec![
+                                vec![combo_box::State::new(
+                                    commands.to_vec()
+                                )];
+                                missing
+                            ]);
+                        }
                         let (command, process) = if let Some(binding) = app_binding.1.get(i) {
                             (
                                 text_editor::Content::with_text(&binding.command),
@@ -430,21 +440,27 @@ impl AppBindings {
                         } else {
                             (text_editor::Content::new(), text_editor::Content::new())
                         };
-                        self.editing_commands
-                            .entry(idx)
-                            .or_insert(HashMap::new())
-                            .insert(i, command);
-                        self.editing_processes
-                            .entry(idx)
-                            .or_insert(HashMap::new())
-                            .insert(i, process);
+                        if let Some(editing_commands) = self.editing_commands.get_mut(idx) {
+                            editing_commands.push(command);
+                        } else {
+                            let missing = whkdrc.app_bindings.len() - self.editing_commands.len();
+                            self.editing_commands.extend(vec![Vec::new(); missing]);
+                            self.editing_commands[idx] = vec![command];
+                        }
+                        if let Some(processes) = self.editing_processes.get_mut(idx) {
+                            processes.push(process);
+                        } else {
+                            let missing = whkdrc.app_bindings.len() - self.editing_processes.len();
+                            self.editing_processes.extend(vec![Vec::new(); missing]);
+                            self.editing_processes[idx] = vec![process];
+                        }
                     }
                 }
             }
             Message::FinishEditBinding(idx) => {
                 self.editing.remove(&idx);
-                self.editing_states.remove(&idx);
-                self.editing_commands.remove(&idx);
+                self.editing_states.remove(idx);
+                self.editing_commands.remove(idx);
             }
             Message::OpenNewBindingKeysModal => {
                 self.modal_opened = Some(Modal::Keys(BindType::New));
@@ -854,11 +870,11 @@ impl AppBindings {
                         );
 
                         let command = command_edit(
-                            self.editing_states.get(&idx).and_then(|es| es.get(&binding_idx)),
+                            self.editing_states.get(idx).and_then(|es| es.get(binding_idx)),
                             self.editing_commands
-                                .get(&idx)
+                                .get(idx)
                                 .expect("should have editing content")
-                                .get(&binding_idx)
+                                .get(binding_idx)
                                 .expect("should have editing content"),
                             &binding.command,
                             commands,
@@ -1149,14 +1165,16 @@ impl AppBindings {
                         } else {
                             (text_editor::Content::new(), text_editor::Content::new())
                         };
-                        self.editing_commands
-                            .entry(*idx)
-                            .or_insert(HashMap::new())
-                            .insert(i, command);
-                        self.editing_processes
-                            .entry(*idx)
-                            .or_insert(HashMap::new())
-                            .insert(i, process);
+                        if let Some(editing_commands) = self.editing_commands.get_mut(*idx) {
+                            editing_commands.push(command);
+                        } else {
+                            self.editing_commands.push(vec![command]);
+                        }
+                        if let Some(processes) = self.editing_processes.get_mut(*idx) {
+                            processes.push(process);
+                        } else {
+                            self.editing_processes.push(vec![process]);
+                        }
                     }
                 }
             });
