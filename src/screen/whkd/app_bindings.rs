@@ -682,9 +682,10 @@ impl AppBindings {
                     "Select a process name from the currently running processes",
                 );
 
+                let can_delete = self.new_binding.1.len() > 1;
                 let delete_button = widget::create_tooltip(
                     button(icons::delete().size(14))
-                        .on_press(Message::RemoveNewBindingSubBinding(binding_idx))
+                        .on_press_maybe(can_delete.then_some(Message::RemoveNewBindingSubBinding(binding_idx)))
                         .padding(padding::all(2.5).left(5).right(5))
                         .style(button::danger),
                     "Delete this app command"
@@ -900,9 +901,10 @@ impl AppBindings {
                             "Select a process name from the currently running processes",
                         );
 
+                        let can_delete = app_binding.1.len() > 1;
                         let delete_button = widget::create_tooltip(
                             button(icons::delete().size(14))
-                                .on_press(Message::RemoveBindingSubBinding(idx, binding_idx))
+                                .on_press_maybe(can_delete.then_some(Message::RemoveBindingSubBinding(idx, binding_idx)))
                                 .padding(padding::all(2.5).left(5).right(5))
                                 .style(button::danger),
                             "Delete this app command from this app binding"
