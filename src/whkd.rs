@@ -6,7 +6,12 @@ use crate::{
     screen::{self, ConfigState, ConfigType, Configuration, Screen, View},
 };
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
 use async_compat::Compat;
 use iced::{
@@ -28,13 +33,254 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 pub const SEPARATOR: &str = " + ";
 pub const UNPADDED_SEPARATOR: &str = "+";
 
-pub static DEFAULT_WHKDRC: Whkdrc = Whkdrc {
+pub static DEFAULT_WHKDRC: LazyLock<Whkdrc> = LazyLock::new(|| Whkdrc {
     shell: Shell::Pwsh,
     app_bindings: Vec::new(),
-    bindings: Vec::new(),
-    pause_binding: None,
-    pause_hook: None,
-};
+    bindings: vec![
+        HotkeyBinding {
+            keys: vec!["alt".into(), "o".into()],
+            command: "taskkill /f /im whkd.exe; Start-Process whkd -WindowStyle hidden".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "o".into()],
+            command: "komorebic reload-configuration".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "i".into()],
+            command: "komorebic toggle-shortcuts".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "h".into()],
+            command: "komorebic focus left".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "j".into()],
+            command: "komorebic focus down".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "k".into()],
+            command: "komorebic focus up".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "l".into()],
+            command: "komorebic focus right".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "oem_4".into()],
+            command: "komorebic cycle-focus previous".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "oem_6".into()],
+            command: "komorebic cycle-focus next".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "h".into()],
+            command: "komorebic move left".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "j".into()],
+            command: "komorebic move down".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "k".into()],
+            command: "komorebic move up".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "l".into()],
+            command: "komorebic move right".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "return".into()],
+            command: "komorebic promote".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "left".into()],
+            command: "komorebic stack left".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "down".into()],
+            command: "komorebic stack down".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "up".into()],
+            command: "komorebic stack up".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "right".into()],
+            command: "komorebic stack right".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "oem_1".into()],
+            command: "komorebic unstack".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "oem_4".into()],
+            command: "komorebic cycle-stack previous".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "oem_6".into()],
+            command: "komorebic cycle-stack next".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "oem_plus".into()],
+            command: "komorebic resize-axis horizontal increase".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "oem_minus".into()],
+            command: "komorebic resize-axis horizontal decrease".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "oem_plus".into()],
+            command: "komorebic resize-axis vertical increase".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "oem_minus".into()],
+            command: "komorebic resize-axis vertical decrease".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "t".into()],
+            command: "komorebic toggle-float".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "f".into()],
+            command: "komorebic toggle-monocle".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "q".into()],
+            command: "komorebic close".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "m".into()],
+            command: "komorebic minimize".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "r".into()],
+            command: "komorebic retile".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "x".into()],
+            command: "komorebic flip-layout horizontal".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "y".into()],
+            command: "komorebic flip-layout vertical".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "1".into()],
+            command: "komorebic focus-workspace 0".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "2".into()],
+            command: "komorebic focus-workspace 1".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "3".into()],
+            command: "komorebic focus-workspace 2".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "4".into()],
+            command: "komorebic focus-workspace 3".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "5".into()],
+            command: "komorebic focus-workspace 4".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "6".into()],
+            command: "komorebic focus-workspace 5".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "7".into()],
+            command: "komorebic focus-workspace 6".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "8".into()],
+            command: "komorebic focus-workspace 7".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "1".into()],
+            command: "komorebic move-to-workspace 0".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "2".into()],
+            command: "komorebic move-to-workspace 1".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "3".into()],
+            command: "komorebic move-to-workspace 2".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "4".into()],
+            command: "komorebic move-to-workspace 3".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "5".into()],
+            command: "komorebic move-to-workspace 4".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "6".into()],
+            command: "komorebic move-to-workspace 5".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "7".into()],
+            command: "komorebic move-to-workspace 6".into(),
+            process_name: None,
+        },
+        HotkeyBinding {
+            keys: vec!["alt".into(), "shift".into(), "8".into()],
+            command: "komorebic move-to-workspace 7".into(),
+            process_name: None,
+        },
+    ],
+    pause_binding: Some(vec!["alt".into(), "p".into()]),
+    pause_hook: Some("komorebic toggle-pause".into()),
+});
 
 #[derive(Debug, Clone)]
 pub enum Message {
