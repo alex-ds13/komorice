@@ -184,12 +184,12 @@ impl Whkd {
     ) -> View<'a, Message> {
         let shell = opt_helpers::choose_with_disable_default(
             "Shell",
-            Some("The Shell you want whkd to use. (default: pwsh)"),
+            Some("The Shell you want whkd to use."),
             Vec::new(),
             [Shell::Pwsh, Shell::Powershell, Shell::Cmd],
             Some(whkdrc.shell),
             |v| Message::Shell(v.unwrap_or(DEFAULT_WHKDRC.shell)),
-            Some(DEFAULT_WHKDRC.shell),
+            Some(whkdrc.shell),
             DisableArgs::none(),
         );
         let bind_button = button(widget::icons::edit())
@@ -197,11 +197,11 @@ impl Whkd {
             .on_press(Message::BindKey);
         let pause_binding = opt_helpers::opt_custom_el_disable_default(
             "Pause Binding",
-            Some("Can be any hotkey combo to toggle all other hotkeys on/off. (default: None)"),
+            Some("Can be any hotkey combo to toggle all other hotkeys on/off."),
             row![bind_button, keys(&whkdrc.pause_binding)]
                 .spacing(10)
                 .align_y(Center),
-            whkdrc.pause_binding.is_some(),
+            false,
             Some(Message::PauseBinding(None)),
             DisableArgs::none(),
         );
@@ -359,24 +359,13 @@ fn hook_custom<'a>(
     theme: &'a Theme,
 ) -> Element<'a, Message> {
     let (hook_command, _hook_custom) = split_pause_hook(pause_hook, commands);
-    let is_dirty = pause_hook != &DEFAULT_WHKDRC.pause_hook;
     widget::expandable::expandable(move |hovered, expanded| {
-        let label = if is_dirty {
-            row![text("Pause Hook")]
-                .push(widget::opt_helpers::reset_button(Some(Message::PauseHook(
-                    DEFAULT_WHKDRC.pause_hook.clone(),
-                ))))
-                .spacing(5)
-                .height(30)
-                .align_y(Center)
-        } else {
-            row![text("Pause Hook")].height(30).align_y(Center)
-        };
+        let label = row![text("Pause Hook")].height(30).align_y(Center);
 
         let main = row![widget::opt_helpers::label_element_with_description(
             label,
             Some(
-                "A command that should run when the keybind above is triggered. (default: None)\n\n\
+                "A command that should run when the keybind above is triggered.\n\n\
                 You can use this to pause komorebi along with whkd for example."
             )
         )]
@@ -442,7 +431,6 @@ fn hook_custom<'a>(
             vec![selector]
         }
     })
-    .dirty(is_dirty)
     .disable_args_maybe(DisableArgs::none())
     .into()
 }
