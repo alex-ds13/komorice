@@ -1547,7 +1547,7 @@ async fn save(config: StaticConfig, path: PathBuf) -> Result<(), AppError> {
         kind: AppErrorKind::Error,
     })?;
     let schema = format!(
-        "{{\n  \"$schema\": \"https://raw.githubusercontent.com/LGUG2Z/komorebi/{}/schema.json\",\n",
+        "{{\n  \"$schema\": \"https://raw.githubusercontent.com/LGUG2Z/komorebi/blob/{}/schema.json\",\n",
         *KOMOREBI_VERSION,
     );
     let json = [schema.as_bytes(), &json.as_bytes()[2..]].concat();

@@ -1,6 +1,7 @@
 pub mod unparser;
 
 use crate::{
+    KOMOREBI_VERSION,
     apperror::{AppError, AppErrorKind},
     screen::{self, ConfigState, ConfigType, Configuration, Screen, View},
 };
@@ -381,8 +382,9 @@ impl Whkd {
                     .build()?;
                 client
                     .get(format!(
-                        "https://raw.githubusercontent.com/lgug2z/komorebi/master/docs/cli/{}.md",
+                        "https://raw.githubusercontent.com/lgug2z/komorebi/master/docs/cli/{}.md?ref={}",
                         &command_c1,
+                        &*KOMOREBI_VERSION,
                     ))
                     .send()
                     .await
@@ -557,7 +559,10 @@ pub fn load_commands() -> Task<Message> {
             .user_agent(APP_USER_AGENT)
             .build()?;
         client
-            .get("https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli")
+            .get(format!(
+                "https://api.github.com/repos/lgug2z/komorebi/contents/docs/cli?ref={}",
+                &*KOMOREBI_VERSION
+            ))
             .send()
             .await
     }))

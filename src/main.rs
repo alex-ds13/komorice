@@ -31,7 +31,7 @@ use iced::{
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref KOMOREBI_VERSION: &'static str = "master";
+    static ref KOMOREBI_VERSION: &'static str = "v0.1.39";
     static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI");
     static ref EMOJI_FONT: Font = Font::with_name("Segoe UI Emoji");
     static ref ITALIC_FONT: Font = {
