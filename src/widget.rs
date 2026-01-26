@@ -9,6 +9,7 @@ pub mod number_input;
 pub mod opaque_maybe;
 pub mod opt_button;
 pub mod opt_helpers;
+pub mod overlay;
 pub mod text_input;
 
 pub use helpers::*;

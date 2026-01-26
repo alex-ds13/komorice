@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::widget::text_input::TextInput;
 use iced::widget::{
-    Button, Row, Rule, Text, button, container, row, rule, text::IntoFragment, tooltip,
+    Button, Row, Rule, Text, button, container, row, rule, space, text::IntoFragment, tooltip,
 };
 use iced::{Center, Element, Task, Theme};
 
@@ -60,6 +60,22 @@ pub fn create_tooltip<'a, Message: 'a>(
         tooltip::Position::Bottom,
     )
     .into()
+}
+
+pub fn float<'a, Message: 'a>(
+    base: impl Into<Element<'a, Message>>,
+    overlay: Option<impl Into<Element<'a, Message>>>,
+) -> Element<'a, Message> {
+    if let Some(overlay) = overlay {
+        let f = iced::widget::float(overlay).translate(|bounds, viewport| {
+            println!("Bounds: {:#?}", bounds);
+            println!("Viewport: {:#?}", viewport);
+            iced::Vector::new(0.0, -(bounds.height + 20.0))
+        });
+        row![base.into(), f].into()
+    } else {
+        row![base.into(), space().width(0.0)].into()
+    }
 }
 
 /// An unfocus task to remove focus from the currently focused widget.

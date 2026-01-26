@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use iced::{
-    Center, Element, Fill, Font, Right, Subscription, Task, Theme, padding,
+    Center, Element, Fill, Font, Right, Shrink, Subscription, Task, Theme, padding,
     widget::{
         button, checkbox, column, container, rich_text, row, rule, scrollable, space, span, text,
     },
@@ -106,6 +106,9 @@ enum Message {
     ToggleSaveModal,
     Save,
     Saved,
+
+    OpenConfigFile,
+    OpenConfigFolder,
 }
 
 struct Komorice {
@@ -504,6 +507,18 @@ impl Komorice {
                 }
                 ConfigType::Whkd => self.whkd.discard_changes(),
             },
+            Message::OpenConfigFile => {
+                println!("Open File: {}", self.configuration.path().display());
+            }
+            Message::OpenConfigFolder => {
+                if let Some(parent) = self.configuration.path().parent().map(|p| p.to_path_buf()) {
+                    println!("Open Folder: {:#?}", parent);
+                    return Task::future(async {
+                        smol::unblock(move || open::that_in_background(parent).join()).await
+                    })
+                    .discard();
+                }
+            }
         }
         Task::none()
     }
@@ -815,7 +830,39 @@ impl Komorice {
         }));
         save_buttons = save_buttons.extend([
             space::horizontal().into(),
-            to_description_text(text!("{}", self.configuration.path().display())).into(),
+            widget::overlay::Tooltip::new(
+                to_description_text(text!("{}", self.configuration.path().display())),
+                container(
+                    column![
+                        button("Open File")
+                            .width(Fill)
+                            .on_press(Message::OpenConfigFile)
+                            .style(|t, s| {
+                                match s {
+                                    button::Status::Active => button::text(t, s),
+                                    button::Status::Hovered
+                                    | button::Status::Pressed
+                                    | button::Status::Disabled => button::background(t, s),
+                                }
+                            }),
+                        button("Open Folder")
+                            .on_press(Message::OpenConfigFolder)
+                            .style(|t, s| {
+                                match s {
+                                    button::Status::Active => button::text(t, s),
+                                    button::Status::Hovered
+                                    | button::Status::Pressed
+                                    | button::Status::Disabled => button::background(t, s),
+                                }
+                            }),
+                    ]
+                    .width(Shrink),
+                )
+                .style(container::bordered_box)
+                .padding(10),
+                widget::overlay::Position::Top,
+            )
+            .into(),
             space::horizontal().into(),
             button("Save")
                 .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
