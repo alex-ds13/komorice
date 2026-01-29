@@ -28,11 +28,12 @@ use core::mouse;
 use core::overlay;
 use core::renderer;
 use core::text;
-use core::widget::{self, Widget};
+use core::widget::{self, Id, Widget};
 use core::window;
 use core::{
     Clipboard, Element, Event, Length, Padding, Pixels, Point, Rectangle, Shell, Size, Vector,
 };
+use iced::Task;
 use iced::widget::container;
 
 /// An element to display a widget over another.
@@ -63,6 +64,7 @@ where
     Theme: container::Catalog,
     Renderer: text::Renderer,
 {
+    id: Option<Id>,
     content: Element<'a, Message, Theme, Renderer>,
     tooltip: Element<'a, Message, Theme, Renderer>,
     position: Position,
@@ -90,6 +92,7 @@ where
         position: Position,
     ) -> Self {
         Tooltip {
+            id: None,
             content: content.into(),
             tooltip: tooltip.into(),
             position,
@@ -99,6 +102,12 @@ where
             snap_within_viewport: true,
             class: Theme::default(),
         }
+    }
+
+    /// Sets the id for the [`Tooltip`].
+    pub fn id(mut self, id: impl Into<Id>) -> Self {
+        self.id = Some(id.into());
+        self
     }
 
     /// Sets the gap between the content and its [`Tooltip`].
@@ -365,8 +374,8 @@ where
     ) {
         let state = state.state.downcast_mut::<State>();
 
-        operation.container(None, layout.bounds());
-        operation.custom(None, layout.bounds(), state);
+        operation.container(self.id.as_ref(), layout.bounds());
+        operation.custom(self.id.as_ref(), layout.bounds(), state);
     }
 
     fn overlay<'b>(
@@ -690,20 +699,15 @@ where
     }
 }
 
-fn close_operation() -> impl core::widget::Operation {
+fn close_all_operation<T>() -> impl widget::Operation<T> {
     struct Close;
 
-    impl core::widget::Operation for Close {
-        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<()>)) {
+    impl<T> widget::Operation<T> for Close {
+        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<T>)) {
             operate(self)
         }
 
-        fn custom(
-            &mut self,
-            _id: Option<&widget::Id>,
-            _bounds: Rectangle,
-            state: &mut dyn std::any::Any,
-        ) {
+        fn custom(&mut self, _id: Option<&Id>, _bounds: Rectangle, state: &mut dyn std::any::Any) {
             if let Some(state) = state.downcast_mut::<State>() {
                 *state = State::default();
             }
@@ -713,6 +717,32 @@ fn close_operation() -> impl core::widget::Operation {
     Close
 }
 
-pub fn close<Message: Send + 'static>() -> iced::Task<Message> {
-    iced::advanced::widget::operate(close_operation()).discard()
+fn close_operation<T>(id: Id) -> impl widget::Operation<T> {
+    struct Close {
+        target: Id,
+    }
+
+    impl<T> widget::Operation<T> for Close {
+        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<T>)) {
+            operate(self)
+        }
+
+        fn custom(&mut self, id: Option<&Id>, _bounds: Rectangle, state: &mut dyn std::any::Any) {
+            if id == Some(&self.target)
+                && let Some(state) = state.downcast_mut::<State>()
+            {
+                *state = State::default();
+            }
+        }
+    }
+
+    Close { target: id }
+}
+
+pub fn close_all<T: Send + 'static>() -> Task<T> {
+    iced::advanced::widget::operate(close_all_operation::<T>()).discard()
+}
+
+pub fn close<T: Send + 'static>(id: impl Into<Id>) -> Task<T> {
+    iced::advanced::widget::operate(close_operation::<T>(id.into())).discard()
 }

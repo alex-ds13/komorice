@@ -47,6 +47,7 @@ lazy_static! {
     static ref NONE_STR: Arc<str> = Arc::from("[None]");
     static ref SCREENS_BACK_TO_START: [Screen; 3] =
         [Screen::Rules, Screen::Transparency, Screen::LiveDebug];
+    static ref PATH_TIP_ID: &'static str = "configuration_path_tooltip_id";
 }
 
 fn main() -> iced::Result {
@@ -509,24 +510,22 @@ impl Komorice {
             },
             Message::OpenConfigFile => {
                 let file = self.configuration.path().clone();
-                println!("Open File: {}", file.display());
                 return Task::batch([
                     Task::future(async {
                         smol::unblock(move || open::that_in_background(file).join()).await
                     })
                     .discard(),
-                    widget::overlay::close(),
+                    widget::overlay::close(*PATH_TIP_ID),
                 ]);
             }
             Message::OpenConfigFolder => {
                 if let Some(parent) = self.configuration.path().parent().map(|p| p.to_path_buf()) {
-                    println!("Open Folder: {:#?}", parent);
                     return Task::batch([
                         Task::future(async {
                             smol::unblock(move || open::that_in_background(parent).join()).await
                         })
                         .discard(),
-                        widget::overlay::close(),
+                        widget::overlay::close(*PATH_TIP_ID),
                     ]);
                 }
             }
@@ -873,6 +872,7 @@ impl Komorice {
                 .padding(10),
                 widget::overlay::Position::FollowCursor,
             )
+            .id(*PATH_TIP_ID)
             .open(widget::overlay::Open::RightPointer)
             .into(),
             space::horizontal().into(),
