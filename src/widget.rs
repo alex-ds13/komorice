@@ -9,14 +9,15 @@ pub mod number_input;
 pub mod opaque_maybe;
 pub mod opt_button;
 pub mod opt_helpers;
-pub mod overlay;
 pub mod text_input;
+pub mod tooltip;
 
 pub use helpers::*;
 pub use hover::hover;
 pub use modal::modal;
 pub use opaque_maybe::opaque_maybe;
 pub use opt_button::opt_button;
+pub use tooltip::tooltip;
 
 use std::fmt::Display;
 use std::str::FromStr;

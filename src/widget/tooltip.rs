@@ -89,13 +89,12 @@ where
     pub fn new(
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
         tooltip: impl Into<Element<'a, Message, Theme, Renderer>>,
-        position: Position,
     ) -> Self {
         Tooltip {
             id: None,
             content: content.into(),
             tooltip: tooltip.into(),
-            position,
+            position: Default::default(),
             open: Default::default(),
             gap: 0.0,
             padding: Self::DEFAULT_PADDING,
@@ -449,7 +448,6 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Position {
     /// The tooltip will appear on the top of the widget.
-    #[default]
     Top,
     /// The tooltip will appear on the bottom of the widget.
     Bottom,
@@ -458,6 +456,7 @@ pub enum Position {
     /// The tooltip will appear on the right of the widget.
     Right,
     /// The tooltip will follow the cursor.
+    #[default]
     FollowCursor,
 }
 
@@ -745,4 +744,15 @@ pub fn close_all<T: Send + 'static>() -> Task<T> {
 
 pub fn close<T: Send + 'static>(id: impl Into<Id>) -> Task<T> {
     iced::advanced::widget::operate(close_operation::<T>(id.into())).discard()
+}
+
+pub fn tooltip<'a, Message, Theme, Renderer>(
+    content: impl Into<Element<'a, Message, Theme, Renderer>>,
+    tooltip: impl Into<Element<'a, Message, Theme, Renderer>>,
+) -> Tooltip<'a, Message, Theme, Renderer>
+where
+    Theme: container::Catalog,
+    Renderer: text::Renderer,
+{
+    Tooltip::new(content, tooltip)
 }

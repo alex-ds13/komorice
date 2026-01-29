@@ -17,7 +17,7 @@ use crate::screen::{
     ConfigState, ConfigType, Configuration, Screen, View, animation, border, general, home,
     live_debug, monitors, rules, sidebar, stackbar, theme, transparency,
 };
-use crate::widget::{button_with_icon, icons, opt_helpers::to_description_text};
+use crate::widget::{button_with_icon, icons, opt_helpers::to_description_text, tooltip};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -515,7 +515,7 @@ impl Komorice {
                         smol::unblock(move || open::that_in_background(file).join()).await
                     })
                     .discard(),
-                    widget::overlay::close(*PATH_TIP_ID),
+                    widget::tooltip::close(*PATH_TIP_ID),
                 ]);
             }
             Message::OpenConfigFolder => {
@@ -525,7 +525,7 @@ impl Komorice {
                             smol::unblock(move || open::that_in_background(parent).join()).await
                         })
                         .discard(),
-                        widget::overlay::close(*PATH_TIP_ID),
+                        widget::tooltip::close(*PATH_TIP_ID),
                     ]);
                 }
             }
@@ -840,7 +840,7 @@ impl Komorice {
         }));
         save_buttons = save_buttons.extend([
             space::horizontal().into(),
-            widget::overlay::Tooltip::new(
+            tooltip(
                 to_description_text(text!("{}", self.configuration.path().display())),
                 container(
                     column![
@@ -870,10 +870,9 @@ impl Komorice {
                 )
                 .style(container::bordered_box)
                 .padding(10),
-                widget::overlay::Position::FollowCursor,
             )
             .id(*PATH_TIP_ID)
-            .open(widget::overlay::Open::RightPointer)
+            .open(tooltip::Open::RightPointer)
             .into(),
             space::horizontal().into(),
             button("Save")
