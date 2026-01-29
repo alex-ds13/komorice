@@ -66,6 +66,7 @@ where
     content: Element<'a, Message, Theme, Renderer>,
     tooltip: Element<'a, Message, Theme, Renderer>,
     position: Position,
+    open: Open,
     gap: f32,
     padding: f32,
     snap_within_viewport: bool,
@@ -92,6 +93,7 @@ where
             content: content.into(),
             tooltip: tooltip.into(),
             position,
+            open: Default::default(),
             gap: 0.0,
             padding: Self::DEFAULT_PADDING,
             snap_within_viewport: true,
@@ -114,6 +116,12 @@ where
     /// Sets whether the [`Tooltip`] is snapped within the viewport.
     pub fn snap_within_viewport(mut self, snap: bool) -> Self {
         self.snap_within_viewport = snap;
+        self
+    }
+
+    /// Sets how the [`Tooltip`] is opened.
+    pub fn open(mut self, open: Open) -> Self {
+        self.open = open;
         self
     }
 
@@ -195,13 +203,97 @@ where
             let previous_state = *state;
             let was_idle = *state == State::Idle;
 
-            *state = if matches!(*state, State::TipHovered { .. }) {
-                *state
-            } else {
+            *state = if let State::Opened {
+                cursor_position,
+                over_overlay,
+            } = *state
+            {
+                if over_overlay {
+                    *state
+                } else {
+                    match self.open {
+                        Open::Hovered => cursor
+                            .position_over(layout.bounds())
+                            .map(|_| State::Opened {
+                                cursor_position,
+                                over_overlay: false,
+                            })
+                            .unwrap_or_default(),
+                        Open::LeftPointer => {
+                            if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) =
+                                event
+                            {
+                                cursor
+                                    .position_over(layout.bounds())
+                                    .map(|cursor_position| State::Opened {
+                                        cursor_position,
+                                        over_overlay: false,
+                                    })
+                                    .unwrap_or_default()
+                            } else if let Event::Mouse(mouse::Event::ButtonPressed(
+                                mouse::Button::Right,
+                            )) = event
+                            {
+                                State::default()
+                            } else {
+                                *state
+                            }
+                        }
+                        Open::RightPointer => {
+                            if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) =
+                                event
+                            {
+                                cursor
+                                    .position_over(layout.bounds())
+                                    .map(|cursor_position| State::Opened {
+                                        cursor_position,
+                                        over_overlay: false,
+                                    })
+                                    .unwrap_or_default()
+                            } else if let Event::Mouse(mouse::Event::ButtonPressed(
+                                mouse::Button::Left,
+                            )) = event
+                            {
+                                State::default()
+                            } else {
+                                *state
+                            }
+                        }
+                    }
+                }
+            } else if self.open == Open::Hovered {
                 cursor
                     .position_over(layout.bounds())
-                    .map(|cursor_position| State::Hovered { cursor_position })
+                    .map(|cursor_position| State::Opened {
+                        cursor_position,
+                        over_overlay: false,
+                    })
                     .unwrap_or_default()
+            } else {
+                if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
+                    && self.open == Open::LeftPointer
+                {
+                    cursor
+                        .position_over(layout.bounds())
+                        .map(|cursor_position| State::Opened {
+                            cursor_position,
+                            over_overlay: false,
+                        })
+                        .unwrap_or_default()
+                } else if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) =
+                    event
+                    && self.open == Open::RightPointer
+                {
+                    cursor
+                        .position_over(layout.bounds())
+                        .map(|cursor_position| State::Opened {
+                            cursor_position,
+                            over_overlay: false,
+                        })
+                        .unwrap_or_default()
+                } else {
+                    *state
+                }
             };
 
             let is_idle = *state == State::Idle;
@@ -286,21 +378,22 @@ where
 
         let tooltip = match *state {
             State::Idle => None,
-            State::Hovered { cursor_position } | State::TipHovered { cursor_position } => {
-                Some(overlay::Element::new(Box::new(Overlay {
-                    position: layout.position() + translation,
-                    tooltip: &mut self.tooltip,
-                    state: children.next().unwrap(),
-                    tooltip_state: state,
-                    cursor_position,
-                    content_bounds: layout.bounds(),
-                    snap_within_viewport: self.snap_within_viewport,
-                    positioning: self.position,
-                    gap: self.gap,
-                    padding: self.padding,
-                    class: &self.class,
-                })))
-            }
+            State::Opened {
+                cursor_position,
+                over_overlay: _,
+            } => Some(overlay::Element::new(Box::new(Overlay {
+                position: layout.position() + translation,
+                tooltip: &mut self.tooltip,
+                state: children.next().unwrap(),
+                tooltip_state: state,
+                cursor_position,
+                content_bounds: layout.bounds(),
+                snap_within_viewport: self.snap_within_viewport,
+                positioning: self.position,
+                gap: self.gap,
+                padding: self.padding,
+                class: &self.class,
+            }))),
         };
 
         if content.is_some() && tooltip.is_some() {
@@ -346,15 +439,25 @@ pub enum Position {
     FollowCursor,
 }
 
+/// How should the tooltip open. Defaults to hovered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Open {
+    /// The tooltip will appear when hovered.
+    #[default]
+    Hovered,
+    /// The tooltip will appear when pressing left pointer on it.
+    LeftPointer,
+    /// The tooltip will appear when pressing right pointer on it.
+    RightPointer,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 enum State {
     #[default]
     Idle,
-    Hovered {
+    Opened {
         cursor_position: Point,
-    },
-    TipHovered {
-        cursor_position: Point,
+        over_overlay: bool,
     },
 }
 
@@ -476,8 +579,28 @@ where
 
             *state = cursor
                 .position_over(layout.bounds())
-                .map(|cursor_position| State::TipHovered { cursor_position })
-                .unwrap_or_default();
+                .map(|_| State::Opened {
+                    cursor_position: if let State::Opened {
+                        cursor_position, ..
+                    } = *state
+                    {
+                        cursor_position
+                    } else {
+                        Point::default()
+                    },
+                    over_overlay: true,
+                })
+                .unwrap_or(State::Opened {
+                    cursor_position: if let State::Opened {
+                        cursor_position, ..
+                    } = *state
+                    {
+                        cursor_position
+                    } else {
+                        Point::default()
+                    },
+                    over_overlay: false,
+                });
 
             let is_idle = *state == State::Idle;
 

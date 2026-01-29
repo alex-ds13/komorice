@@ -860,8 +860,9 @@ impl Komorice {
                 )
                 .style(container::bordered_box)
                 .padding(10),
-                widget::overlay::Position::Top,
+                widget::overlay::Position::FollowCursor,
             )
+            .open(widget::overlay::Open::RightPointer)
             .into(),
             space::horizontal().into(),
             button("Save")
