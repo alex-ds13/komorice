@@ -445,6 +445,7 @@ where
 }
 
 /// The position of the tooltip. Defaults to following the cursor.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Position {
     /// The tooltip will appear on the top of the widget.
@@ -698,6 +699,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn close_all_operation<T>() -> impl widget::Operation<T> {
     struct Close;
 
@@ -738,6 +740,7 @@ fn close_operation<T>(id: Id) -> impl widget::Operation<T> {
     Close { target: id }
 }
 
+#[allow(dead_code)]
 pub fn close_all<T: Send + 'static>() -> Task<T> {
     iced::advanced::widget::operate(close_all_operation::<T>()).discard()
 }
