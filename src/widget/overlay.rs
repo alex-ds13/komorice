@@ -356,6 +356,19 @@ where
         );
     }
 
+    fn operate(
+        &mut self,
+        state: &mut widget::Tree,
+        layout: Layout<'_>,
+        _renderer: &Renderer,
+        operation: &mut dyn widget::Operation,
+    ) {
+        let state = state.state.downcast_mut::<State>();
+
+        operation.container(None, layout.bounds());
+        operation.custom(None, layout.bounds(), state);
+    }
+
     fn overlay<'b>(
         &'b mut self,
         tree: &'b mut widget::Tree,
@@ -675,4 +688,31 @@ where
             interaction
         }
     }
+}
+
+fn close_operation() -> impl core::widget::Operation {
+    struct Close;
+
+    impl core::widget::Operation for Close {
+        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<()>)) {
+            operate(self)
+        }
+
+        fn custom(
+            &mut self,
+            _id: Option<&widget::Id>,
+            _bounds: Rectangle,
+            state: &mut dyn std::any::Any,
+        ) {
+            if let Some(state) = state.downcast_mut::<State>() {
+                *state = State::default();
+            }
+        }
+    }
+
+    Close
+}
+
+pub fn close<Message: Send + 'static>() -> iced::Task<Message> {
+    iced::advanced::widget::operate(close_operation()).discard()
 }

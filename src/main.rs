@@ -508,15 +508,26 @@ impl Komorice {
                 ConfigType::Whkd => self.whkd.discard_changes(),
             },
             Message::OpenConfigFile => {
-                println!("Open File: {}", self.configuration.path().display());
+                let file = self.configuration.path().clone();
+                println!("Open File: {}", file.display());
+                return Task::batch([
+                    Task::future(async {
+                        smol::unblock(move || open::that_in_background(file).join()).await
+                    })
+                    .discard(),
+                    widget::overlay::close(),
+                ]);
             }
             Message::OpenConfigFolder => {
                 if let Some(parent) = self.configuration.path().parent().map(|p| p.to_path_buf()) {
                     println!("Open Folder: {:#?}", parent);
-                    return Task::future(async {
-                        smol::unblock(move || open::that_in_background(parent).join()).await
-                    })
-                    .discard();
+                    return Task::batch([
+                        Task::future(async {
+                            smol::unblock(move || open::that_in_background(parent).join()).await
+                        })
+                        .discard(),
+                        widget::overlay::close(),
+                    ]);
                 }
             }
         }
