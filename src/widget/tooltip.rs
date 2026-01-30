@@ -133,6 +133,12 @@ where
         self
     }
 
+    /// Sets how the [`Tooltip`] is positioned.
+    pub fn position(mut self, position: Position) -> Self {
+        self.position = position;
+        self
+    }
+
     /// Sets the style of the [`Tooltip`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme) -> container::Style + 'a) -> Self
