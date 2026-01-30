@@ -468,6 +468,14 @@ pub enum Position {
     /// The tooltip will follow the cursor.
     #[default]
     FollowCursor,
+    /// The tooltip will appear aligned to the top right of the widget.
+    TopRight,
+    /// The tooltip will appear aligned to the top left of the widget.
+    TopLeft,
+    /// The tooltip will appear aligned to the bottom right of the widget.
+    BottomRight,
+    /// The tooltip will appear aligned to the bottom left of the widget.
+    BottomLeft,
 }
 
 /// How should the tooltip open. Defaults to hovered.
@@ -565,6 +573,22 @@ where
                         self.cursor_position.y - text_bounds.height,
                     ) + translation
                 }
+                Position::TopRight => Vector::new(
+                    self.position.x + (self.content_bounds.width - text_bounds.width),
+                    self.position.y - text_bounds.height - self.gap - self.padding,
+                ),
+                Position::TopLeft => Vector::new(
+                    self.position.x,
+                    self.position.y - text_bounds.height - self.gap - self.padding,
+                ),
+                Position::BottomRight => Vector::new(
+                    self.position.x + (self.content_bounds.width - text_bounds.width),
+                    self.position.y + self.content_bounds.height + self.gap + self.padding,
+                ),
+                Position::BottomLeft => Vector::new(
+                    self.position.x,
+                    self.position.y + self.content_bounds.height + self.gap + self.padding,
+                ),
             };
 
             Rectangle {
