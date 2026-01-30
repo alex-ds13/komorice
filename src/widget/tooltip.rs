@@ -217,7 +217,9 @@ where
             let previous_state = *state;
             let was_idle = *state == State::Idle;
 
-            *state = if let State::Opened {
+            *state = if self.open == Open::Disabled {
+                State::default()
+            } else if let State::Opened {
                 cursor_position,
                 over_overlay,
             } = *state
@@ -273,6 +275,7 @@ where
                                 *state
                             }
                         }
+                        Open::Disabled => State::default(),
                     }
                 }
             } else if self.open == Open::Hovered {
@@ -477,6 +480,8 @@ pub enum Open {
     LeftPointer,
     /// The tooltip will appear when pressing right pointer on it.
     RightPointer,
+    /// The tooltip will never appear.
+    Disabled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
