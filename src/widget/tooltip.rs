@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Tooltips display a hint of information over some element when hovered.
 //!
 //! # Example
@@ -31,7 +32,10 @@ use core::text;
 use core::widget::{self, Id, Widget};
 use core::window;
 use core::{
-    Clipboard, Element, Event, Length, Padding, Pixels, Point, Rectangle, Shell, Size, Vector,
+    Background, Clipboard, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle,
+    Shadow, Shell, Size, Theme, Vector,
+    border::{self, Border},
+    theme::palette,
 };
 use iced::Task;
 use iced::widget::container;
@@ -55,13 +59,14 @@ use iced::widget::container;
 ///         container("This is the tooltip contents!")
 ///             .padding(10)
 ///             .style(container::rounded_box),
-///         tooltip::Position::Bottom,
-///     ).into()
+///     )
+///     .position(tooltip::Position::Bottom)
+///     .into()
 /// }
 /// ```
 pub struct Tooltip<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer>
 where
-    Theme: container::Catalog,
+    Theme: container::Catalog + Catalog,
     Renderer: text::Renderer,
 {
     id: Option<Id>,
@@ -69,15 +74,27 @@ where
     tooltip: Element<'a, Message, Theme, Renderer>,
     position: Position,
     open: Open,
+    disabled: bool,
     gap: f32,
+    content_padding: Padding,
     padding: f32,
     snap_within_viewport: bool,
-    class: Theme::Class<'a>,
+    content_class: <Theme as Catalog>::Class<'a>,
+    tooltip_class: <Theme as container::Catalog>::Class<'a>,
+    status: Status,
 }
+
+/// The default [`Padding`] of a [`Tooltip`] content.
+pub(crate) const DEFAULT_CONTENT_PADDING: Padding = Padding {
+    top: 5.0,
+    bottom: 5.0,
+    right: 5.0,
+    left: 5.0,
+};
 
 impl<'a, Message, Theme, Renderer> Tooltip<'a, Message, Theme, Renderer>
 where
-    Theme: container::Catalog,
+    Theme: container::Catalog + Catalog,
     Renderer: text::Renderer,
 {
     /// The default padding of a [`Tooltip`] drawn by this renderer.
@@ -96,10 +113,14 @@ where
             tooltip: tooltip.into(),
             position: Default::default(),
             open: Default::default(),
+            disabled: false,
             gap: 0.0,
+            content_padding: DEFAULT_CONTENT_PADDING,
             padding: Self::DEFAULT_PADDING,
             snap_within_viewport: true,
-            class: Theme::default(),
+            content_class: <Theme as Catalog>::default(),
+            tooltip_class: <Theme as container::Catalog>::default(),
+            status: Default::default(),
         }
     }
 
@@ -112,6 +133,12 @@ where
     /// Sets the gap between the content and its [`Tooltip`].
     pub fn gap(mut self, gap: impl Into<Pixels>) -> Self {
         self.gap = gap.into().0;
+        self
+    }
+
+    /// Sets the padding of the [`Tooltip`] content.
+    pub fn content_padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.content_padding = padding.into();
         self
     }
 
@@ -139,20 +166,46 @@ where
         self
     }
 
+    /// Disables/enables this [`Tooltip`] to toggle it from showing the tooltip or not.
+    pub fn disable(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
+    /// Sets the style of the [`Tooltip`] content.
+    #[must_use]
+    pub fn content_style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
+    where
+        <Theme as Catalog>::Class<'a>: From<StyleFn<'a, Theme>>,
+    {
+        self.content_class = (Box::new(style) as StyleFn<'a, Theme>).into();
+        self
+    }
+
     /// Sets the style of the [`Tooltip`].
     #[must_use]
-    pub fn style(mut self, style: impl Fn(&Theme) -> container::Style + 'a) -> Self
+    pub fn tooltip_style(mut self, style: impl Fn(&Theme) -> container::Style + 'a) -> Self
     where
-        Theme::Class<'a>: From<container::StyleFn<'a, Theme>>,
+        <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
     {
-        self.class = (Box::new(style) as container::StyleFn<'a, Theme>).into();
+        self.tooltip_class = (Box::new(style) as container::StyleFn<'a, Theme>).into();
+        self
+    }
+
+    /// Sets the style class of the [`Tooltip`] content.
+    #[must_use]
+    pub fn content_class(mut self, class: impl Into<<Theme as Catalog>::Class<'a>>) -> Self {
+        self.content_class = class.into();
         self
     }
 
     /// Sets the style class of the [`Tooltip`].
     #[must_use]
-    pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
-        self.class = class.into();
+    pub fn tooltip_class(
+        mut self,
+        class: impl Into<<Theme as container::Catalog>::Class<'a>>,
+    ) -> Self {
+        self.tooltip_class = class.into();
         self
     }
 }
@@ -160,7 +213,7 @@ where
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for Tooltip<'_, Message, Theme, Renderer>
 where
-    Theme: container::Catalog,
+    Theme: container::Catalog + Catalog,
     Renderer: text::Renderer,
 {
     fn children(&self) -> Vec<widget::Tree> {
@@ -196,9 +249,18 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        self.content
-            .as_widget_mut()
-            .layout(&mut tree.children[0], renderer, limits)
+        let size = self.content.as_widget().size();
+        layout::padded(
+            limits,
+            size.width,
+            size.height,
+            self.content_padding,
+            |limits| {
+                self.content
+                    .as_widget_mut()
+                    .layout(&mut tree.children[0], renderer, limits)
+            },
+        )
     }
 
     fn update(
@@ -215,9 +277,10 @@ where
         if let Event::Mouse(_) | Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = tree.state.downcast_mut::<State>();
             let previous_state = *state;
-            let was_idle = *state == State::Idle;
+            let was_idle = matches!(*state, State::Idle { .. });
+            let is_over = cursor.is_over(layout.bounds());
 
-            *state = if self.open == Open::Disabled {
+            *state = if self.disabled {
                 State::default()
             } else if let State::Opened {
                 cursor_position,
@@ -236,20 +299,7 @@ where
                             })
                             .unwrap_or_default(),
                         Open::LeftPointer => {
-                            if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) =
-                                event
-                            {
-                                cursor
-                                    .position_over(layout.bounds())
-                                    .map(|cursor_position| State::Opened {
-                                        cursor_position,
-                                        over_overlay: false,
-                                    })
-                                    .unwrap_or_default()
-                            } else if let Event::Mouse(mouse::Event::ButtonPressed(
-                                mouse::Button::Right,
-                            )) = event
-                            {
+                            if let Event::Mouse(mouse::Event::ButtonPressed(_)) = event {
                                 State::default()
                             } else {
                                 *state
@@ -275,7 +325,6 @@ where
                                 *state
                             }
                         }
-                        Open::Disabled => State::default(),
                     }
                 }
             } else if self.open == Open::Hovered {
@@ -287,8 +336,9 @@ where
                     })
                     .unwrap_or_default()
             } else {
-                if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
+                if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event
                     && self.open == Open::LeftPointer
+                    && matches!(*state, State::Idle { pressed } if pressed)
                 {
                     cursor
                         .position_over(layout.bounds())
@@ -296,6 +346,25 @@ where
                             cursor_position,
                             over_overlay: false,
                         })
+                        .unwrap_or_default()
+                } else if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Right)) =
+                    event
+                    && self.open == Open::RightPointer
+                    && matches!(*state, State::Idle { pressed } if pressed)
+                {
+                    cursor
+                        .position_over(layout.bounds())
+                        .map(|cursor_position| State::Opened {
+                            cursor_position,
+                            over_overlay: false,
+                        })
+                        .unwrap_or_default()
+                } else if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
+                    && self.open == Open::LeftPointer
+                {
+                    cursor
+                        .position_over(layout.bounds())
+                        .map(|_| State::Idle { pressed: true })
                         .unwrap_or_default()
                 } else if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) =
                     event
@@ -303,17 +372,14 @@ where
                 {
                     cursor
                         .position_over(layout.bounds())
-                        .map(|cursor_position| State::Opened {
-                            cursor_position,
-                            over_overlay: false,
-                        })
+                        .map(|_| State::Idle { pressed: true })
                         .unwrap_or_default()
                 } else {
                     *state
                 }
             };
 
-            let is_idle = *state == State::Idle;
+            let is_idle = matches!(*state, State::Idle { .. });
 
             if was_idle != is_idle {
                 shell.invalidate_layout();
@@ -321,12 +387,48 @@ where
             } else if self.position == Position::FollowCursor && *state != previous_state {
                 shell.request_redraw();
             }
+
+            let previous_status = self.status;
+            if self.disabled {
+                self.status = Status::Disabled;
+            } else {
+                match state {
+                    State::Idle { pressed } => {
+                        let status = if *pressed {
+                            match self.open {
+                                Open::Hovered => Status::Idle,
+                                Open::LeftPointer => Status::LeftPressed,
+                                Open::RightPointer => Status::RightPressed,
+                            }
+                        } else {
+                            if is_over {
+                                Status::Hovered
+                            } else {
+                                Status::Idle
+                            }
+                        };
+                        self.status = status;
+                    }
+                    State::Opened {
+                        cursor_position: _,
+                        over_overlay: _,
+                    } => {
+                        self.status = Status::Opened;
+                    }
+                }
+            }
+            if !matches!(event, Event::Window(window::Event::RedrawRequested(_)))
+                && shell.redraw_request() != window::RedrawRequest::NextFrame
+                && previous_status != self.status
+            {
+                shell.request_redraw();
+            }
         }
 
         self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
-            layout,
+            layout.children().next().unwrap(),
             cursor,
             renderer,
             clipboard,
@@ -343,13 +445,23 @@ where
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        self.content.as_widget().mouse_interaction(
+        let interaction = self.content.as_widget().mouse_interaction(
             &tree.children[0],
             layout,
             cursor,
             viewport,
             renderer,
-        )
+        );
+
+        if cursor.is_over(layout.bounds())
+            && matches!(self.open, Open::LeftPointer)
+            && self.status != Status::Disabled
+            && interaction == mouse::Interaction::None
+        {
+            mouse::Interaction::Pointer
+        } else {
+            interaction
+        }
     }
 
     fn draw(
@@ -357,17 +469,38 @@ where
         tree: &widget::Tree,
         renderer: &mut Renderer,
         theme: &Theme,
-        inherited_style: &renderer::Style,
+        _style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
+        let style = Catalog::style(theme, &self.content_class, self.status);
+        let content_layout = layout.children().next().unwrap();
+
+        let bounds = layout.bounds();
+
+        if style.background.is_some() || style.border.width > 0.0 || style.shadow.color.a > 0.0 {
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds,
+                    border: style.border,
+                    shadow: style.shadow,
+                    snap: style.snap,
+                },
+                style
+                    .background
+                    .unwrap_or(Background::Color(Color::TRANSPARENT)),
+            );
+        }
+
         self.content.as_widget().draw(
             &tree.children[0],
             renderer,
             theme,
-            inherited_style,
-            layout,
+            &renderer::Style {
+                text_color: style.text_color,
+            },
+            content_layout,
             cursor,
             viewport,
         );
@@ -375,14 +508,22 @@ where
 
     fn operate(
         &mut self,
-        state: &mut widget::Tree,
+        tree: &mut widget::Tree,
         layout: Layout<'_>,
-        _renderer: &Renderer,
+        renderer: &Renderer,
         operation: &mut dyn widget::Operation,
     ) {
-        let state = state.state.downcast_mut::<State>();
+        let state = tree.state.downcast_mut::<State>();
 
         operation.container(self.id.as_ref(), layout.bounds());
+        operation.traverse(&mut |operation| {
+            self.content.as_widget_mut().operate(
+                &mut tree.children[0],
+                layout.children().next().unwrap(),
+                renderer,
+                operation,
+            );
+        });
         operation.custom(self.id.as_ref(), layout.bounds(), state);
     }
 
@@ -407,7 +548,7 @@ where
         );
 
         let tooltip = match *state {
-            State::Idle => None,
+            State::Idle { .. } => None,
             State::Opened {
                 cursor_position,
                 over_overlay: _,
@@ -422,7 +563,7 @@ where
                 positioning: self.position,
                 gap: self.gap,
                 padding: self.padding,
-                class: &self.class,
+                class: &self.tooltip_class,
             }))),
         };
 
@@ -443,7 +584,7 @@ impl<'a, Message, Theme, Renderer> From<Tooltip<'a, Message, Theme, Renderer>>
     for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
-    Theme: container::Catalog + 'a,
+    Theme: container::Catalog + Catalog + 'a,
     Renderer: text::Renderer + 'a,
 {
     fn from(
@@ -454,7 +595,6 @@ where
 }
 
 /// The position of the tooltip. Defaults to following the cursor.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Position {
     /// The tooltip will appear on the top of the widget.
@@ -488,18 +628,261 @@ pub enum Open {
     LeftPointer,
     /// The tooltip will appear when pressing right pointer on it.
     RightPointer,
-    /// The tooltip will never appear.
-    Disabled,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
-    #[default]
-    Idle,
+    Idle {
+        pressed: bool,
+    },
     Opened {
         cursor_position: Point,
         over_overlay: bool,
     },
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State::Idle { pressed: false }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Status {
+    #[default]
+    /// The [`Tooltip`] content can be hovered/pressed to show the tooltip.
+    Idle,
+    /// The [`Tooltip`] content is being hovered.
+    Hovered,
+    /// The [`Tooltip`] content is being pressed with left pointer.
+    LeftPressed,
+    /// The [`Tooltip`] content is being pressed with right pointer.
+    RightPressed,
+    /// The [`Tooltip`] is opened.
+    Opened,
+    /// The [`Tooltip`] won't show.
+    Disabled,
+}
+
+/// The style of the [`Tooltip`] content.
+///
+/// If not specified with [`Tooltip::style`]
+/// the theme will provide the style.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Style {
+    /// The [`Background`] of the button.
+    pub background: Option<Background>,
+    /// The text [`Color`] of the button.
+    pub text_color: Color,
+    /// The [`Border`] of the button.
+    pub border: Border,
+    /// The [`Shadow`] of the button.
+    pub shadow: Shadow,
+    /// Whether the tooltip content should be snapped to the pixel grid.
+    pub snap: bool,
+}
+
+impl Style {
+    /// Updates the [`Style`] with the given [`Background`].
+    pub fn with_background(self, background: impl Into<Background>) -> Self {
+        Self {
+            background: Some(background.into()),
+            ..self
+        }
+    }
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Self {
+            background: None,
+            text_color: Color::BLACK,
+            border: Border::default(),
+            shadow: Shadow::default(),
+            snap: true,
+        }
+    }
+}
+
+/// The theme catalog of a [`Tooltip`] content.
+///
+/// All themes that can be used with [`Tooltip`]
+/// must implement this trait.
+pub trait Catalog {
+    /// The item class of the [`Catalog`].
+    type Class<'a>;
+
+    /// The default class produced by the [`Catalog`].
+    fn default<'a>() -> Self::Class<'a>;
+
+    /// The [`Style`] of a class with the given status.
+    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
+}
+
+/// A styling function for a [`Tooltip`] content.
+pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
+
+impl Catalog for Theme {
+    type Class<'a> = StyleFn<'a, Self>;
+
+    fn default<'a>() -> Self::Class<'a> {
+        Box::new(text)
+    }
+
+    fn style(&self, class: &Self::Class<'_>, status: Status) -> Style {
+        class(self, status)
+    }
+}
+
+/// A primary button; denoting a main action.
+pub fn primary(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.primary.base);
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.primary.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A secondary button; denoting a complementary action.
+pub fn secondary(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.secondary.base);
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.secondary.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A success button; denoting a good outcome.
+pub fn success(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.success.base);
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.success.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A warning button; denoting a risky action.
+pub fn warning(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.warning.base);
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.warning.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A danger button; denoting a destructive action.
+pub fn danger(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.danger.base);
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.danger.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A text button; useful for links.
+pub fn text(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+
+    let base = Style {
+        text_color: palette.background.base.text,
+        ..Style::default()
+    };
+
+    match status {
+        Status::Idle | Status::LeftPressed | Status::RightPressed => base,
+        Status::Hovered | Status::Opened => Style {
+            text_color: palette.background.base.text.scale_alpha(0.8),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A button using background shades.
+pub fn background(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.background.base);
+
+    match status {
+        Status::Idle => base,
+        Status::LeftPressed | Status::RightPressed => Style {
+            background: Some(Background::Color(palette.background.strong.color)),
+            ..base
+        },
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.background.weak.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A subtle button using weak background shades.
+pub fn subtle(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.background.weakest);
+
+    match status {
+        Status::Idle => base,
+        Status::LeftPressed | Status::RightPressed => Style {
+            background: Some(Background::Color(palette.background.strong.color)),
+            ..base
+        },
+        Status::Hovered | Status::Opened => Style {
+            background: Some(Background::Color(palette.background.weaker.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+fn styled(pair: palette::Pair) -> Style {
+    Style {
+        background: Some(Background::Color(pair.color)),
+        text_color: pair.text,
+        border: border::rounded(2),
+        ..Style::default()
+    }
+}
+
+fn disabled(style: Style) -> Style {
+    Style {
+        background: style
+            .background
+            .map(|background| background.scale_alpha(0.5)),
+        text_color: style.text_color.scale_alpha(0.5),
+        ..style
+    }
 }
 
 struct Overlay<'a, 'b, Message, Theme, Renderer>
@@ -632,7 +1015,7 @@ where
         if let Event::Mouse(_) | Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = &mut *self.tooltip_state;
             let previous_state = *state;
-            let was_idle = *state == State::Idle;
+            let was_idle = matches!(*state, State::Idle { .. });
 
             *state = cursor
                 .position_over(layout.bounds())
@@ -659,7 +1042,7 @@ where
                     over_overlay: false,
                 });
 
-            let is_idle = *state == State::Idle;
+            let is_idle = matches!(*state, State::Idle { .. });
 
             if was_idle != is_idle {
                 shell.invalidate_layout();
@@ -734,7 +1117,6 @@ where
     }
 }
 
-#[allow(dead_code)]
 fn close_all_operation<T>() -> impl widget::Operation<T> {
     struct Close;
 
@@ -775,7 +1157,6 @@ fn close_operation<T>(id: Id) -> impl widget::Operation<T> {
     Close { target: id }
 }
 
-#[allow(dead_code)]
 pub fn close_all<T: Send + 'static>() -> Task<T> {
     iced::advanced::widget::operate(close_all_operation::<T>()).discard()
 }
@@ -789,7 +1170,7 @@ pub fn tooltip<'a, Message, Theme, Renderer>(
     tooltip: impl Into<Element<'a, Message, Theme, Renderer>>,
 ) -> Tooltip<'a, Message, Theme, Renderer>
 where
-    Theme: container::Catalog,
+    Theme: container::Catalog + Catalog,
     Renderer: text::Renderer,
 {
     Tooltip::new(content, tooltip)
