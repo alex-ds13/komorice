@@ -121,7 +121,7 @@ impl Default for AppBindings {
                     process_name: None,
                 }],
             ),
-            new_binding_state: Default::default(),
+            new_binding_state: vec![Default::default()],
             new_binding_content: vec![text_editor::Content::new()],
             new_binding_process: vec![text_editor::Content::new()],
             show_new_binding: false,
