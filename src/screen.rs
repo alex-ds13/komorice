@@ -97,6 +97,25 @@ impl Configuration {
         }
     }
 
+    pub fn parent_path(&self) -> PathBuf {
+        match self.config_type {
+            ConfigType::Komorebi => match &self.komorebi_state {
+                ConfigState::Active => crate::config::home_path().0,
+                ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_default(),
+            },
+            ConfigType::Whkd => match &self.whkd_state {
+                ConfigState::Active => crate::whkd::home_path(),
+                ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_default(),
+            },
+        }
+    }
+
     pub fn state(&self, config_type: ConfigType) -> &ConfigState {
         match config_type {
             ConfigType::Komorebi => &self.komorebi_state,

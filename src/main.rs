@@ -20,12 +20,14 @@ use crate::screen::{
 use crate::widget::{button_with_icon, icons, opt_helpers::to_description_text, tooltip};
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use iced::{
     Center, Element, Fill, Font, Right, Shrink, Subscription, Task, Theme, padding,
     widget::{
-        button, checkbox, column, container, rich_text, row, rule, scrollable, space, span, text,
+        button, center, checkbox, column, container, opaque, rich_text, row, rule, scrollable,
+        space, span, stack, text,
     },
 };
 use lazy_static::lazy_static;
@@ -48,6 +50,7 @@ lazy_static! {
     static ref SCREENS_BACK_TO_START: [Screen; 3] =
         [Screen::Rules, Screen::Transparency, Screen::LiveDebug];
     static ref PATH_TIP_ID: &'static str = "configuration_path_tooltip_id";
+    static ref SAVE_TIP_ID: &'static str = "configuration_save_tooltip_id";
 }
 
 fn main() -> iced::Result {
@@ -102,12 +105,17 @@ enum Message {
     FailedToLoadConfig(AppError),
     ConfigFileWatcherTx(smol::channel::Sender<config::Input>),
     ConfigWatcherError(AppError),
+
+    // Bottom bar messages
     DiscardChanges,
     TrySave,
     ToggleSaveModal,
     Save,
     Saved,
-
+    ToggleSaveAsDialog,
+    SaveAsDialogClosed,
+    SaveAs(PathBuf),
+    Backup,
     OpenConfigFile,
     OpenConfigFolder,
 }
@@ -135,6 +143,7 @@ struct Komorice {
     config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     show_save_modal: bool,
+    show_save_as_dialog: bool,
     show_errors_modal: bool,
 }
 
@@ -163,6 +172,7 @@ impl Default for Komorice {
             config_watcher_tx: Default::default(),
             errors: Default::default(),
             show_save_modal: Default::default(),
+            show_save_as_dialog: Default::default(),
             show_errors_modal: Default::default(),
         }
     }
@@ -494,6 +504,55 @@ impl Komorice {
                 self.is_dirty = false;
                 self.configuration.saved_new_komorebi = true;
             }
+            Message::ToggleSaveAsDialog => {
+                self.show_save_as_dialog = true;
+                let dir = self.configuration.parent_path();
+                let config_type = self.configuration.config_type;
+                let dialog_task = Task::future(async move {
+                    let mut dialog = rfd::FileDialog::new();
+                    if matches!(config_type, ConfigType::Komorebi) {
+                        dialog = dialog.add_filter("json", &["json"]);
+                    }
+                    dialog.set_directory(dir.as_path()).save_file()
+                })
+                .map(|res| match res {
+                    Some(file) => Message::SaveAs(file),
+                    None => Message::SaveAsDialogClosed,
+                });
+
+                return Task::batch([tooltip::close(*SAVE_TIP_ID), dialog_task]);
+            }
+            Message::SaveAsDialogClosed => {
+                self.show_save_as_dialog = false;
+                return tooltip::close(*SAVE_TIP_ID);
+            }
+            Message::SaveAs(file) => {
+                self.show_save_as_dialog = false;
+                match self.configuration.config_type {
+                    ConfigType::Komorebi => {
+                        self.configuration.komorebi_state = ConfigState::New(file);
+                    }
+                    ConfigType::Whkd => {
+                        self.configuration.whkd_state = ConfigState::New(file);
+                    }
+                }
+                match self.configuration.config_type {
+                    ConfigType::Komorebi => {
+                        return config::save_task(self.config.clone(), self.configuration.path());
+                    }
+                    ConfigType::Whkd => {
+                        return whkd::save_task(
+                            self.whkd.whkdrc.clone(),
+                            self.configuration.path(),
+                        )
+                        .map(Message::Whkd);
+                    }
+                }
+            }
+            Message::Backup => {
+                //TODO: implement backup
+                println!("TODO: implement backup");
+            }
             Message::DiscardChanges => match self.configuration.config_type {
                 ConfigType::Komorebi => {
                     let update_display_info = self.config.display_index_preferences
@@ -629,10 +688,26 @@ impl Komorice {
             }
         };
 
-        let modal_content = self.show_save_modal.then(|| self.save_warning());
-        let main_modal = widget::modal(main_content, modal_content, Message::ToggleSaveModal);
+        let save_modal_content = self.show_save_modal.then(|| self.save_warning());
+        let with_save_modal =
+            widget::modal(main_content, save_modal_content, Message::ToggleSaveModal);
         let errors_modal_content = self.show_errors_modal.then(|| self.errors_modal());
-        widget::modal(main_modal, errors_modal_content, Message::CloseErrorsModal)
+        let with_errors_modal = widget::modal(
+            with_save_modal,
+            errors_modal_content,
+            Message::CloseErrorsModal,
+        );
+        stack![
+            with_errors_modal,
+            self.show_save_as_dialog
+                .then(|| opaque(center("").style(|t| {
+                    container::Style {
+                        background: Some(iced::color!(0x000000, 0.5).into()),
+                        ..container::dark(t)
+                    }
+                }))),
+        ]
+        .into()
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
@@ -875,9 +950,59 @@ impl Komorice {
             .open(tooltip::Open::RightPointer)
             .into(),
             space::horizontal().into(),
-            button("Save")
-                .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
-                .into(),
+            row![
+                button("Save")
+                    .on_press_maybe(self.is_unsaved().then_some(Message::TrySave))
+                    .style(|t, s| button::Style {
+                        border: iced::Border {
+                            radius: iced::border::left(2),
+                            ..button::primary(t, s).border
+                        },
+                        ..button::primary(t, s)
+                    }),
+                tooltip(
+                    icons::down_chevron(),
+                    container(
+                        column![
+                            button("Backup")
+                                .width(Fill)
+                                .on_press(Message::Backup)
+                                .style(|t, s| {
+                                    match s {
+                                        button::Status::Active => button::text(t, s),
+                                        button::Status::Hovered
+                                        | button::Status::Pressed
+                                        | button::Status::Disabled => button::background(t, s),
+                                    }
+                                }),
+                            button("Save As")
+                                .on_press(Message::ToggleSaveAsDialog)
+                                .style(|t, s| {
+                                    match s {
+                                        button::Status::Active => button::text(t, s),
+                                        button::Status::Hovered
+                                        | button::Status::Pressed
+                                        | button::Status::Disabled => button::background(t, s),
+                                    }
+                                }),
+                        ]
+                        .width(Shrink),
+                    )
+                    .style(container::bordered_box)
+                    .padding(10),
+                )
+                .id(*SAVE_TIP_ID)
+                .open(tooltip::Open::LeftPointer)
+                .position(tooltip::Position::TopRight)
+                .content_style(|t, s| tooltip::Style {
+                    border: iced::Border {
+                        radius: iced::border::right(2),
+                        ..tooltip::primary(t, s).border
+                    },
+                    ..tooltip::primary(t, s)
+                })
+            ]
+            .into(),
             button("Discard Changes")
                 .on_press_maybe(self.is_dirty().then_some(Message::DiscardChanges))
                 .style(button::secondary)
