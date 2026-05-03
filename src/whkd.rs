@@ -289,6 +289,8 @@ pub enum Message {
     LoadedWhkdrc(Arc<Whkdrc>),
     FailedToLoadWhkdrc(AppError),
     SavedWhkdrc,
+    BackupComplete,
+    BackupFailed(AppError),
     AppError(AppError),
 
     // Messages related to CLI commands fetch
@@ -318,6 +320,8 @@ pub enum Action {
     SavedWhkdrc,
     LoadedWhkdrc,
     FailedToLoadWhkdrc(AppError),
+    BackupComplete,
+    BackupFailed(AppError),
     AppError(AppError),
 }
 
@@ -387,6 +391,10 @@ impl Whkd {
                 self.loaded_whkdrc = Arc::new(self.whkdrc.clone());
                 self.is_dirty = false;
                 return (Action::SavedWhkdrc, Task::none());
+            }
+            Message::BackupComplete => return (Action::BackupComplete, Task::none()),
+            Message::BackupFailed(app_error) => {
+                return (Action::BackupFailed(app_error), Task::none());
             }
             Message::AppError(app_error) => {
                 return (Action::AppError(app_error), Task::none());
@@ -1059,6 +1067,13 @@ pub fn save_task(whkdrc: Whkdrc, path: PathBuf) -> Task<Message> {
     Task::future(save(whkdrc, path)).map(|res| match res {
         Ok(_) => Message::SavedWhkdrc,
         Err(apperror) => Message::AppError(apperror),
+    })
+}
+
+pub fn backup_task(whkdrc: Whkdrc, path: PathBuf) -> Task<Message> {
+    Task::future(save(whkdrc, path)).map(|res| match res {
+        Ok(_) => Message::BackupComplete,
+        Err(apperror) => Message::BackupFailed(apperror),
     })
 }
 

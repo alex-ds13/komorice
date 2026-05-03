@@ -1537,6 +1537,13 @@ pub fn save_task(config: StaticConfig, path: PathBuf) -> Task<Message> {
     })
 }
 
+pub fn backup_task(config: StaticConfig, path: PathBuf) -> Task<Message> {
+    Task::future(save(config, path)).map(|res| match res {
+        Ok(_) => Message::BackupComplete,
+        Err(apperror) => Message::BackupFailed(apperror),
+    })
+}
+
 async fn save(config: StaticConfig, path: PathBuf) -> Result<(), AppError> {
     use smol::prelude::*;
 

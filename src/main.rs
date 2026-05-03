@@ -51,6 +51,9 @@ lazy_static! {
         [Screen::Rules, Screen::Transparency, Screen::LiveDebug];
     static ref PATH_TIP_ID: &'static str = "configuration_path_tooltip_id";
     static ref SAVE_TIP_ID: &'static str = "configuration_save_tooltip_id";
+    static ref TIME_FORMAT: Vec<time::format_description::BorrowedFormatItem<'static>> =
+        time::format_description::parse("[year]-[month]-[day]_[hour]-[minute]-[second]",)
+            .unwrap_or_default();
 }
 
 fn main() -> iced::Result {
@@ -116,6 +119,8 @@ enum Message {
     SaveAsDialogClosed,
     SaveAs(PathBuf),
     Backup,
+    BackupComplete,
+    BackupFailed(AppError),
     OpenConfigFile,
     OpenConfigFolder,
 }
@@ -371,6 +376,15 @@ impl Komorice {
                         }
                         Task::none()
                     }
+                    whkd::Action::BackupComplete => {
+                        //TODO: give feedback to user
+                        tooltip::close(*SAVE_TIP_ID)
+                    }
+                    whkd::Action::BackupFailed(app_error) => {
+                        self.add_error(app_error);
+                        //TODO: give feedback to user
+                        tooltip::close(*SAVE_TIP_ID)
+                    }
                     whkd::Action::AppError(app_error) => {
                         self.add_error(app_error);
                         Task::none()
@@ -531,16 +545,10 @@ impl Komorice {
                 match self.configuration.config_type {
                     ConfigType::Komorebi => {
                         self.configuration.komorebi_state = ConfigState::New(file);
-                    }
-                    ConfigType::Whkd => {
-                        self.configuration.whkd_state = ConfigState::New(file);
-                    }
-                }
-                match self.configuration.config_type {
-                    ConfigType::Komorebi => {
                         return config::save_task(self.config.clone(), self.configuration.path());
                     }
                     ConfigType::Whkd => {
+                        self.configuration.whkd_state = ConfigState::New(file);
                         return whkd::save_task(
                             self.whkd.whkdrc.clone(),
                             self.configuration.path(),
@@ -550,8 +558,32 @@ impl Komorice {
                 }
             }
             Message::Backup => {
-                //TODO: implement backup
-                println!("TODO: implement backup");
+                if let Ok(now) = time::OffsetDateTime::now_local()
+                    && let Ok(now_str) = now.format(&TIME_FORMAT)
+                {
+                    let bck_file_name = self
+                        .configuration
+                        .path()
+                        .with_extension(format!("{}.bkp", now_str));
+                    match self.configuration.config_type {
+                        ConfigType::Komorebi => {
+                            return config::backup_task(self.config.clone(), bck_file_name);
+                        }
+                        ConfigType::Whkd => {
+                            return whkd::backup_task(self.whkd.whkdrc.clone(), bck_file_name)
+                                .map(Message::Whkd);
+                        }
+                    }
+                }
+            }
+            Message::BackupComplete => {
+                //TODO: give feedback to user
+                return tooltip::close(*SAVE_TIP_ID);
+            }
+            Message::BackupFailed(apperror) => {
+                self.add_error(apperror);
+                //TODO: give feedback to user
+                return tooltip::close(*SAVE_TIP_ID);
             }
             Message::DiscardChanges => match self.configuration.config_type {
                 ConfigType::Komorebi => {

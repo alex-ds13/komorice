@@ -3688,6 +3688,7 @@ dependencies = [
  "serde",
  "serde_json_lenient",
  "smol",
+ "time",
  "unicode-segmentation",
  "whkd-core",
  "whkd-parser",
