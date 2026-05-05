@@ -259,9 +259,10 @@ pub fn worker() -> Subscription<Message> {
                             Ok(Input::DebouncerRes(res)) => {
                                 match res {
                                     Ok(events) => {
-                                        events.iter().for_each(|event| {
-                                            handle_event(event, &mut ignore_event, &mut output);
-                                        });
+                                        for event in events {
+                                            handle_event(&event, &mut ignore_event, &mut output)
+                                                .await;
+                                        }
                                     }
                                     Err(error) => {
                                         println!("Error from file watcher: {error:?}")
@@ -291,7 +292,7 @@ pub fn worker() -> Subscription<Message> {
     })
 }
 
-fn handle_event(
+async fn handle_event(
     event: &DebouncedEvent,
     ignore_event: &mut usize,
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
@@ -300,16 +301,14 @@ fn handle_event(
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading options");
-            smol::block_on(async {
-                match load().await {
-                    Ok(loaded_options) => {
-                        let _ = output.send(Message::LoadedSettings(loaded_options)).await;
-                    }
-                    Err(e) => {
-                        let _ = output.send(Message::AppError(e)).await;
-                    }
+            match load().await {
+                Ok(loaded_options) => {
+                    let _ = output.send(Message::LoadedSettings(loaded_options)).await;
                 }
-            });
+                Err(e) => {
+                    let _ = output.send(Message::AppError(e)).await;
+                }
+            }
         } else {
             println!("FileWatcher: ignoring event");
             *ignore_event = ignore_event.saturating_sub(1);

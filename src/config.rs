@@ -1417,14 +1417,15 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             Ok(Input::DebouncerRes(res)) => {
                                 match res {
                                     Ok(events) => {
-                                        events.iter().for_each(|event| {
+                                        for event in events {
                                             handle_event(
-                                                event,
+                                                &event,
                                                 &mut ignore_event,
                                                 &mut output,
                                                 path.clone(),
-                                            );
-                                        });
+                                            )
+                                            .await;
+                                        }
                                     }
                                     Err(error) => {
                                         println!("Error from file watcher: {error:?}")
@@ -1454,7 +1455,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
     })
 }
 
-fn handle_event(
+async fn handle_event(
     event: &DebouncedEvent,
     ignore_event: &mut usize,
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
@@ -1464,18 +1465,16 @@ fn handle_event(
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
             println!("FileWatcher: loading options");
-            smol::block_on(async {
-                match load(path).await {
-                    Ok(loaded_config) => {
-                        let _ = output
-                            .send(Message::LoadedConfig(Arc::new(loaded_config)))
-                            .await;
-                    }
-                    Err(e) => {
-                        let _ = output.send(Message::AppError(e)).await;
-                    }
+            match load(path).await {
+                Ok(loaded_config) => {
+                    let _ = output
+                        .send(Message::LoadedConfig(Arc::new(loaded_config)))
+                        .await;
                 }
-            });
+                Err(e) => {
+                    let _ = output.send(Message::AppError(e)).await;
+                }
+            }
         } else {
             println!("FileWatcher: ignoring event");
             *ignore_event = ignore_event.saturating_sub(1);
