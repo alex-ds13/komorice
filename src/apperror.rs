@@ -21,6 +21,47 @@ pub enum AppErrorKind {
 }
 
 impl AppError {
+    pub fn info(title: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            description: None,
+            kind: AppErrorKind::Info,
+        }
+    }
+
+    pub fn warning(title: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            description: None,
+            kind: AppErrorKind::Warning,
+        }
+    }
+
+    pub fn error(title: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            description: None,
+            kind: AppErrorKind::Error,
+        }
+    }
+
+    pub fn desc(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    pub fn info_d(title: impl Into<String>, description: impl Into<String>) -> Self {
+        Self::info(title).desc(description)
+    }
+
+    pub fn warning_d(title: impl Into<String>, description: impl Into<String>) -> Self {
+        Self::warning(title).desc(description)
+    }
+
+    pub fn error_d(title: impl Into<String>, description: impl Into<String>) -> Self {
+        Self::error(title).desc(description)
+    }
+
     pub fn view(&self) -> Element<'_, Message> {
         column![
             row![self.kind.view(), text(&self.title).size(18)]
