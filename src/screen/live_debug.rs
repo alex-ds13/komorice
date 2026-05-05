@@ -58,10 +58,10 @@ impl LiveDebug {
                     ..
                 }) = self.actual_display_info.get(&idx)
                 {
-                    // println!(
-                    //     "Go to ConfigMonitor screen for monitor {idx} with id: {}",
-                    //     _device_id
-                    // );
+                    log::debug!(
+                        "Go to ConfigMonitor screen for monitor {idx} with id: {}",
+                        _device_id
+                    );
                     self.monitor_to_config = Some(idx);
                 }
             }

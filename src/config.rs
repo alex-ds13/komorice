@@ -1339,7 +1339,9 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                         {
                             Ok(_) => {}
                             Err(e) => {
-                                println!("Error trying to send the options watcher sender:\n{e:?}");
+                                log::error!(
+                                    "Error trying to send the options watcher sender:\n{e:?}"
+                                );
                             }
                         }
 
@@ -1347,7 +1349,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
                                 if let Err(error) = sender.send(input).await {
-                                    println!(
+                                    log::error!(
                                         "Error sending a debounced event to the worker channel.\n\
                                         E: {error:?}"
                                     );
@@ -1375,8 +1377,11 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                         )))
                                         .await
                                     {
-                                        println!("Error sending an `AppError`: {}", send_error);
-                                        println!("Actual error it was trying to send: {}", error);
+                                        log::error!("Error sending an `AppError`: {}", send_error);
+                                        log::error!(
+                                            "Actual error it was trying to send: {}",
+                                            error
+                                        );
                                     }
                                     smol::Timer::after(Duration::from_secs(60)).await;
                                 }
@@ -1389,8 +1394,8 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                     )))
                                     .await
                                 {
-                                    println!("Error sending an `AppError`: {}", send_error);
-                                    println!("Actual error it was trying to send: {}", error);
+                                    log::error!("Error sending an `AppError`: {}", send_error);
+                                    log::error!("Actual error it was trying to send: {}", error);
                                 }
                                 smol::Timer::after(Duration::from_secs(60)).await;
                             }
@@ -1407,7 +1412,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
 
                         match input {
                             Ok(Input::IgnoreNextEvent) => {
-                                println!("IgnoreNextEvent");
+                                log::debug!("IgnoreNextEvent");
                                 state = State::Ready(Data {
                                     debouncer,
                                     receiver,
@@ -1428,7 +1433,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                         }
                                     }
                                     Err(error) => {
-                                        println!("Error from file watcher: {error:?}")
+                                        log::error!("Error from file watcher: {error:?}")
                                     }
                                 }
 
@@ -1439,7 +1444,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                 });
                             }
                             Err(error) => {
-                                println!("Error from file watcher: {error:?}");
+                                log::error!("Error from file watcher: {error:?}");
 
                                 state = State::Ready(Data {
                                     debouncer,
@@ -1461,10 +1466,10 @@ async fn handle_event(
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
     path: PathBuf,
 ) {
-    // println!("FileWatcher event: {event:?}");
+    log::trace!("FileWatcher event: {event:?}");
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
-            println!("FileWatcher: loading options");
+            log::debug!("FileWatcher: loading options");
             match load(path).await {
                 Ok(loaded_config) => {
                     let _ = output
@@ -1476,7 +1481,7 @@ async fn handle_event(
                 }
             }
         } else {
-            println!("FileWatcher: ignoring event");
+            log::trace!("FileWatcher: ignoring event");
             *ignore_event = ignore_event.saturating_sub(1);
         }
     }
@@ -1499,7 +1504,7 @@ async fn load(path: PathBuf) -> Result<StaticConfig, AppError> {
     let mut file = match file_open_res {
         Ok(file) => file,
         Err(error) => {
-            println!("Failed to find 'komorebi.json' file.\nError: {}", error);
+            log::error!("Failed to find 'komorebi.json' file.\nError: {}", error);
             return Err(AppError::info("Failed to find 'komorebi.json' file."));
         }
     };

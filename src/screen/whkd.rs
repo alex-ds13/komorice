@@ -116,7 +116,7 @@ impl Whkd {
                     } else {
                         //TODO: show error to user in case `i` is higher than len(), this shouldn't
                         //happen though
-                        println!(
+                        log::error!(
                             "Failed to add mod {modifier} to pause_binding with index {i} since len is {}",
                             pause_binding.len()
                         );
@@ -168,7 +168,7 @@ impl Whkd {
                 NavMessage::Back => {}
             },
             Message::UrlClicked(url) => {
-                println!("Clicked url: {}", url);
+                log::warn!("Clicked url: {}", url);
             }
         }
         (Action::None, Task::none())

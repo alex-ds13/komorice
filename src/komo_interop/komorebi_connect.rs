@@ -27,15 +27,15 @@ pub fn connect() -> Subscription<Message> {
                         break listener;
                     }
                     Err(error) => {
-                        println!("Failed to subscribe to komorebi:");
-                        println!("{error}");
+                        log::error!("Failed to subscribe to komorebi:");
+                        log::error!("{error}");
                         smol::future::yield_now().await;
                         smol::Timer::after(Duration::from_secs(60)).await;
                     }
                 }
             };
 
-            println!(
+            log::info!(
                 "subscribed to komorebi notifications: \"{}\"",
                 subscriber_name
             );
@@ -49,7 +49,7 @@ pub fn connect() -> Subscription<Message> {
 
                             // this is when we know a shutdown has been sent
                             if matches!(reader.read_to_end(&mut buffer), Ok(0)) {
-                                println!("disconnected from komorebi");
+                                log::warn!("disconnected from komorebi");
 
                                 // keep trying to reconnect to komorebi
                                 while komorebi_client::send_message(
@@ -63,7 +63,7 @@ pub fn connect() -> Subscription<Message> {
                                         });
                                     }
 
-                                println!("reconnected to komorebi");
+                                log::info!("reconnected to komorebi");
                                 continue;
                             }
 
@@ -73,27 +73,27 @@ pub fn connect() -> Subscription<Message> {
                                         &notification_string,
                                     ) {
                                         Ok(notification) => {
-                                            // println!("received notification from komorebi");
+                                            log::debug!("received notification from komorebi");
                                             smol::block_on(async {
                                                 if let Err(error) = output.send(Message::KomorebiNotification(Arc::new(notification))).await {
-                                                    println!("could not send komorebi notification update to gui thread: {error}")
+                                                    log::error!("could not send komorebi notification update to gui thread: {error}")
                                                 }
                                             });
                                         }
                                         Err(error) => {
-                                            println!("could not deserialize komorebi notification: {error}");
+                                            log::error!("could not deserialize komorebi notification: {error}");
                                         }
                                     }
                                 }
                                 Err(error) => {
-                                    println!(
+                                    log::error!(
                                         "komorebi notification string was invalid utf8: {error}"
                                     )
                                 }
                             }
                         }
                         Err(error) => {
-                            println!("{error}");
+                            log::error!("{error}");
                         }
                     }
                 }

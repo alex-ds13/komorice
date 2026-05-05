@@ -60,7 +60,7 @@ impl Home {
                 configuration.config_type = config_type;
                 match state {
                     ConfigState::Active => {
-                        println!(
+                        log::error!(
                             "Got 'Active' state on a configuration change, it shouldn't happen!"
                         );
                     }

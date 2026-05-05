@@ -31,6 +31,10 @@ use iced::{
     },
 };
 use lazy_static::lazy_static;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, fmt};
 
 lazy_static! {
     static ref KOMOREBI_VERSION: &'static str = "v0.1.39";
@@ -54,9 +58,36 @@ lazy_static! {
     static ref TIME_FORMAT: Vec<time::format_description::BorrowedFormatItem<'static>> =
         time::format_description::parse("[year]-[month]-[day]_[hour]-[minute]-[second]",)
             .unwrap_or_default();
+    static ref LOCAL_DIR: PathBuf = dirs::data_local_dir()
+        .expect("there is no local data directory")
+        .join("komorice");
 }
 
 fn main() -> iced::Result {
+    let logs_folder = LOCAL_DIR.join("logs");
+    let filter = EnvFilter::from_default_env();
+    let mut _log_guard = None;
+    smol::block_on(async {
+        let _ = smol::fs::create_dir_all(&logs_folder).await;
+    });
+    let file_appender = if let Ok(file_appender) = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .max_log_files(8)
+        .filename_suffix("komorice.log")
+        .build(logs_folder)
+    {
+        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+        _log_guard = Some(_guard);
+        Some(fmt::layer().with_writer(non_blocking).with_ansi(false))
+    } else {
+        None
+    };
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer())
+        .with(file_appender)
+        .init();
+
     iced::application(Komorice::initialize, Komorice::update, Komorice::view)
         .title("Komorice")
         .subscription(Komorice::subscription)
@@ -71,7 +102,7 @@ fn main() -> iced::Result {
             ) {
                 Ok(icon) => Some(icon),
                 Err(error) => {
-                    println!("Error creating icon: {}", error);
+                    log::error!("Error creating icon: {}", error);
                     None
                 }
             },
@@ -444,7 +475,8 @@ impl Komorice {
             }
             Message::LoadedConfig(config) => {
                 if let Some(config) = Arc::into_inner(config) {
-                    // println!("Config Loaded: {config:#?}");
+                    log::debug!("Config Loaded");
+                    log::trace!("Loaded config:\n{config:#?}");
                     let config = config::merge_default(config);
                     self.config = config.clone();
                     self.is_dirty = self.populate_monitors();
@@ -884,9 +916,13 @@ impl Komorice {
     }
 
     fn add_error(&mut self, apperror: AppError) {
-        // println!("Received AppError: {apperror:#?}");
-        if matches!(apperror.kind, AppErrorKind::Error) {
-            self.show_errors_modal = true;
+        match apperror.kind {
+            AppErrorKind::Info => log::info!("Info: {apperror:#?}"),
+            AppErrorKind::Warning => log::warn!("Warning: {apperror:#?}"),
+            AppErrorKind::Error => {
+                log::error!("Error: {apperror:#?}");
+                self.show_errors_modal = true;
+            }
         }
         self.errors.push(apperror);
     }

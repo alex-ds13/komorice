@@ -373,7 +373,8 @@ impl Whkd {
             }
             Message::LoadedWhkdrc(whkdrc) => {
                 if let Some(whkdrc) = Arc::into_inner(whkdrc) {
-                    // println!("Whkdrc Loaded: {whkdrc:#?}");
+                    log::debug!("Whkdrc Loaded");
+                    log::trace!("Loaded whkdrc:\n{whkdrc:#?}");
                     self.whkdrc = whkdrc.clone();
                     self.loaded_whkdrc = Arc::new(whkdrc);
                     self.refresh();
@@ -497,7 +498,7 @@ impl Whkd {
                 );
             }
             Message::LoadedCommands(commands) => {
-                // println!("{commands:?}");
+                log::trace!("LoadedCommands:\n{commands:?}");
                 self.commands = commands;
                 self.whkd.load_new_commands(&self.commands);
                 self.bindings.load_new_commands(&self.commands);
@@ -506,15 +507,15 @@ impl Whkd {
                 return (Action::None, self.load_commands_description());
             }
             Message::FailedToLoadCommands(error) => {
-                println!("WHKD -> Failed to load commands: {error}");
+                log::error!("WHKD -> Failed to load commands: {error}");
             }
             Message::LoadedCommandDescription(command, description) => {
-                // println!("received description for command: {command}");
+                log::trace!("received description for command: {command}");
                 let md = markdown::parse(&description).collect();
                 self.commands_desc.insert(command, md);
             }
             Message::FailedToLoadCommandsDescription(error) => {
-                println!("WHKD -> Failed to load commands: {error}");
+                log::error!("WHKD -> Failed to load commands: {error}");
             }
             Message::WhkdFoundOnPath => self.whkd_bin.found = true,
             Message::WhkdNotFoundOnPath => self.whkd_bin.found = false,
@@ -627,10 +628,10 @@ impl Whkd {
                 static APP_USER_AGENT: &str =
                     concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
-                // println!(
-                //     "Running GET request for command {} description: {}",
-                //     &command_c1, APP_USER_AGENT
-                // );
+                log::trace!(
+                    "Running GET request for command {} description: {}",
+                    &command_c1, APP_USER_AGENT
+                );
                 let client = reqwest::Client::builder()
                     .user_agent(APP_USER_AGENT)
                     .build()?;
@@ -808,7 +809,7 @@ pub fn load_commands() -> Task<Message> {
         static APP_USER_AGENT: &str =
             concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
-        // println!("Running GET request: {}", APP_USER_AGENT);
+        log::trace!("Running GET request: {}", APP_USER_AGENT);
         let client = reqwest::Client::builder()
             .user_agent(APP_USER_AGENT)
             .build()?;
@@ -877,7 +878,9 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                         {
                             Ok(_) => {}
                             Err(e) => {
-                                println!("Error trying to send the options watcher sender:\n{e:?}");
+                                log::error!(
+                                    "Error trying to send the options watcher sender:\n{e:?}"
+                                );
                             }
                         }
 
@@ -885,7 +888,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             smol::block_on(async {
                                 let input = Input::DebouncerRes(res);
                                 if let Err(error) = sender.send(input).await {
-                                    println!(
+                                    log::error!(
                                         "Error sending a debounced event to the worker channel.\n\
                                         E: {error:?}"
                                     );
@@ -903,7 +906,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                         match output.send(Message::AppError(apperror)).await {
                                             Ok(_) => {}
                                             Err(e) => {
-                                                println!("Error trying to send error:\n{e:?}");
+                                                log::error!("Error trying to send error:\n{e:?}");
                                             }
                                         }
                                     }
@@ -928,8 +931,11 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                             )))
                                             .await
                                         {
-                                            println!("Error sending an `AppError`: {}", send_error);
-                                            println!(
+                                            log::error!(
+                                                "Error sending an `AppError`: {}",
+                                                send_error
+                                            );
+                                            log::error!(
                                                 "Actual error it was trying to send: {}",
                                                 error
                                             );
@@ -946,8 +952,8 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                     )))
                                     .await
                                 {
-                                    println!("Error sending an `AppError`: {}", send_error);
-                                    println!("Actual error it was trying to send: {}", error);
+                                    log::error!("Error sending an `AppError`: {}", send_error);
+                                    log::error!("Actual error it was trying to send: {}", error);
                                 }
                                 smol::Timer::after(Duration::from_secs(60)).await;
                             }
@@ -963,7 +969,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
 
                         match input {
                             Ok(Input::IgnoreNextEvent) => {
-                                println!("IgnoreNextEvent");
+                                log::debug!("IgnoreNextEvent");
                                 state = State::Ready(Data {
                                     debouncer,
                                     receiver,
@@ -984,7 +990,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                         }
                                     }
                                     Err(error) => {
-                                        println!("Error from file watcher: {error:?}")
+                                        log::error!("Error from file watcher: {error:?}")
                                     }
                                 }
 
@@ -995,7 +1001,7 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                 });
                             }
                             Err(error) => {
-                                println!("Error from file watcher: {error:?}");
+                                log::error!("Error from file watcher: {error:?}");
 
                                 state = State::Ready(Data {
                                     debouncer,
@@ -1017,10 +1023,10 @@ async fn handle_event(
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
     path: PathBuf,
 ) {
-    // println!("FileWatcher event: {event:?}");
+    log::trace!("FileWatcher event: {event:?}");
     if let DebouncedEventKind::Any = event.kind {
         if *ignore_event == 0 {
-            println!("FileWatcher: loading whkdrc");
+            log::debug!("FileWatcher: loading whkdrc");
             match load(path).await {
                 Ok(loaded_whkdrc) => {
                     let _ = output
@@ -1032,7 +1038,7 @@ async fn handle_event(
                 }
             }
         } else {
-            println!("FileWatcher: ignoring event");
+            log::trace!("FileWatcher: ignoring event");
             *ignore_event = ignore_event.saturating_sub(1);
         }
     }
