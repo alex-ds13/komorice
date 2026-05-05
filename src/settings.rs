@@ -341,27 +341,16 @@ pub async fn load() -> Result<Settings, AppError> {
         Ok(file) => file,
         Err(error) => {
             println!("Failed to find 'komorice.json' file.\nError: {}", error);
-            return Err(AppError {
-                title: "Failed to find 'komorice.json' file.".into(),
-                description: None,
-                kind: AppErrorKind::Info,
-            });
+            return Err(AppError::info("Failed to find 'komorice.json' file."));
         }
     };
 
     file.read_to_string(&mut contents)
         .await
-        .map_err(|e| AppError {
-            title: "Error opening 'komorice.json' file.".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
+        .map_err(|e| AppError::error_d("Error opening 'komorice.json' file.", e.to_string()))?;
 
-    serde_json::from_str(&contents).map_err(|e| AppError {
-        title: "Error reading 'komorice.json' file.".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })
+    serde_json::from_str(&contents)
+        .map_err(|e| AppError::error_d("Error reading 'komorice.json' file.", e.to_string()))
 }
 
 pub fn save_task(settings: Settings) -> Task<Message> {
@@ -374,35 +363,42 @@ pub fn save_task(settings: Settings) -> Task<Message> {
 pub async fn save(settings: Settings) -> Result<(), AppError> {
     use smol::prelude::*;
 
-    let json = serde_json::to_string_pretty(&settings).map_err(|e| AppError {
-        title: "Error writing to 'komorice.json' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })?;
+    let json = serde_json::to_string_pretty(&settings)
+        .map_err(|e| AppError::error_d("Error writing to 'komorice.json' file", e.to_string()))?;
 
     let path = config_path();
 
     if let Some(dir) = path.parent() {
-        smol::fs::create_dir_all(dir).await.map_err(|e| AppError {
-            title: "Error creating folder for 'komorice.json' file".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
+        smol::fs::create_dir_all(dir).await.map_err(|e| {
+            AppError::error_d(
+                "Error creating folder for 'komorice.json' file",
+                e.to_string(),
+            )
         })?;
     }
 
-    let mut file = smol::fs::File::create(path).await.map_err(|e| AppError {
-        title: "Error creating 'komorice.json' file.".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
+    let tmp_path = path.with_added_extension("tmp");
+
+    let mut file = smol::fs::File::create(&tmp_path).await.map_err(|e| {
+        AppError::error_d("Error creating 'komorice.json' tmp file.", e.to_string())
     })?;
 
     file.write_all(json.as_bytes())
         .await
-        .map_err(|e| AppError {
-            title: "Error saving 'komorice.json' file".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
+        .map_err(|e| AppError::error_d("Error saving 'komorice.json' tmp file", e.to_string()))?;
+
+    file.flush().await.map_err(|e| {
+        AppError::error_d("Error flushing 'komorice.json' tmp file.", e.to_string())
+    })?;
+
+    file.close()
+        .await
+        .map_err(|e| AppError::error_d("Error closing 'komorice.json' tmp file", e.to_string()))?;
+
+    // Rename the tmp file to the actual file
+    smol::fs::rename(tmp_path, path).await.map_err(|e| {
+        AppError::error_d("Error renaming tmp 'komorice.json' file.", e.to_string())
+    })?;
 
     // This is a simple way to save at most once every couple seconds
     // smol::Timer::after(std::time::Duration::from_secs(2)).await;

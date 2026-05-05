@@ -1507,27 +1507,16 @@ async fn load(path: PathBuf) -> Result<StaticConfig, AppError> {
         Ok(file) => file,
         Err(error) => {
             println!("Failed to find 'komorebi.json' file.\nError: {}", error);
-            return Err(AppError {
-                title: "Failed to find 'komorebi.json' file.".into(),
-                description: None,
-                kind: AppErrorKind::Info,
-            });
+            return Err(AppError::info("Failed to find 'komorebi.json' file."));
         }
     };
 
     file.read_to_string(&mut contents)
         .await
-        .map_err(|e| AppError {
-            title: "Error opening 'komorebi.json' file.".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
-        })?;
+        .map_err(|e| AppError::error_d("Error opening 'komorebi.json' file.", e.to_string()))?;
 
-    serde_json::from_str(&contents).map_err(|e| AppError {
-        title: "Error reading 'komorebi.json' file.".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })
+    serde_json::from_str(&contents)
+        .map_err(|e| AppError::error_d("Error reading 'komorebi.json' file.", e.to_string()))
 }
 
 pub fn save_task(config: StaticConfig, path: PathBuf) -> Task<Message> {
@@ -1548,11 +1537,8 @@ async fn save(config: StaticConfig, path: PathBuf) -> Result<(), AppError> {
     use smol::prelude::*;
 
     let unmerged_config = unmerge_default(config);
-    let json = serde_json::to_string_pretty(&unmerged_config).map_err(|e| AppError {
-        title: "Error writing to 'komorebi.json' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })?;
+    let json = serde_json::to_string_pretty(&unmerged_config)
+        .map_err(|e| AppError::error_d("Error writing to 'komorebi.json' file", e.to_string()))?;
     let schema = format!(
         "{{\n  \"$schema\": \"https://raw.githubusercontent.com/LGUG2Z/komorebi/blob/{}/schema.json\",\n",
         *KOMOREBI_VERSION,
@@ -1562,29 +1548,33 @@ async fn save(config: StaticConfig, path: PathBuf) -> Result<(), AppError> {
     // if let Some(dir) = path.parent() {
     //     smol::fs::create_dir_all(dir)
     //         .await
-    //         .map_err(|e| AppError {
-    //             title: "Error creating folder for 'komorebi.json' file".into(),
-    //             description: Some(e.to_string()),
-    //             kind: AppErrorKind::Error,
-    //         })?;
+    //         .map_err(|e| AppError::error_d(
+    //             "Error creating folder for 'komorebi.json' file",
+    //             e.to_string(),
+    //         ))?;
     // }
 
-    let mut file = smol::fs::File::create(path).await.map_err(|e| AppError {
-        title: "Error creating 'komorebi.json' file.".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
+    let tmp_path = path.with_added_extension("tmp");
+
+    let mut file = smol::fs::File::create(&tmp_path).await.map_err(|e| {
+        AppError::error_d("Error creating 'komorebi.json' tmp file.", e.to_string())
     })?;
 
-    file.write_all(&json).await.map_err(|e| AppError {
-        title: "Error saving 'komorebi.json' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
+    file.write_all(&json)
+        .await
+        .map_err(|e| AppError::error_d("Error saving 'komorebi.json' tmp file", e.to_string()))?;
+
+    file.flush().await.map_err(|e| {
+        AppError::error_d("Error flushing 'komorebi.json' tmp file.", e.to_string())
     })?;
 
-    file.close().await.map_err(|e| AppError {
-        title: "Error closing 'komorebi.json' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
+    file.close()
+        .await
+        .map_err(|e| AppError::error_d("Error closing 'komorebi.json' tmp file", e.to_string()))?;
+
+    // Rename the tmp file to the actual file
+    smol::fs::rename(tmp_path, path).await.map_err(|e| {
+        AppError::error_d("Error renaming tmp 'komorebi.json' file.", e.to_string())
     })?;
 
     // This is a simple way to save at most once every couple seconds

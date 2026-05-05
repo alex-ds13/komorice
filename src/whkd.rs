@@ -1054,11 +1054,8 @@ pub fn load_task(path: PathBuf) -> Task<Message> {
 
 pub async fn load(path: PathBuf) -> Result<Whkdrc, AppError> {
     smol::unblock(move || {
-        whkd_parser::load(&path).map_err(|e| AppError {
-            title: "Error reading 'whkdrc' file.".into(),
-            description: Some(format!("{e:#?}")),
-            kind: AppErrorKind::Error,
-        })
+        whkd_parser::load(&path)
+            .map_err(|e| AppError::error_d("Error reading 'whkdrc' file.", format!("{e:#?}")))
     })
     .await
 }
@@ -1083,30 +1080,33 @@ pub async fn save(whkdrc: Whkdrc, path: PathBuf) -> Result<(), AppError> {
     let str = smol::unblock(move || unparser::unparse_whkdrc(&whkdrc)).await;
 
     if let Some(dir) = path.parent() {
-        smol::fs::create_dir_all(dir).await.map_err(|e| AppError {
-            title: "Error creating folder for 'whkdrc' file".into(),
-            description: Some(e.to_string()),
-            kind: AppErrorKind::Error,
+        smol::fs::create_dir_all(dir).await.map_err(|e| {
+            AppError::error_d("Error creating folder for 'whkdrc' file", e.to_string())
         })?;
     }
 
-    let mut file = smol::fs::File::create(path).await.map_err(|e| AppError {
-        title: "Error creating 'whkdrc' file.".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })?;
+    let tmp_path = path.with_added_extension("tmp");
 
-    file.write_all(str.as_bytes()).await.map_err(|e| AppError {
-        title: "Error saving 'whkdrc' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })?;
+    let mut file = smol::fs::File::create(&tmp_path)
+        .await
+        .map_err(|e| AppError::error_d("Error creating 'whkdrc' tmp file.", e.to_string()))?;
 
-    file.close().await.map_err(|e| AppError {
-        title: "Error closing 'whkdrc' file".into(),
-        description: Some(e.to_string()),
-        kind: AppErrorKind::Error,
-    })?;
+    file.write_all(str.as_bytes())
+        .await
+        .map_err(|e| AppError::error_d("Error saving 'whkdrc' tmp file", e.to_string()))?;
+
+    file.flush()
+        .await
+        .map_err(|e| AppError::error_d("Error flushing 'whkdrc' tmp file.", e.to_string()))?;
+
+    file.close()
+        .await
+        .map_err(|e| AppError::error_d("Error closing 'whkdrc' tmp file", e.to_string()))?;
+
+    // Rename the tmp file to the actual file
+    smol::fs::rename(tmp_path, path)
+        .await
+        .map_err(|e| AppError::error_d("Error renaming tmp 'whkdrc' file.", e.to_string()))?;
 
     // This is a simple way to save at most once every couple seconds
     // smol::Timer::after(std::time::Duration::from_secs(2)).await;
