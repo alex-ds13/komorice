@@ -1,5 +1,5 @@
 use crate::BOLD_FONT;
-use crate::apperror::{AppError, AppErrorKind};
+use crate::apperror::AppError;
 use crate::widget::opt_helpers;
 
 use std::path::PathBuf;
@@ -208,13 +208,10 @@ pub fn worker() -> Subscription<Message> {
                                     }
                                     Err(error) => {
                                         if let Err(send_error) = output
-                                            .send(Message::AppError(AppError {
-                                                title: String::from(
-                                                    "Error trying to watch the settings file",
-                                                ),
-                                                description: Some(error.to_string()),
-                                                kind: AppErrorKind::Error,
-                                            }))
+                                            .send(Message::AppError(AppError::error_d(
+                                                "Error trying to watch the settings file",
+                                                error.to_string(),
+                                            )))
                                             .await
                                         {
                                             println!("Error sending an `AppError`: {}", send_error);
@@ -229,13 +226,10 @@ pub fn worker() -> Subscription<Message> {
                             }
                             Err(error) => {
                                 if let Err(send_error) = output
-                                    .send(Message::AppError(AppError {
-                                        title: String::from(
-                                            "Error trying to setup a settings file watcher",
-                                        ),
-                                        description: Some(error.to_string()),
-                                        kind: AppErrorKind::Error,
-                                    }))
+                                    .send(Message::AppError(AppError::error_d(
+                                        "Error trying to setup a settings file watcher",
+                                        error.to_string(),
+                                    )))
                                     .await
                                 {
                                     println!("Error sending an `AppError`: {}", send_error);

@@ -1,6 +1,6 @@
 use crate::{
     BOLD_FONT,
-    apperror::{AppError, AppErrorKind},
+    apperror::AppError,
     monitors::DisplayInfo,
     widget::{monitors_viewer, opt_helpers},
 };
@@ -98,13 +98,10 @@ impl LiveDebug {
                     self.komorebi_state = Some(Arc::from(notification.state));
                 } else {
                     return (
-                        Action::Error(AppError {
-                            title: "Failed to get notification properly.".into(),
-                            description: Some(
-                                "There were other references to the same notification `Arc`".into(),
-                            ),
-                            kind: AppErrorKind::Warning,
-                        }),
+                        Action::Error(AppError::warning_d(
+                            "Failed to get notification properly.",
+                            "There were other references to the same notification `Arc`",
+                        )),
                         Task::none(),
                     );
                 }

@@ -2,7 +2,7 @@ pub mod unparser;
 
 use crate::{
     KOMOREBI_VERSION,
-    apperror::{AppError, AppErrorKind},
+    apperror::AppError,
     screen::{self, ConfigState, ConfigType, Configuration, Screen, View},
 };
 
@@ -922,13 +922,10 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                     }
                                     Err(error) => {
                                         if let Err(send_error) = output
-                                            .send(Message::FileWatcherError(AppError {
-                                                title: String::from(
-                                                    "Error trying to watch a whkdrc file",
-                                                ),
-                                                description: Some(error.to_string()),
-                                                kind: AppErrorKind::Error,
-                                            }))
+                                            .send(Message::FileWatcherError(AppError::error_d(
+                                                "Error trying to watch a whkdrc file",
+                                                error.to_string(),
+                                            )))
                                             .await
                                         {
                                             println!("Error sending an `AppError`: {}", send_error);
@@ -943,13 +940,10 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             }
                             Err(error) => {
                                 if let Err(send_error) = output
-                                    .send(Message::FileWatcherError(AppError {
-                                        title: String::from(
-                                            "Error trying to setup a whkdrc file watcher",
-                                        ),
-                                        description: Some(error.to_string()),
-                                        kind: AppErrorKind::Error,
-                                    }))
+                                    .send(Message::FileWatcherError(AppError::error_d(
+                                        "Error trying to setup a whkdrc file watcher",
+                                        error.to_string(),
+                                    )))
                                     .await
                                 {
                                     println!("Error sending an `AppError`: {}", send_error);

@@ -1,6 +1,6 @@
 use crate::{
     KOMOREBI_VERSION, Message,
-    apperror::{AppError, AppErrorKind},
+    apperror::AppError,
     screen::{
         monitors::DisplayInfo,
         wallpaper::{DEFAULT_THEME_OPTIONS, DEFAULT_WALLPAPER},
@@ -1369,13 +1369,10 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                                 }
                                 Err(error) => {
                                     if let Err(send_error) = output
-                                        .send(Message::ConfigWatcherError(AppError {
-                                            title: String::from(
-                                                "Error trying to watch a komorebi config file",
-                                            ),
-                                            description: Some(error.to_string()),
-                                            kind: AppErrorKind::Error,
-                                        }))
+                                        .send(Message::ConfigWatcherError(AppError::error_d(
+                                            "Error trying to watch a komorebi config file",
+                                            error.to_string(),
+                                        )))
                                         .await
                                     {
                                         println!("Error sending an `AppError`: {}", send_error);
@@ -1386,13 +1383,10 @@ pub fn worker(path: PathBuf) -> Subscription<Message> {
                             },
                             Err(error) => {
                                 if let Err(send_error) = output
-                                    .send(Message::ConfigWatcherError(AppError {
-                                        title: String::from(
-                                            "Error trying to setup a config file watcher",
-                                        ),
-                                        description: Some(error.to_string()),
-                                        kind: AppErrorKind::Error,
-                                    }))
+                                    .send(Message::ConfigWatcherError(AppError::error_d(
+                                        "Error trying to setup a config file watcher",
+                                        error.to_string(),
+                                    )))
                                     .await
                                 {
                                     println!("Error sending an `AppError`: {}", send_error);
