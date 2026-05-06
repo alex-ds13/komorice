@@ -641,6 +641,10 @@ impl General {
             ),
             |_, _| {
                 pick_list(
+                    config
+                        .floating_window_aspect_ratio
+                        .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
+                        .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
                     [
                         crate::komo_interop::aspect_ratio::AspectRatio::Standard,
                         crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
@@ -672,16 +676,13 @@ impl General {
                                 }),
                         ),
                     ],
-                    config
-                        .floating_window_aspect_ratio
-                        .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
-                        .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
-                    |selected| {
-                        Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(
-                            selected.into(),
-                        )))
-                    },
+                    crate::komo_interop::aspect_ratio::AspectRatio::to_string,
                 )
+                .on_select(|selected| {
+                    Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(
+                        selected.into(),
+                    )))
+                })
             },
             || {
                 [
@@ -937,9 +938,9 @@ impl General {
         );
         let add_button = button(icons::plus().style(move |t| {
             let color = if is_enabled {
-                t.palette().primary.into()
+                t.palette().primary.base.color.into()
             } else {
-                t.extended_palette().secondary.base.color.into()
+                t.palette().secondary.base.color.into()
             };
             text::Style { color }
         }))
@@ -992,9 +993,9 @@ impl General {
         );
         let add_button = button(icons::plus().style(move |t| {
             let color = if is_enabled {
-                t.palette().primary.into()
+                t.palette().primary.base.color.into()
             } else {
-                t.extended_palette().secondary.base.color.into()
+                t.palette().secondary.base.color.into()
             };
             text::Style { color }
         }))

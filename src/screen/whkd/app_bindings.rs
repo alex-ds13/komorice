@@ -64,7 +64,7 @@ pub enum Message {
     SelectBindingProcessName(usize, usize),
     SelectedProcessName(String),
 
-    UrlClicked(markdown::Url),
+    UriClicked(markdown::Uri),
 }
 
 #[derive(Clone, Debug)]
@@ -308,7 +308,7 @@ impl AppBindings {
                     processes.push(text_editor::Content::new());
                 }
             }
-            Message::UrlClicked(url) => {
+            Message::UriClicked(url) => {
                 println!("Clicked url: {}", url);
             }
             Message::ChangeNewBindingMod(pos, modifier) => {
@@ -1004,7 +1004,7 @@ impl AppBindings {
                         .padding(padding::all(2).left(4).right(4))
                         .style(move |t: &Theme| {
                             if duplicated_keys {
-                                let warning = t.extended_palette().warning;
+                                let warning = t.palette().warning;
                                 container::Style {
                                     background: Some(warning.base.color.into()),
                                     text_color: Some(warning.base.text),
@@ -1034,7 +1034,7 @@ impl AppBindings {
                             })
                             .padding(padding::all(2).left(4).right(4))
                             .style(move |t: &Theme| {
-                                let palette = t.extended_palette();
+                                let palette = t.palette();
                                 if is_default {
                                     container::background(palette.background.weaker.color)
                                 } else {
@@ -1055,7 +1055,7 @@ impl AppBindings {
                                 padding::Padding::ZERO
                             })
                             .style(move |t| {
-                                let palette = theme.extended_palette();
+                                let palette = theme.palette();
                                 if is_ignore {
                                     container::background(palette.background.weaker.color)
                                 } else {
@@ -1114,6 +1114,7 @@ impl AppBindings {
                             location,
                             modifiers,
                             text: _,
+                            repeat: _,
                         } => {
                             let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
                             if !k.is_empty() {
@@ -1207,10 +1208,11 @@ impl AppBindings {
                     && !self.selecting_process_state.options().is_empty()
                 {
                     let pick = pick_list(
-                        self.selecting_process_state.options(),
                         self.selected_process_name.as_ref(),
-                        Message::SelectedProcessName,
-                    );
+                        self.selecting_process_state.options(),
+                        String::to_string,
+                    )
+                    .on_select(Message::SelectedProcessName);
                     let combobox = combo_box(
                         &self.selecting_process_state,
                         "",
@@ -1269,7 +1271,9 @@ fn mod_choose<'a>(
                 .map(|m| m.to_lowercase())
                 .any(|m| &m == v)
         });
-        pick_list(options, Some(k), move |v| on_mod_change_clone(pos, v)).into()
+        pick_list(Some(k), options, String::to_string)
+            .on_select(move |v| on_mod_change_clone(pos, v))
+            .into()
     };
     if let Some(k) = binding_mods.get(pos) {
         Some(pl((*k).clone()))
@@ -1403,7 +1407,7 @@ where
         if let Some(items) =
             commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
         {
-            vec![selector, markdown(items, theme).map(Message::UrlClicked)]
+            vec![selector, markdown(items, theme).map(Message::UriClicked)]
         } else {
             vec![selector]
         }

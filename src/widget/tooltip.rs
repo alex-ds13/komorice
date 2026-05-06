@@ -29,11 +29,12 @@ use core::mouse;
 use core::overlay;
 use core::renderer;
 use core::text;
+use core::time::{Duration, Instant};
 use core::widget::{self, Id, Widget};
 use core::window;
 use core::{
-    Background, Clipboard, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle,
-    Shadow, Shell, Size, Theme, Vector,
+    Background, Color, Element, Event, Length, Padding, Pixels, Point, Rectangle, Shadow, Shell,
+    Size, Theme, Vector,
     border::{self, Border},
     theme::palette,
 };
@@ -79,6 +80,7 @@ where
     content_padding: Padding,
     padding: f32,
     snap_within_viewport: bool,
+    delay: Duration,
     content_class: <Theme as Catalog>::Class<'a>,
     tooltip_class: <Theme as container::Catalog>::Class<'a>,
     status: Status,
@@ -118,6 +120,7 @@ where
             content_padding: DEFAULT_CONTENT_PADDING,
             padding: Self::DEFAULT_PADDING,
             snap_within_viewport: true,
+            delay: Duration::ZERO,
             content_class: <Theme as Catalog>::default(),
             tooltip_class: <Theme as container::Catalog>::default(),
             status: Default::default(),
@@ -145,6 +148,14 @@ where
     /// Sets the padding of the [`Tooltip`].
     pub fn padding(mut self, padding: impl Into<Pixels>) -> Self {
         self.padding = padding.into().0;
+        self
+    }
+
+    /// Sets the delay before the [`Tooltip`] is shown.
+    ///
+    /// Set to [`Duration::ZERO`] to be shown immediately.
+    pub fn delay(mut self, delay: Duration) -> Self {
+        self.delay = delay;
         self
     }
 
@@ -270,12 +281,12 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
         if let Event::Mouse(_) | Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = tree.state.downcast_mut::<State>();
+            let now = Instant::now();
             let previous_state = *state;
             let was_idle = matches!(*state, State::Idle { .. });
             let is_over = cursor.is_over(layout.bounds());
@@ -328,17 +339,59 @@ where
                     }
                 }
             } else if self.open == Open::Hovered {
-                cursor
-                    .position_over(layout.bounds())
-                    .map(|cursor_position| State::Opened {
-                        cursor_position,
-                        over_overlay: false,
-                    })
-                    .unwrap_or_default()
+                let cursor_position = cursor.position_over(layout.bounds());
+
+                match (*state, cursor_position) {
+                    (
+                        State::Idle {
+                            pressed,
+                            hovered_at: None,
+                        },
+                        Some(cursor_position),
+                    ) => {
+                        if self.delay == Duration::ZERO {
+                            State::Opened {
+                                cursor_position,
+                                over_overlay: false,
+                            }
+                        } else {
+                            shell.request_redraw_at(now + self.delay);
+
+                            State::Idle {
+                                pressed,
+                                hovered_at: Some(now),
+                            }
+                        }
+                    }
+                    (
+                        State::Idle {
+                            hovered_at: Some(at),
+                            ..
+                        },
+                        _,
+                    ) if at.elapsed() < self.delay => {
+                        shell.request_redraw_at(now + self.delay - at.elapsed());
+                        *state
+                    }
+                    (
+                        State::Idle {
+                            hovered_at: Some(_),
+                            ..
+                        },
+                        Some(cursor_position),
+                    ) => {
+                        shell.invalidate_layout();
+                        State::Opened {
+                            cursor_position,
+                            over_overlay: false,
+                        }
+                    }
+                    _ => *state,
+                }
             } else {
                 if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event
                     && self.open == Open::LeftPointer
-                    && matches!(*state, State::Idle { pressed } if pressed)
+                    && matches!(*state, State::Idle { pressed, .. } if pressed)
                 {
                     cursor
                         .position_over(layout.bounds())
@@ -350,7 +403,7 @@ where
                 } else if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Right)) =
                     event
                     && self.open == Open::RightPointer
-                    && matches!(*state, State::Idle { pressed } if pressed)
+                    && matches!(*state, State::Idle { pressed, .. } if pressed)
                 {
                     cursor
                         .position_over(layout.bounds())
@@ -364,7 +417,10 @@ where
                 {
                     cursor
                         .position_over(layout.bounds())
-                        .map(|_| State::Idle { pressed: true })
+                        .map(|_| State::Idle {
+                            pressed: true,
+                            hovered_at: None,
+                        })
                         .unwrap_or_default()
                 } else if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) =
                     event
@@ -372,7 +428,10 @@ where
                 {
                     cursor
                         .position_over(layout.bounds())
-                        .map(|_| State::Idle { pressed: true })
+                        .map(|_| State::Idle {
+                            pressed: true,
+                            hovered_at: None,
+                        })
                         .unwrap_or_default()
                 } else {
                     *state
@@ -393,7 +452,7 @@ where
                 self.status = Status::Disabled;
             } else {
                 match state {
-                    State::Idle { pressed } => {
+                    State::Idle { pressed, .. } => {
                         let status = if *pressed {
                             match self.open {
                                 Open::Hovered => Status::Idle,
@@ -431,7 +490,6 @@ where
             layout.children().next().unwrap(),
             cursor,
             renderer,
-            clipboard,
             shell,
             viewport,
         );
@@ -634,6 +692,7 @@ pub enum Open {
 enum State {
     Idle {
         pressed: bool,
+        hovered_at: Option<Instant>,
     },
     Opened {
         cursor_position: Point,
@@ -643,7 +702,10 @@ enum State {
 
 impl Default for State {
     fn default() -> Self {
-        State::Idle { pressed: false }
+        State::Idle {
+            pressed: false,
+            hovered_at: None,
+        }
     }
 }
 
@@ -736,7 +798,7 @@ impl Catalog for Theme {
 
 /// A primary button; denoting a main action.
 pub fn primary(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.primary.base);
 
     match status {
@@ -751,7 +813,7 @@ pub fn primary(theme: &Theme, status: Status) -> Style {
 
 /// A secondary button; denoting a complementary action.
 pub fn secondary(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.secondary.base);
 
     match status {
@@ -766,7 +828,7 @@ pub fn secondary(theme: &Theme, status: Status) -> Style {
 
 /// A success button; denoting a good outcome.
 pub fn success(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.success.base);
 
     match status {
@@ -781,7 +843,7 @@ pub fn success(theme: &Theme, status: Status) -> Style {
 
 /// A warning button; denoting a risky action.
 pub fn warning(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.warning.base);
 
     match status {
@@ -796,7 +858,7 @@ pub fn warning(theme: &Theme, status: Status) -> Style {
 
 /// A danger button; denoting a destructive action.
 pub fn danger(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.danger.base);
 
     match status {
@@ -811,7 +873,7 @@ pub fn danger(theme: &Theme, status: Status) -> Style {
 
 /// A text button; useful for links.
 pub fn text(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
 
     let base = Style {
         text_color: palette.background.base.text,
@@ -830,7 +892,7 @@ pub fn text(theme: &Theme, status: Status) -> Style {
 
 /// A button using background shades.
 pub fn background(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.background.base);
 
     match status {
@@ -849,7 +911,7 @@ pub fn background(theme: &Theme, status: Status) -> Style {
 
 /// A subtle button using weak background shades.
 pub fn subtle(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let base = styled(palette.background.weakest);
 
     match status {
@@ -1009,7 +1071,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
     ) {
         if let Event::Mouse(_) | Event::Window(window::Event::RedrawRequested(_)) = event {
@@ -1058,7 +1119,6 @@ where
             layout.children().next().unwrap(),
             cursor,
             renderer,
-            clipboard,
             shell,
             &Rectangle::with_size(Size::INFINITE),
         );

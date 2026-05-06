@@ -21,13 +21,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use iced::{
     Alignment, Background, Border, Color, Element, Event, Length, Padding, Pixels, Point,
     Rectangle, Renderer, Shadow, Size, Theme, Vector,
     advanced::{
-        Clipboard, Layout, Overlay, Renderer as _, Shell, Text, Widget,
+        Layout, Overlay, Renderer as _, Shell, Text, Widget,
         graphics::geometry::Renderer as _,
         layout::{Limits, Node},
         overlay, renderer,
@@ -328,7 +328,6 @@ where
         layout: Layout<'_>,
         cursor: Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
@@ -338,7 +337,6 @@ where
             layout,
             cursor,
             renderer,
-            clipboard,
             shell,
             viewport,
         )
@@ -1308,7 +1306,6 @@ where
         layout: Layout<'_>,
         cursor: Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<Message>,
     ) {
         if event::Status::Captured == self.on_event_keyboard(event) {
@@ -1358,7 +1355,6 @@ where
             hex_input_layout,
             cursor,
             renderer,
-            clipboard,
             &mut fake_input_shell,
             &layout.bounds(),
         );
@@ -1377,7 +1373,7 @@ where
             // Update the selected color if string can be parsed
             let InternalMessage::ChangeInput(color_str) = &fake_input_messages[0];
 
-            if let Some(color) = iced::Color::parse(color_str) {
+            if let Some(color) = iced::Color::from_str(color_str).ok() {
                 self.state.color = color;
                 if !matches!(self.state.color, Color::BLACK | Color::WHITE) {
                     // Black (0x000000) and White (0xFFFFFF) colors don't have hue, so we keep it as it
@@ -1402,7 +1398,6 @@ where
             cancel_button_layout,
             cursor,
             renderer,
-            clipboard,
             shell,
             &layout.bounds(),
         );
@@ -1424,7 +1419,6 @@ where
             submit_button_layout,
             cursor,
             renderer,
-            clipboard,
             &mut fake_submit_shell,
             &layout.bounds(),
         );
@@ -1628,18 +1622,18 @@ where
     .width(Length::Fill);
 
     let block2 = Column::new()
-        .spacing(PADDING.vertical() / 2.) // Average vertical padding
+        .spacing(PADDING.y() / 2.) // Average vertical padding
         .push(rgba_colors)
         .push(hex_input)
         .push(
             Row::new()
-                .spacing(PADDING.vertical() / 2.)
+                .spacing(PADDING.y() / 2.)
                 .push(cancel_button)
                 .push(submit_button),
         );
 
     let block1 = Column::<Message, Theme, Renderer>::new()
-        .spacing(PADDING.vertical() / 2.) // Average vertical padding
+        .spacing(PADDING.y() / 2.) // Average vertical padding
         .push(
             Row::new().push(
                 container("")
@@ -1710,7 +1704,7 @@ where
         .height(Length::Fill);
 
     let block1_node = Column::<(), Theme, Renderer>::new()
-        .spacing(PADDING.vertical() / 2.) // Average vertical padding
+        .spacing(PADDING.y() / 2.) // Average vertical padding
         .push(
             Row::new()
                 .width(Length::Fill)
@@ -1857,11 +1851,11 @@ where
 
     Node::with_children(
         Size::new(
-            rgba_bounds.width + PADDING.horizontal(),
+            rgba_bounds.width + PADDING.x(),
             rgba_bounds.height
                 + hex_bounds.height
                 + cancel_bounds.height
-                + PADDING.vertical()
+                + PADDING.y()
                 + (2.0 * SPACING.0),
         ),
         vec![rgba_colors, hex_text_layout, cancel_button, submit_button],
@@ -2260,6 +2254,8 @@ fn rgba_color(
                 line_height: text::LineHeight::Relative(1.3),
                 shaping: text::Shaping::Advanced,
                 wrapping: Wrapping::default(),
+                ellipsis: text::Ellipsis::None,
+                hint_factor: renderer.scale_factor(),
             },
             Point::new(
                 label_layout.bounds().center_x(),
@@ -2346,6 +2342,8 @@ fn rgba_color(
                 line_height: iced::widget::text::LineHeight::Relative(1.3),
                 shaping: iced::widget::text::Shaping::Advanced,
                 wrapping: Wrapping::default(),
+                ellipsis: text::Ellipsis::None,
+                hint_factor: renderer.scale_factor(),
             },
             Point::new(
                 value_layout.bounds().center_x(),
@@ -2648,17 +2646,16 @@ impl Catalog for Theme {
 /// The primary theme of a [`ColorPicker`](crate::widget::color_picker::ColorPicker).
 #[must_use]
 pub fn primary(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
-    let foreground = theme.palette();
+    let palette = theme.palette();
 
     let base = Style {
         background: palette.background.base.color.into(),
         border_radius: 15.0,
         border_width: 1.0,
-        border_color: foreground.text,
+        border_color: palette.background.base.text,
         bar_border_radius: 5.0,
         bar_border_width: 1.0,
-        bar_border_color: foreground.text,
+        bar_border_color: palette.background.base.text,
     };
 
     match status {

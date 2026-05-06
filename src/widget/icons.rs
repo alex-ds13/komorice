@@ -1,8 +1,7 @@
 // Generated automatically by iced_fontello at build time.
 // Do not edit manually. Source: ../../assets/icons.toml
 // d62494e001516d81ddf612ebbd24ee973452dbfe3df6d07a0d1327be7211875e
-use iced::widget::{text, Text};
-use iced::Font;
+use iced::widget::{Text, text};
 
 pub const FONT: &[u8] = include_bytes!("../../assets/icons.ttf");
 
@@ -103,5 +102,5 @@ pub fn warning<'a>() -> Text<'a> {
 }
 
 fn icon(codepoint: &str) -> Text<'_> {
-    text(codepoint).font(Font::with_name("icons"))
+    text(codepoint).font("icons")
 }

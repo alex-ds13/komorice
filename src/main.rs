@@ -38,15 +38,15 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 lazy_static! {
     static ref KOMOREBI_VERSION: &'static str = "v0.1.39";
-    static ref DEFAULT_FONT: Font = Font::with_name("Segoe UI");
-    static ref EMOJI_FONT: Font = Font::with_name("Segoe UI Emoji");
+    static ref DEFAULT_FONT: Font = Font::with_family("Segoe UI");
+    static ref EMOJI_FONT: Font = Font::with_family("Segoe UI Emoji");
     static ref ITALIC_FONT: Font = {
-        let mut f = Font::with_name("Segoe UI");
+        let mut f = Font::with_family("Segoe UI");
         f.style = iced::font::Style::Italic;
         f
     };
     static ref BOLD_FONT: Font = {
-        let mut f = Font::with_name("Segoe UI");
+        let mut f = Font::with_family("Segoe UI");
         f.weight = iced::font::Weight::Bold;
         f
     };
@@ -885,11 +885,9 @@ impl Komorice {
             .style(button::secondary);
         let stop_showing = container(
             Element::from(
-                checkbox(
-                    "Don't show this message again",
-                    !self.settings.show_save_warning,
-                )
-                .on_toggle(|v| settings::Message::ChangedShowSaveWarning(!v)),
+                checkbox(!self.settings.show_save_warning)
+                    .label("Don't show this message again")
+                    .on_toggle(|v| settings::Message::ChangedShowSaveWarning(!v)),
             )
             .map(Message::Settings),
         )

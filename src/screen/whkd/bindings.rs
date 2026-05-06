@@ -43,7 +43,7 @@ pub enum Message {
     OpenNewBindingKeysModal,
     OpenBindingKeysModal(usize),
     CloseModal(bool),
-    UrlClicked(markdown::Url),
+    UriClicked(markdown::Uri),
 }
 
 #[derive(Clone, Debug)]
@@ -191,7 +191,7 @@ impl Bindings {
                 self.editing_states.remove(&idx);
                 self.editing_contents.remove(&idx);
             }
-            Message::UrlClicked(url) => {
+            Message::UriClicked(url) => {
                 println!("Clicked url: {}", url);
             }
             Message::ChangeNewBindingMod(pos, modifier) => {
@@ -500,7 +500,7 @@ impl Bindings {
                         .padding(padding::all(2).left(4).right(4))
                         .style(move |t: &Theme| {
                             if duplicated_keys {
-                                let warning = t.extended_palette().warning;
+                                let warning = t.palette().warning;
                                 container::Style {
                                     background: Some(warning.base.color.into()),
                                     text_color: Some(warning.base.text),
@@ -570,6 +570,7 @@ impl Bindings {
                             location,
                             modifiers,
                             text: _,
+                            repeat: _,
                         } => {
                             let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
                             if !k.is_empty() {
@@ -652,7 +653,9 @@ fn mod_choose<'a>(
                 .map(|m| m.to_lowercase())
                 .any(|m| &m == v)
         });
-        pick_list(options, Some(k), move |v| on_mod_change_clone(pos, v)).into()
+        pick_list(Some(k), options, String::to_string)
+            .on_select(move |v| on_mod_change_clone(pos, v))
+            .into()
     };
     if let Some(k) = binding_mods.get(pos) {
         Some(pl((*k).clone()))
@@ -788,7 +791,7 @@ fn command_edit<'a>(
         if let Some(items) =
             commands_desc.get(main_cmd.strip_prefix("komorebic ").unwrap_or_default())
         {
-            vec![selector, markdown(items, theme).map(Message::UrlClicked)]
+            vec![selector, markdown(items, theme).map(Message::UriClicked)]
         } else {
             vec![selector]
         }

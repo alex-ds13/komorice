@@ -452,10 +452,11 @@ fn rule_view<'a>(
 ) -> Row<'a, Message> {
     let kind: Element<_> = if edit {
         pick_list(
-            &APPLICATION_IDENTIFIER_OPTIONS[..],
             Some(rule.kind),
-            change_kind,
+            &APPLICATION_IDENTIFIER_OPTIONS[..],
+            ApplicationIdentifier::to_string,
         )
+        .on_select(change_kind)
         .into()
     } else {
         row![
@@ -470,10 +471,11 @@ fn rule_view<'a>(
     };
     let matching_strategy: Element<_> = if edit {
         pick_list(
-            &MATCHING_STRATEGY_OPTIONS[..],
             rule.matching_strategy.as_ref(),
-            change_matching_strategy,
+            &MATCHING_STRATEGY_OPTIONS[..],
+            MatchingStrategy::to_string,
         )
+        .on_select(change_matching_strategy)
         .width(Fill)
         .into()
     } else {

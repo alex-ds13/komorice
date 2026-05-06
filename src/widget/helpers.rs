@@ -31,7 +31,7 @@ pub fn button_with_icon<'a, Message: 'a>(
 
 pub fn button_separator<'a>() -> Rule<'a> {
     rule::vertical(1.0).style(|t: &Theme| rule::Style {
-        color: t.extended_palette().primary.base.color,
+        color: t.palette().primary.base.color,
         ..rule::default(t)
     })
 }

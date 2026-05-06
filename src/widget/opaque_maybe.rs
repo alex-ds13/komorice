@@ -99,7 +99,6 @@ where
             layout: Layout<'_>,
             cursor: mouse::Cursor,
             renderer: &Renderer,
-            clipboard: &mut dyn core::Clipboard,
             shell: &mut Shell<'_, Message>,
             viewport: &Rectangle,
         ) {
@@ -113,9 +112,9 @@ where
                 cursor = cursor.levitate();
             }
 
-            self.content.as_widget_mut().update(
-                state, event, layout, cursor, renderer, clipboard, shell, viewport,
-            );
+            self.content
+                .as_widget_mut()
+                .update(state, event, layout, cursor, renderer, shell, viewport);
         }
 
         fn mouse_interaction(

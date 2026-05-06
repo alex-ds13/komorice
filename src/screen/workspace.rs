@@ -888,24 +888,25 @@ fn layout_rule<'a>(
     let number = opt_helpers::number_simple(limit, limit_message).width(50);
     let choose = container(
         pick_list(
-            &LAYOUT_OPTIONS_WITHOUT_NONE[..],
             Some(layout),
-            layout_message,
+            &LAYOUT_OPTIONS_WITHOUT_NONE[..],
+            Layout::to_string,
         )
-        .font(ICONS)
-        .text_shaping(text::Shaping::Advanced),
+        .on_select(layout_message)
+        .font(*ICONS)
+        .shaping(text::Shaping::Advanced),
     )
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
         button(icons::plus().style(|t| text::Style {
-            color: t.palette().primary.into(),
+            color: t.palette().primary.base.color.into(),
         }))
         .on_press(Message::AddNewLayoutRule)
         .style(button::text)
     } else {
         button(icons::delete().style(|t| text::Style {
-            color: t.palette().danger.into(),
+            color: t.palette().danger.base.color.into(),
         }))
         .on_press(Message::RemoveLayoutRule(limit))
         .style(button::text)
@@ -986,27 +987,28 @@ fn behaviour_rule<'a>(
     let number = opt_helpers::number_simple(limit, limit_message).width(50);
     let choose = container(
         pick_list(
+            Some(behaviour),
             [
                 WindowContainerBehaviour::Create,
                 WindowContainerBehaviour::Append,
             ],
-            Some(behaviour),
-            behaviour_message,
+            WindowContainerBehaviour::to_string,
         )
-        .font(ICONS)
-        .text_shaping(text::Shaping::Advanced),
+        .on_select(behaviour_message)
+        .font(*ICONS)
+        .shaping(text::Shaping::Advanced),
     )
     .max_width(200)
     .width(Fill);
     let final_button = if is_add {
         button(icons::plus().style(|t| text::Style {
-            color: t.palette().primary.into(),
+            color: t.palette().primary.base.color.into(),
         }))
         .on_press(Message::AddNewBehaviourRule)
         .style(button::text)
     } else {
         button(icons::delete().style(|t| text::Style {
-            color: t.palette().danger.into(),
+            color: t.palette().danger.base.color.into(),
         }))
         .on_press(Message::RemoveBehaviourRule(limit))
         .style(button::text)

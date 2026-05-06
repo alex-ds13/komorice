@@ -39,7 +39,7 @@ pub enum Message {
     KeyPress(String, String),
     KeyRelease(String, String),
     Navigate(NavMessage),
-    UrlClicked(markdown::Url),
+    UriClicked(markdown::Uri),
 }
 
 #[derive(Clone, Debug)]
@@ -167,7 +167,7 @@ impl Whkd {
                 NavMessage::Forward => {}
                 NavMessage::Back => {}
             },
-            Message::UrlClicked(url) => {
+            Message::UriClicked(url) => {
                 log::warn!("Clicked url: {}", url);
             }
         }
@@ -242,6 +242,7 @@ impl Whkd {
                             location,
                             modifiers,
                             text: _,
+                            repeat: _,
                         } => {
                             let (k, m) = get_vk_key_mods(key, physical_key, location, modifiers);
                             if !k.is_empty() {
@@ -310,7 +311,9 @@ fn mod_choose<'a>(binding_mods: &[String], pos: usize) -> Option<Element<'a, Mes
                 .map(|m| m.to_lowercase())
                 .any(|m| &m == v)
         });
-        pick_list(options, Some(k), move |v| Message::PBMod(pos, v)).into()
+        pick_list(Some(k), options, String::to_string)
+            .on_select(move |v| Message::PBMod(pos, v))
+            .into()
     };
     if let Some(k) = binding_mods.get(pos) {
         Some(pl((*k).clone()))
@@ -426,7 +429,7 @@ fn hook_custom<'a>(
         if let Some(items) =
             commands_desc.get(hook_command.strip_prefix("komorebic ").unwrap_or_default())
         {
-            vec![selector, markdown(items, theme).map(Message::UrlClicked)]
+            vec![selector, markdown(items, theme).map(Message::UriClicked)]
         } else {
             vec![selector]
         }

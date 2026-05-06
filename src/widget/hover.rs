@@ -5,7 +5,7 @@ use core::mouse;
 use core::renderer;
 use core::widget::operation::{self, Operation};
 use core::widget::tree::{self, Tree};
-use core::{Event, Length, Rectangle, Shell, Size, Widget, Element, window};
+use core::{Element, Event, Length, Rectangle, Shell, Size, Widget, window};
 
 pub struct Hover<'a, Message, Theme, Renderer> {
     base: Element<'a, Message, Theme, Renderer>,
@@ -113,9 +113,7 @@ where
                 viewport,
             );
 
-            if cursor.is_over(layout.bounds())
-                || self.is_top_focused
-                || self.is_top_overlay_active
+            if cursor.is_over(layout.bounds()) || self.is_top_focused || self.is_top_overlay_active
             {
                 let (top_layout, top_tree) = children.next().unwrap();
 
@@ -153,7 +151,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn core::Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
@@ -193,7 +190,7 @@ where
             let redraw_request = shell.redraw_request();
 
             self.top.as_widget_mut().update(
-                top_tree, event, top_layout, cursor, renderer, clipboard, shell, viewport,
+                top_tree, event, top_layout, cursor, renderer, shell, viewport,
             );
 
             // Ignore redraw requests of invisible content
@@ -212,7 +209,6 @@ where
             base_layout,
             cursor,
             renderer,
-            clipboard,
             shell,
             viewport,
         );

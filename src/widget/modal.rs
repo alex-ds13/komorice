@@ -30,7 +30,7 @@ where
 }
 
 pub fn default(theme: &Theme) -> container::Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
 
     let background = Some(
         Color {
@@ -53,7 +53,7 @@ pub fn default(theme: &Theme) -> container::Style {
 }
 
 pub fn red(theme: &Theme) -> container::Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
 
     let background = Some(
         Color {

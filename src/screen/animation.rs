@@ -262,8 +262,11 @@ impl Animation {
                                 row![
                                     column![
                                         pick_list(
-                                            [ConfigType::Global, ConfigType::PerType],
                                             Some(enable_config_type.clone()),
+                                            [ConfigType::Global, ConfigType::PerType],
+                                            ConfigType::to_string,
+                                        )
+                                        .on_select(
                                             Message::ToggleEnableConfigType,
                                         ),
                                         opt_helpers::description_text(if matches!(enable_config_type, ConfigType::Global) {
@@ -324,10 +327,11 @@ impl Animation {
                             row![
                                 column![
                                     pick_list(
-                                        [ConfigType::Global, ConfigType::PerType],
                                         Some(duration_config_type.clone()),
-                                        Message::ToggleDurationConfigType,
-                                    ),
+                                        [ConfigType::Global, ConfigType::PerType],
+                                        ConfigType::to_string,
+                                    )
+                                    .on_select(Message::ToggleDurationConfigType),
                                     opt_helpers::description_text(
                                         if matches!(duration_config_type, ConfigType::Global) {
                                             "Set Duration for all types of animations"
@@ -429,10 +433,11 @@ impl Animation {
                             row![
                                 column![
                                     pick_list(
-                                        [ConfigType::Global, ConfigType::PerType],
                                         Some(style_config_type.clone()),
-                                        Message::ToggleStyleConfigType,
-                                    ),
+                                        [ConfigType::Global, ConfigType::PerType],
+                                        ConfigType::to_string,
+                                    )
+                                    .on_select(Message::ToggleStyleConfigType),
                                     opt_helpers::description_text(
                                         if matches!(style_config_type, ConfigType::Global) {
                                             "Set Style for all types of animations"
@@ -446,7 +451,12 @@ impl Animation {
                             ]
                             .push(config.style.as_ref().map(|s| -> Element<Message> {
                                 if let PerAnimationPrefixConfig::Global(style) = s {
-                                    pick_list(*ALL_ANIMATIONS_STYLES, Some(style), |s| {
+                                    pick_list(
+                                        Some(style),
+                                        *ALL_ANIMATIONS_STYLES,
+                                        AnimationStyle::to_string,
+                                    )
+                                    .on_select(|s| {
                                         Message::ConfigChange(ConfigChange::StyleGlobal(s))
                                     })
                                     .into()

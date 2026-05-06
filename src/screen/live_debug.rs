@@ -189,7 +189,7 @@ impl LiveDebug {
                             ],
                             row![
                                 text("Tile: "),
-                                checkbox("Tile", workspace.tile).on_toggle(move |c| {
+                                checkbox(workspace.tile).label("Tile").on_toggle(move |c| {
                                     Message::ToggleWorkspaceTile(monitor_idx, idx, c)
                                 })
                             ],

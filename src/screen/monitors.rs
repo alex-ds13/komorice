@@ -380,7 +380,8 @@ impl Monitors {
         let contents = scrollable(col).id(Id::new("monitors_scrollable"));
 
         let show_monitors_display = container(
-            checkbox("Show Monitors", !self.show_monitors_list)
+            checkbox(!self.show_monitors_list)
+                .label("Show Monitors")
                 .on_toggle(|_| Message::ToggleShowMonitorsList),
         )
         .padding(padding::top(10));
@@ -495,13 +496,13 @@ fn index_preference<'a>(
         .width(Fill);
     let final_button = if is_add {
         button(icons::plus().style(|t| text::Style {
-            color: t.palette().primary.into(),
+            color: t.palette().primary.base.color.into(),
         }))
         .on_press(Message::AddNewIndexPreference)
         .style(button::text)
     } else {
         button(icons::delete().style(|t| text::Style {
-            color: t.palette().danger.into(),
+            color: t.palette().danger.base.color.into(),
         }))
         .on_press(Message::RemoveIndexPreference(index))
         .style(button::text)

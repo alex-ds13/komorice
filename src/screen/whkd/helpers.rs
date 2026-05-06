@@ -37,7 +37,7 @@ pub fn modal_content<'a, Message: Clone + 'a>(
                     .center_x(Shrink)
                     .padding(padding::left(10).right(10))
                     .style(|t: &iced::Theme| {
-                        let palette = t.extended_palette();
+                        let palette = t.palette();
                         container::Style {
                             background: Some(palette.background.weaker.color.into()),
                             ..container::transparent(t)

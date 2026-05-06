@@ -80,7 +80,7 @@ impl<'a, Message: Clone + 'a> PickerOptions<Message> {
 }
 
 pub fn opt_box_style(theme: &iced::Theme) -> container::Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let background = if palette.is_dark {
         Some(palette.background.weak.color.scale_alpha(0.35).into())
     } else {
@@ -111,7 +111,7 @@ pub fn opt_box_style_top(theme: &iced::Theme) -> container::Style {
 }
 
 pub fn opt_box_style_bottom(theme: &iced::Theme) -> container::Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
     let background = if palette.is_dark {
         Some(palette.background.weak.color.scale_alpha(0.15).into())
     } else {
@@ -135,7 +135,7 @@ pub fn opt_box<'a, Message: 'a>(
 
 pub fn reset_button<'a, Message>(message: Option<Message>) -> Button<'a, Message> {
     button(icons::back().size(13).style(|t: &iced::Theme| text::Style {
-        color: Some(t.extended_palette().primary.strong.color),
+        color: Some(t.palette().primary.strong.color),
     }))
     .on_press_maybe(message)
     .padding(padding::all(2.5))
@@ -155,7 +155,7 @@ pub fn disable_checkbox<'a, Message: Clone + 'a, F: Fn(bool) -> Message + Clone 
         let mut area = mouse_area(
             row![
                 text(args.label.unwrap_or_default()),
-                checkbox("", args.disable)
+                checkbox(args.disable)
                     .spacing(0)
                     .on_toggle_maybe((!args.blocked).then_some(args.on_toggle.clone()))
             ]
@@ -172,7 +172,7 @@ pub fn disable_checkbox<'a, Message: Clone + 'a, F: Fn(bool) -> Message + Clone 
 
 pub fn to_description_text(t: Text) -> Text {
     t.style(|t: &iced::Theme| {
-        let palette = t.extended_palette();
+        let palette = t.palette();
         let color = if palette.is_dark {
             Some(palette.secondary.strong.color)
         } else {
@@ -817,7 +817,9 @@ pub fn bool<'a, Message: 'a + Clone>(
     opt_custom_el(
         name,
         description,
-        checkbox(if value { "On" } else { "Off" }, value).on_toggle(on_toggle),
+        checkbox(value)
+            .label(if value { "On" } else { "Off" })
+            .on_toggle(on_toggle),
     )
 }
 
@@ -834,8 +836,9 @@ pub fn bool_with_disable<'a, Message: Clone + 'a, F: Fn(bool) -> Message + Clone
 ) -> Element<'a, Message> {
     let on_toggle_maybe =
         (!matches!(&disable_args, Some(args) if args.disable)).then_some(on_toggle);
-    let element =
-        checkbox(if value { "On" } else { "Off" }, value).on_toggle_maybe(on_toggle_maybe);
+    let element = checkbox(value)
+        .label(if value { "On" } else { "Off" })
+        .on_toggle_maybe(on_toggle_maybe);
 
     opt_custom_el_disable_default(name, description, element, false, None, disable_args)
 }
@@ -963,7 +966,11 @@ where
     V: std::borrow::Borrow<T> + 'a,
     L: std::borrow::Borrow<[T]> + 'a,
 {
-    opt_custom_el(name, description, pick_list(options, selected, on_selected))
+    opt_custom_el(
+        name,
+        description,
+        pick_list(selected, options, T::to_string).on_select(on_selected),
+    )
 }
 
 ///Creates a `pick_list` with `name` as label and a disable checkbox which allows
@@ -986,7 +993,7 @@ where
     opt_custom_el_disable_default(
         name,
         description,
-        pick_list(options, selected, on_selected),
+        pick_list(selected, options, T::to_string).on_select(on_selected),
         false,
         None,
         disable_args,
@@ -1046,9 +1053,10 @@ where
             .spacing(10)
             .into()
     });
-    let element = pick_list(options, selected, move |v| on_selected(Some(v)))
-        .font(ICONS)
-        .text_shaping(text::Shaping::Advanced);
+    let element = pick_list(selected, options, T::to_string)
+        .on_select(move |v| on_selected(Some(v)))
+        .font(*ICONS)
+        .shaping(text::Shaping::Advanced);
 
     opt_custom_el_disable_default(
         name,
@@ -1127,14 +1135,15 @@ where
             .into()
     });
     let color_el = color_picker.map(|picker| picker.picker());
-    let pick = pick_list(options, selected, move |v| on_selected(Some(v)))
-        .font(ICONS)
+    let pick = pick_list(selected, options, T::to_string)
+        .on_select(move |v| on_selected(Some(v)))
+        .font(*ICONS)
         .style(move |t, s| pick_list::Style {
             background: bg_color.into(),
             text_color,
             ..pick_list::default(t, s)
         })
-        .text_shaping(text::Shaping::Advanced);
+        .shaping(text::Shaping::Advanced);
     let element = row![color_el, pick].spacing(10);
 
     opt_custom_el_disable_default(
@@ -1229,7 +1238,7 @@ where
         })
         .padding(padding::all(5).left(10).right(10))
         .style(move |t: &iced::Theme| {
-            let palette = t.extended_palette();
+            let palette = t.palette();
             let background = if hovered {
                 // Similar to `button::secondary`
                 Some(Background::Color(palette.secondary.strong.color))
