@@ -1097,48 +1097,47 @@ where
                 state.is_dragging = false;
             }
             Event::Mouse(mouse::Event::CursorMoved { position })
-            | Event::Touch(touch::Event::FingerMoved { position, .. }) => {
-                if state.is_dragging {
-                    let text_layout = layout.children().next().unwrap();
+            | Event::Touch(touch::Event::FingerMoved { position, .. })
+                if state.is_dragging =>
+            {
+                let text_layout = layout.children().next().unwrap();
 
-                    let target = {
-                        let text_bounds = text_layout.bounds();
+                let target = {
+                    let text_bounds = text_layout.bounds();
 
-                        let alignment_offset = alignment_offset(
-                            text_bounds.width,
-                            state.value.raw().min_width(),
-                            self.alignment,
-                        );
+                    let alignment_offset = alignment_offset(
+                        text_bounds.width,
+                        state.value.raw().min_width(),
+                        self.alignment,
+                    );
 
-                        position.x - text_bounds.x - alignment_offset
-                    };
+                    position.x - text_bounds.x - alignment_offset
+                };
 
-                    let value = if self.is_secure {
-                        self.value.secure()
-                    } else {
-                        self.value.clone()
-                    };
+                let value = if self.is_secure {
+                    self.value.secure()
+                } else {
+                    self.value.clone()
+                };
 
-                    let position =
-                        find_cursor_position(text_layout.bounds(), &value, state, target)
-                            .unwrap_or(0);
+                let position =
+                    find_cursor_position(text_layout.bounds(), &value, state, target).unwrap_or(0);
 
-                    let selection_before = state.cursor.selection(&value);
+                let selection_before = state.cursor.selection(&value);
 
-                    state
-                        .cursor
-                        .select_range(state.cursor.start(&value), position);
+                state
+                    .cursor
+                    .select_range(state.cursor.start(&value), position);
 
-                    if let Some(focus) = &mut state.is_focused {
-                        focus.updated_at = Instant::now();
-                    }
-
-                    if selection_before != state.cursor.selection(&value) {
-                        shell.request_redraw();
-                    }
-
-                    shell.capture_event();
+                if let Some(focus) = &mut state.is_focused {
+                    focus.updated_at = Instant::now();
                 }
+
+                if selection_before != state.cursor.selection(&value) {
+                    shell.request_redraw();
+                }
+
+                shell.capture_event();
             }
             Event::Keyboard(keyboard::Event::KeyPressed {
                 key,

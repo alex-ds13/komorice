@@ -1373,7 +1373,7 @@ where
             // Update the selected color if string can be parsed
             let InternalMessage::ChangeInput(color_str) = &fake_input_messages[0];
 
-            if let Some(color) = iced::Color::from_str(color_str).ok() {
+            if let Ok(color) = iced::Color::from_str(color_str) {
                 self.state.color = color;
                 if !matches!(self.state.color, Color::BLACK | Color::WHITE) {
                     // Black (0x000000) and White (0xFFFFFF) colors don't have hue, so we keep it as it

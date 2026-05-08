@@ -629,7 +629,7 @@ impl AppBindings {
                     container(
                         widget::input(
                             "",
-                            binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
+                            binding.process_name.as_deref().unwrap_or(""),
                             move |v| Message::ChangeNewBindingProcess(binding_idx, v),
                             None,
                         )
@@ -844,7 +844,7 @@ impl AppBindings {
                             container(
                                 widget::input(
                                     "",
-                                    binding.process_name.as_ref().map(String::as_str).unwrap_or(""),
+                                    binding.process_name.as_deref().unwrap_or(""),
                                     move |v| Message::ChangeBindingProcess(idx, binding_idx, v),
                                     None,
                                 )
@@ -1023,8 +1023,7 @@ impl AppBindings {
                         |col, (_binding_idx, binding)| {
                             let process_name = binding
                                 .process_name
-                                .as_ref()
-                                .map(String::as_str)
+                                .as_deref()
                                 .unwrap_or("");
                             let is_default = process_name == "Default";
                             let process = container(if is_default {

@@ -730,7 +730,7 @@ impl Komorice {
             ];
 
             let main_content = row![sidebar, rule::vertical(2.0), right_col].padding(10);
-            let main_content = if let Some(screen_modal) = main_screen.modal {
+            if let Some(screen_modal) = main_screen.modal {
                 widget::modal(
                     main_content,
                     screen_modal.element,
@@ -738,8 +738,7 @@ impl Komorice {
                 )
             } else {
                 main_content.into()
-            };
-            main_content
+            }
         } else {
             if let Some(screen_modal) = main_screen.modal {
                 widget::modal(

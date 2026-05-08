@@ -281,7 +281,7 @@ impl Animation {
                                     iced::widget::toggler(matches!(&config.enabled, PerAnimationPrefixConfig::Global(v) if v == &true))
                                         .on_toggle(|v| Message::ConfigChange(ConfigChange::EnableGlobal(v)))
                                         .label(match config.enabled {
-                                            PerAnimationPrefixConfig::Global(v) => if v { "On" } else { "Off" },
+                                            PerAnimationPrefixConfig::Global(v) if v => "On",
                                             _ => "Off",
                                         })
                                         .into()
