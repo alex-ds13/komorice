@@ -1,19 +1,7 @@
-pub mod animation;
-pub mod border;
-pub mod general;
 pub mod home;
-pub mod live_debug;
-pub mod monitor;
-pub mod monitors;
-pub mod rule;
-pub mod rules;
+pub mod komorebi;
 pub mod sidebar;
-pub mod stackbar;
-pub mod theme;
-pub mod transparency;
-pub mod wallpaper;
 pub mod whkd;
-pub mod workspace;
 
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
@@ -87,7 +75,7 @@ impl Configuration {
     pub fn path(&self) -> PathBuf {
         match self.config_type {
             ConfigType::Komorebi => match &self.komorebi_state {
-                ConfigState::Active => crate::config::config_path(),
+                ConfigState::Active => crate::komorebi::config_path(),
                 ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf.clone(),
             },
             ConfigType::Whkd => match &self.whkd_state {
@@ -100,7 +88,7 @@ impl Configuration {
     pub fn parent_path(&self) -> PathBuf {
         match self.config_type {
             ConfigType::Komorebi => match &self.komorebi_state {
-                ConfigState::Active => crate::config::home_path().0,
+                ConfigState::Active => crate::komorebi::home_path().0,
                 ConfigState::Loaded(path_buf) | ConfigState::New(path_buf) => path_buf
                     .parent()
                     .map(|p| p.to_path_buf())

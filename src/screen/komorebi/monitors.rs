@@ -5,7 +5,7 @@ use super::{
 
 use crate::{
     BOLD_FONT,
-    config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
+    komorebi::config::{DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     screen::View,
     widget::{
         icons, monitors_viewer,

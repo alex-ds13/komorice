@@ -1,4 +1,6 @@
-use crate::config::{DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME, DEFAULT_CUSTOM_THEME};
+use crate::komorebi::config::{
+    DEFAULT_BASE16_THEME, DEFAULT_CATPPUCCIN_THEME, DEFAULT_CUSTOM_THEME,
+};
 use crate::widget::opt_helpers::{self, DisableArgs};
 
 use std::collections::HashMap;

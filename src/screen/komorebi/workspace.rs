@@ -1,13 +1,13 @@
-use super::rule;
-
-use crate::config::{DEFAULT_CONFIG, DEFAULT_WORKSPACE_CONFIG};
-use crate::komo_interop::layout::{
-    LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE, Layout,
-};
-use crate::screen::{
-    View,
+use super::{
+    rule,
     wallpaper::{self, WallpaperScreen},
 };
+
+use crate::komorebi::config::{DEFAULT_CONFIG, DEFAULT_WORKSPACE_CONFIG};
+use crate::komorebi::layout::{
+    LAYOUT_FLIP_OPTIONS, LAYOUT_OPTIONS, LAYOUT_OPTIONS_WITHOUT_NONE, Layout,
+};
+use crate::screen::View;
 use crate::utils::{DisplayOption, DisplayOptionCustom};
 use crate::widget::opt_helpers::{DisableArgs, description_text as t, to_description_text as td};
 use crate::widget::{ICONS, icons, opt_helpers};

@@ -1,7 +1,7 @@
 use crate::{
     BOLD_FONT,
     apperror::AppError,
-    monitors::DisplayInfo,
+    screen::komorebi::monitors::DisplayInfo,
     widget::{monitors_viewer, opt_helpers},
 };
 

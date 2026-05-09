@@ -1,6 +1,6 @@
 use super::rule::{self, Rule};
 
-use crate::config::DEFAULT_CONFIG;
+use crate::komorebi::DEFAULT_CONFIG;
 use crate::{
     BOLD_FONT,
     widget::opt_helpers::{self, DisableArgs},

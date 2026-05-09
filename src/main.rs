@@ -3,8 +3,7 @@
     windows_subsystem = "windows"
 )]
 mod apperror;
-mod config;
-mod komo_interop;
+mod komorebi;
 mod screen;
 mod settings;
 mod utils;
@@ -12,14 +11,9 @@ mod whkd;
 mod widget;
 
 use crate::apperror::{AppError, AppErrorKind};
-use crate::config::DEFAULT_CONFIG;
-use crate::screen::{
-    ConfigState, ConfigType, Configuration, Screen, View, animation, border, general, home,
-    live_debug, monitors, rules, sidebar, stackbar, theme, transparency,
-};
+use crate::screen::{ConfigState, ConfigType, Configuration, Screen, View, home, sidebar};
 use crate::widget::{button_with_icon, icons, opt_helpers::to_description_text, tooltip};
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -114,119 +108,51 @@ fn main() -> iced::Result {
 #[derive(Debug, Clone)]
 enum Message {
     // Error Messages
-    AppError(AppError),
     OpenErrorsModal,
     CloseErrorsModal,
     ClearErrors,
 
     // View/Screen related Messages
     Home(home::Message),
-    Animation(animation::Message),
-    Border(border::Message),
-    General(general::Message),
-    LiveDebug(live_debug::Message),
-    Monitors(monitors::Message),
-    Rules(rules::Message),
     Sidebar(sidebar::Message),
-    Stackbar(stackbar::Message),
-    Theme(theme::Message),
-    Transparency(transparency::Message),
     Settings(settings::Message),
+    Komorebi(komorebi::Message),
     Whkd(whkd::Message),
-
-    // Config related Messages
-    LoadedConfig(Arc<komorebi_client::StaticConfig>),
-    FailedToLoadConfig(AppError),
-    ConfigFileWatcherTx(smol::channel::Sender<config::Input>),
-    ConfigWatcherError(AppError),
 
     // Bottom bar messages
     DiscardChanges,
     TrySave,
     ToggleSaveModal,
     Save,
-    Saved,
     ToggleSaveAsDialog,
     SaveAsDialogClosed,
     SaveAs(PathBuf),
     Backup,
-    BackupComplete,
-    BackupFailed(AppError),
     OpenConfigFile,
     OpenConfigFolder,
 }
 
+#[derive(Default)]
 struct Komorice {
     main_screen: Screen,
     configuration: Configuration,
-    display_info: HashMap<usize, monitors::DisplayInfo>,
     sidebar: sidebar::Sidebar,
     home: home::Home,
-    monitors: monitors::Monitors,
-    border: border::Border,
-    general: general::General,
-    stackbar: stackbar::Stackbar,
-    transparency: transparency::Transparency,
-    animation: animation::Animation,
-    theme_screen: theme::Theme,
-    rules: rules::Rules,
-    live_debug: live_debug::LiveDebug,
     settings: settings::Settings,
+    komorebi: komorebi::Komorebi,
     whkd: whkd::Whkd,
-    config: komorebi_client::StaticConfig,
-    loaded_config: Arc<komorebi_client::StaticConfig>,
-    is_dirty: bool,
-    config_watcher_tx: Option<smol::channel::Sender<config::Input>>,
     errors: Vec<AppError>,
     show_save_modal: bool,
     show_save_as_dialog: bool,
     show_errors_modal: bool,
 }
 
-impl Default for Komorice {
-    fn default() -> Self {
-        Self {
-            main_screen: Default::default(),
-            configuration: Default::default(),
-            sidebar: Default::default(),
-            display_info: Default::default(),
-            home: Default::default(),
-            monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
-            border: Default::default(),
-            general: Default::default(),
-            stackbar: Default::default(),
-            transparency: Default::default(),
-            animation: Default::default(),
-            theme_screen: Default::default(),
-            rules: Default::default(),
-            live_debug: Default::default(),
-            settings: Default::default(),
-            whkd: Default::default(),
-            config: DEFAULT_CONFIG.clone(),
-            loaded_config: Arc::new(DEFAULT_CONFIG.clone()),
-            is_dirty: Default::default(),
-            config_watcher_tx: Default::default(),
-            errors: Default::default(),
-            show_save_modal: Default::default(),
-            show_save_as_dialog: Default::default(),
-            show_errors_modal: Default::default(),
-        }
-    }
-}
-
 impl Komorice {
     pub fn initialize() -> (Self, Task<Message>) {
-        let mut config = DEFAULT_CONFIG.clone();
-        let loaded_config = Arc::new(config.clone());
-        let display_info = monitors::get_display_information(&config.display_index_preferences);
-        config::fill_monitors(&mut config, &display_info);
-        let monitors = monitors::Monitors::new(&config);
+        let (komorebi, komorebi_task) = komorebi::Komorebi::init();
         let (whkd, whkd_task) = whkd::Whkd::init();
         let init = Komorice {
-            display_info,
-            config,
-            loaded_config,
-            monitors,
+            komorebi,
             whkd,
             ..Default::default()
         };
@@ -234,9 +160,7 @@ impl Komorice {
             init,
             Task::batch([
                 settings::load_task().map(Message::Settings),
-                config::load_task(config::config_path()),
-                whkd::load_task(whkd::config_path()).map(Message::Whkd),
-                whkd::load_commands().map(Message::Whkd),
+                komorebi_task.map(Message::Komorebi),
                 whkd_task.map(Message::Whkd),
             ]),
         )
@@ -244,7 +168,6 @@ impl Komorice {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::AppError(apperror) => self.add_error(apperror),
             Message::OpenErrorsModal => self.show_errors_modal = true,
             Message::CloseErrorsModal => self.show_errors_modal = false,
             Message::ClearErrors => {
@@ -275,17 +198,11 @@ impl Komorice {
                         match self.configuration.config_type {
                             ConfigType::Komorebi => match &self.configuration.komorebi_state {
                                 ConfigState::Active => Task::none(),
-                                ConfigState::Loaded(path) => config::load_task(path.clone()),
+                                ConfigState::Loaded(path) => {
+                                    komorebi::load_task(path.clone()).map(Message::Komorebi)
+                                }
                                 ConfigState::New(_) => {
-                                    let mut config = DEFAULT_CONFIG.clone();
-                                    self.display_info = monitors::get_display_information(
-                                        &config.display_index_preferences,
-                                    );
-                                    config::fill_monitors(&mut config, &self.display_info);
-                                    self.config = config;
-                                    self.loaded_config = Arc::new(self.config.clone());
-                                    self.monitors = monitors::Monitors::new(&self.config);
-                                    self.is_dirty = false;
+                                    self.komorebi.load_default();
                                     Task::none()
                                 }
                             },
@@ -308,69 +225,6 @@ impl Komorice {
                 };
                 return Task::batch([task.map(Message::Home), action_task]);
             }
-            Message::General(message) => {
-                let (action, task) = self.general.update(message, &mut self.config);
-                let action_task = match action {
-                    general::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::General), action_task]);
-            }
-            Message::Border(message) => {
-                let (action, task) = self.border.update(message, &mut self.config);
-                let action_task = match action {
-                    border::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::Border), action_task]);
-            }
-            Message::LiveDebug(message) => {
-                let (action, task) = self.live_debug.update(message);
-                let action_task = match action {
-                    live_debug::Action::None => Task::none(),
-                    live_debug::Action::Error(apperror) => {
-                        self.add_error(apperror);
-                        Task::none()
-                    }
-                };
-                return Task::batch([task.map(Message::LiveDebug), action_task]);
-            }
-            Message::Monitors(message) => {
-                if let Some(monitors_config) = &mut self.config.monitors {
-                    let (action, task) = self.monitors.update(
-                        message,
-                        monitors_config,
-                        &mut self.config.display_index_preferences,
-                        &mut self.display_info,
-                    );
-                    let action_task = match action {
-                        monitors::Action::None => Task::none(),
-                    };
-                    self.check_changes();
-                    return Task::batch([task.map(Message::Monitors), action_task]);
-                }
-            }
-            Message::Stackbar(message) => {
-                if self.config.stackbar.is_none() {
-                    self.config.stackbar = Some(stackbar::default_stackbar_config());
-                }
-                if let Some(stackbar_config) = self.config.stackbar.as_mut() {
-                    let (action, task) = self.stackbar.update(message, stackbar_config);
-                    let action_task = match action {
-                        stackbar::Action::None => Task::none(),
-                    };
-                    self.check_changes();
-                    return Task::batch([task.map(Message::Stackbar), action_task]);
-                }
-            }
-            Message::Transparency(message) => {
-                let (action, task) = self.transparency.update(message, &mut self.config);
-                let action_task = match action {
-                    transparency::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::Transparency), action_task]);
-            }
             Message::Settings(message) => {
                 let (action, task) = self.settings.update(message);
                 let action_task = match action {
@@ -381,6 +235,47 @@ impl Komorice {
                     }
                 };
                 return Task::batch([task.map(Message::Settings), action_task]);
+            }
+            Message::Komorebi(message) => {
+                let (action, task) = self.komorebi.update(message);
+                let action_task = match action {
+                    komorebi::Action::None => Task::none(),
+                    komorebi::Action::Saved => {
+                        self.configuration.saved_new_komorebi = true;
+                        Task::none()
+                    }
+                    komorebi::Action::Loaded => {
+                        self.configuration.has_loaded_komorebi = true;
+                        if self.home.loading.is_some() {
+                            self.home.loading = None;
+                            self.main_screen = self
+                                .sidebar
+                                .selected_screen(&self.configuration.config_type);
+                        }
+                        Task::none()
+                    }
+                    komorebi::Action::FailedToLoad(app_error) => {
+                        self.add_error(app_error);
+                        if self.home.loading.is_some() {
+                            self.home.loading = None;
+                        }
+                        Task::none()
+                    }
+                    komorebi::Action::BackupComplete => {
+                        //TODO: give feedback to user
+                        tooltip::close(*SAVE_TIP_ID)
+                    }
+                    komorebi::Action::BackupFailed(app_error) => {
+                        self.add_error(app_error);
+                        //TODO: give feedback to user
+                        tooltip::close(*SAVE_TIP_ID)
+                    }
+                    komorebi::Action::AppError(app_error) => {
+                        self.add_error(app_error);
+                        Task::none()
+                    }
+                };
+                return Task::batch([task.map(Message::Komorebi), action_task]);
             }
             Message::Whkd(message) => {
                 let (action, task) = self.whkd.update(message);
@@ -423,35 +318,6 @@ impl Komorice {
                 };
                 return Task::batch([task.map(Message::Whkd), action_task]);
             }
-            Message::Animation(message) => {
-                if self.config.animation.is_none() {
-                    self.config.animation = Some(animation::default_animations_config());
-                }
-                if let Some(animation_config) = self.config.animation.as_mut() {
-                    let (action, task) = self.animation.update(message, animation_config);
-                    let action_task = match action {
-                        animation::Action::None => Task::none(),
-                    };
-                    self.check_changes();
-                    return Task::batch([task.map(Message::Animation), action_task]);
-                }
-            }
-            Message::Theme(message) => {
-                let (action, task) = self.theme_screen.update(message, &mut self.config);
-                let action_task = match action {
-                    theme::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::Theme), action_task]);
-            }
-            Message::Rules(message) => {
-                let (action, task) = self.rules.update(message, &mut self.config);
-                let action_task = match action {
-                    rules::Action::None => Task::none(),
-                };
-                self.check_changes();
-                return Task::batch([task.map(Message::Rules), action_task]);
-            }
             Message::Sidebar(message) => {
                 let (action, task) = self
                     .sidebar
@@ -463,8 +329,9 @@ impl Komorice {
                         Task::none()
                     }
                     sidebar::Action::UpdateMainScreen(screen) => {
-                        if matches!(self.configuration.config_type, ConfigType::Whkd) {
-                            self.whkd.screen = screen.clone();
+                        match self.configuration.config_type {
+                            ConfigType::Komorebi => self.komorebi.screen = screen.clone(),
+                            ConfigType::Whkd => self.whkd.screen = screen.clone(),
                         }
                         self.main_screen = screen;
                         self.screen_to_start();
@@ -473,34 +340,6 @@ impl Komorice {
                 };
                 return Task::batch([task.map(Message::Sidebar), action_task]);
             }
-            Message::LoadedConfig(config) => {
-                if let Some(config) = Arc::into_inner(config) {
-                    log::debug!("Config Loaded");
-                    log::trace!("Loaded config:\n{config:#?}");
-                    let config = config::merge_default(config);
-                    self.config = config.clone();
-                    self.is_dirty = self.populate_monitors();
-                    self.configuration.has_loaded_komorebi = true;
-                    if self.home.loading.is_some() {
-                        self.home.loading = None;
-                        self.main_screen = self
-                            .sidebar
-                            .selected_screen(&self.configuration.config_type);
-                    }
-                    self.loaded_config = Arc::new(config);
-                    //TODO: show message on app to load external changes
-                }
-            }
-            Message::FailedToLoadConfig(apperror) => {
-                self.add_error(apperror);
-                if self.home.loading.is_some() {
-                    self.home.loading = None;
-                }
-            }
-            Message::ConfigFileWatcherTx(sender) => {
-                self.config_watcher_tx = Some(sender);
-            }
-            Message::ConfigWatcherError(apperror) => self.add_error(apperror),
             Message::TrySave => {
                 if self.settings.show_save_warning {
                     self.show_save_modal = true;
@@ -508,10 +347,11 @@ impl Komorice {
                     match self.configuration.config_type {
                         ConfigType::Komorebi => {
                             self.configuration.saved_new_komorebi = true;
-                            return config::save_task(
-                                self.config.clone(),
+                            return komorebi::save_task(
+                                self.komorebi.config.clone(),
                                 self.configuration.path(),
-                            );
+                            )
+                            .map(Message::Komorebi);
                         }
                         ConfigType::Whkd => {
                             self.configuration.saved_new_whkd = true;
@@ -531,7 +371,11 @@ impl Komorice {
                 self.show_save_modal = false;
                 match self.configuration.config_type {
                     ConfigType::Komorebi => {
-                        return config::save_task(self.config.clone(), self.configuration.path());
+                        return komorebi::save_task(
+                            self.komorebi.config.clone(),
+                            self.configuration.path(),
+                        )
+                        .map(Message::Komorebi);
                     }
                     ConfigType::Whkd => {
                         return whkd::save_task(
@@ -541,14 +385,6 @@ impl Komorice {
                         .map(Message::Whkd);
                     }
                 }
-            }
-            Message::Saved => {
-                if let Some(sender) = &self.config_watcher_tx {
-                    let _ = sender.try_send(config::Input::IgnoreNextEvent);
-                }
-                self.loaded_config = Arc::new(self.config.clone());
-                self.is_dirty = false;
-                self.configuration.saved_new_komorebi = true;
             }
             Message::ToggleSaveAsDialog => {
                 self.show_save_as_dialog = true;
@@ -577,7 +413,11 @@ impl Komorice {
                 match self.configuration.config_type {
                     ConfigType::Komorebi => {
                         self.configuration.komorebi_state = ConfigState::New(file);
-                        return config::save_task(self.config.clone(), self.configuration.path());
+                        return komorebi::save_task(
+                            self.komorebi.config.clone(),
+                            self.configuration.path(),
+                        )
+                        .map(Message::Komorebi);
                     }
                     ConfigType::Whkd => {
                         self.configuration.whkd_state = ConfigState::New(file);
@@ -599,7 +439,11 @@ impl Komorice {
                         .with_extension(format!("{}.bkp", now_str));
                     match self.configuration.config_type {
                         ConfigType::Komorebi => {
-                            return config::backup_task(self.config.clone(), bck_file_name);
+                            return komorebi::backup_task(
+                                self.komorebi.config.clone(),
+                                bck_file_name,
+                            )
+                            .map(Message::Komorebi);
                         }
                         ConfigType::Whkd => {
                             return whkd::backup_task(self.whkd.whkdrc.clone(), bck_file_name)
@@ -608,27 +452,8 @@ impl Komorice {
                     }
                 }
             }
-            Message::BackupComplete => {
-                //TODO: give feedback to user
-                return tooltip::close(*SAVE_TIP_ID);
-            }
-            Message::BackupFailed(apperror) => {
-                self.add_error(apperror);
-                //TODO: give feedback to user
-                return tooltip::close(*SAVE_TIP_ID);
-            }
             Message::DiscardChanges => match self.configuration.config_type {
-                ConfigType::Komorebi => {
-                    let update_display_info = self.config.display_index_preferences
-                        != self.loaded_config.display_index_preferences;
-                    self.config = (*self.loaded_config).clone();
-                    self.is_dirty = false;
-                    if update_display_info {
-                        self.display_info = monitors::get_display_information(
-                            &self.config.display_index_preferences,
-                        );
-                    }
-                }
+                ConfigType::Komorebi => self.komorebi.discard_changes(),
                 ConfigType::Whkd => self.whkd.discard_changes(),
             },
             Message::OpenConfigFile => {
@@ -663,50 +488,15 @@ impl Komorice {
                 .view(&self.configuration, !self.errors.is_empty())
                 .map(Message::Home)
                 .into(),
-            Screen::General => self
-                .general
-                .view(&self.config, self.settings.show_advanced)
-                .map(Message::General),
-            Screen::Monitors => {
-                if let Some(monitors_config) = &self.config.monitors {
-                    self.monitors
-                        .view(
-                            monitors_config,
-                            &self.display_info,
-                            &self.config.display_index_preferences,
-                        )
-                        .map(Message::Monitors)
-                } else {
-                    space::horizontal().into()
-                }
-            }
-            Screen::Border => self.border.view(&self.config).map(Message::Border).into(),
-            Screen::Stackbar => self
-                .stackbar
-                .view(self.config.stackbar.as_ref(), self.config.theme.as_ref())
-                .map(Message::Stackbar)
-                .into(),
-            Screen::Transparency => self
-                .transparency
-                .view(&self.config)
-                .map(Message::Transparency)
-                .into(),
-            Screen::Animations => self
-                .animation
-                .view(self.config.animation.as_ref())
-                .map(Message::Animation)
-                .into(),
-            Screen::Theme => self
-                .theme_screen
-                .view(&self.config)
-                .map(Message::Theme)
-                .into(),
-            Screen::Rules => self
-                .rules
-                .view(&self.config, self.settings.show_advanced)
-                .map(Message::Rules)
-                .into(),
-            Screen::LiveDebug => self.live_debug.view().map(Message::LiveDebug).into(),
+            Screen::Animations
+            | Screen::Border
+            | Screen::General
+            | Screen::LiveDebug
+            | Screen::Monitors
+            | Screen::Rules
+            | Screen::Stackbar
+            | Screen::Theme
+            | Screen::Transparency => self.komorebi.view(&self.settings).map(Message::Komorebi),
             Screen::Settings => self.settings.view().map(Message::Settings).into(),
             Screen::Whkd | Screen::WhkdBindings | Screen::WhkdAppBindings => {
                 self.whkd.view(&self.settings.theme).map(Message::Whkd)
@@ -774,40 +564,19 @@ impl Komorice {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let screen_subscription = match self.main_screen {
-            Screen::Home
-            | Screen::General
-            | Screen::Border
-            | Screen::Stackbar
-            | Screen::Animations
-            | Screen::Theme
-            | Screen::LiveDebug
-            | Screen::Settings => Subscription::none(),
-            Screen::Monitors => self.monitors.subscription().map(Message::Monitors),
-            Screen::Transparency => self.transparency.subscription().map(Message::Transparency),
-            Screen::Rules => self.rules.subscription().map(Message::Rules),
-            Screen::Whkd | Screen::WhkdBindings | Screen::WhkdAppBindings => self
-                .whkd
-                .subscription(&self.configuration)
-                .map(Message::Whkd),
-        };
-
-        let worker = if matches!(self.configuration.config_type, ConfigType::Komorebi)
-            && (!matches!(self.configuration.komorebi_state, ConfigState::New(_))
-                || self.configuration.saved_new_komorebi)
-        {
-            // Only start the worker if has the config_type as `Komorebi` and in case the komorebi state is
-            // `New` the worker should only run if it has already been saved once at least.
-            config::worker(self.configuration.path())
-        } else {
-            Subscription::none()
-        };
+        let komorebi_sub = self
+            .komorebi
+            .subscription(&self.configuration)
+            .map(Message::Komorebi);
+        let whkd_sub = self
+            .whkd
+            .subscription(&self.configuration)
+            .map(Message::Whkd);
 
         Subscription::batch([
-            komo_interop::connect().map(Message::LiveDebug),
-            worker,
             settings::worker().map(Message::Settings),
-            screen_subscription,
+            komorebi_sub,
+            whkd_sub,
         ])
     }
 
@@ -815,26 +584,13 @@ impl Komorice {
         self.settings.theme.clone()
     }
 
-    /// Tries to create a `Monitor` and a `MonitorConfig` for each physical monitor that it detects
-    /// in case the loaded config doesn't have it already.
-    /// Returns wether or not `fill_monitors` made any changes to the config.
-    fn populate_monitors(&mut self) -> bool {
-        self.display_info =
-            monitors::get_display_information(&self.config.display_index_preferences);
-        let made_changes = config::fill_monitors(&mut self.config, &self.display_info);
-        self.monitors = monitors::Monitors::new(&self.config);
-        made_changes
-    }
-
-    fn check_changes(&mut self) {
-        self.is_dirty = self.config != *self.loaded_config;
-    }
-
     fn is_unsaved(&self) -> bool {
         match self.configuration.config_type {
             ConfigType::Komorebi => match self.configuration.komorebi_state {
-                ConfigState::Active | ConfigState::Loaded(_) => self.is_dirty,
-                ConfigState::New(_) => self.is_dirty || !self.configuration.saved_new_komorebi,
+                ConfigState::Active | ConfigState::Loaded(_) => self.komorebi.is_dirty,
+                ConfigState::New(_) => {
+                    self.komorebi.is_dirty || !self.configuration.saved_new_komorebi
+                }
             },
             ConfigType::Whkd => match self.configuration.whkd_state {
                 ConfigState::Active | ConfigState::Loaded(_) => self.whkd.is_dirty,
@@ -845,7 +601,7 @@ impl Komorice {
 
     fn is_dirty(&self) -> bool {
         match self.configuration.config_type {
-            ConfigType::Komorebi => self.is_dirty,
+            ConfigType::Komorebi => self.komorebi.is_dirty,
             ConfigType::Whkd => self.whkd.is_dirty,
         }
     }
@@ -858,15 +614,15 @@ impl Komorice {
                 Screen::Home => {
                     unreachable!("should never try to reset home screen!")
                 }
-                Screen::General => self.general = general::General::default(),
-                Screen::Monitors => self.monitors = monitors::Monitors::new(&self.config),
-                Screen::Border => self.border = border::Border::default(),
-                Screen::Stackbar => self.stackbar = stackbar::Stackbar::default(),
-                Screen::Transparency => self.transparency = transparency::Transparency::default(),
-                Screen::Animations => self.animation = animation::Animation,
-                Screen::Theme => self.theme_screen = theme::Theme::default(),
-                Screen::Rules => self.rules = rules::Rules::default(),
-                Screen::LiveDebug => self.live_debug.goto_start_screen(),
+                Screen::General
+                | Screen::Monitors
+                | Screen::Border
+                | Screen::Stackbar
+                | Screen::Transparency
+                | Screen::Animations
+                | Screen::Theme
+                | Screen::Rules
+                | Screen::LiveDebug => self.komorebi.screen_to_start(),
                 Screen::Settings => {
                     unreachable!("should never try to reset settings screen!")
                 }

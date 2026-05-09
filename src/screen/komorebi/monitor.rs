@@ -1,11 +1,13 @@
 use super::workspace::{self, WorkspaceScreen};
 
 use crate::{
-    config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
-    monitors::TitleLink,
+    komorebi::config::{DEFAULT_CONFIG, DEFAULT_MONITOR_CONFIG, DEFAULT_WORKSPACE_CONFIG},
     screen::{
         Modal,
-        wallpaper::{self, WallpaperScreen},
+        komorebi::{
+            monitors::TitleLink,
+            wallpaper::{self, WallpaperScreen},
+        },
     },
     widget::opt_helpers::{self, DisableArgs, description_text as t},
 };

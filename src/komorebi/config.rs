@@ -1,7 +1,9 @@
+use super::Message;
+
 use crate::{
-    KOMOREBI_VERSION, Message,
+    KOMOREBI_VERSION,
     apperror::AppError,
-    screen::{
+    screen::komorebi::{
         monitors::DisplayInfo,
         wallpaper::{DEFAULT_THEME_OPTIONS, DEFAULT_WALLPAPER},
     },
@@ -1472,9 +1474,7 @@ async fn handle_event(
             log::debug!("FileWatcher: loading options");
             match load(path).await {
                 Ok(loaded_config) => {
-                    let _ = output
-                        .send(Message::LoadedConfig(Arc::new(loaded_config)))
-                        .await;
+                    let _ = output.send(Message::Loaded(Arc::new(loaded_config))).await;
                 }
                 Err(e) => {
                     let _ = output.send(Message::AppError(e)).await;
@@ -1489,8 +1489,8 @@ async fn handle_event(
 
 pub fn load_task(path: PathBuf) -> Task<Message> {
     Task::perform(load(path), |res| match res {
-        Ok(config) => Message::LoadedConfig(Arc::new(config)),
-        Err(apperror) => Message::FailedToLoadConfig(apperror),
+        Ok(config) => Message::Loaded(Arc::new(config)),
+        Err(apperror) => Message::FailedToLoad(apperror),
     })
 }
 

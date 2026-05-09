@@ -1,5 +1,5 @@
 use crate::{
-    config::DEFAULT_CONFIG,
+    komorebi::DEFAULT_CONFIG,
     widget::{
         number_input,
         opt_helpers::{self, DisableArgs},

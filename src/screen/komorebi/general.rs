@@ -3,7 +3,7 @@ use crate::widget::opt_helpers::description_text as t;
 use crate::widget::{self, icons};
 use crate::{
     BOLD_FONT, ITALIC_FONT,
-    config::DEFAULT_CONFIG,
+    komorebi::DEFAULT_CONFIG,
     utils::DisplayOption,
     widget::opt_helpers::{self, DisableArgs},
 };
@@ -637,19 +637,19 @@ impl General {
                 config
                     .floating_window_aspect_ratio
                     .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
-                    .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
+                    .map(Into::<crate::komorebi::aspect_ratio::AspectRatio>::into),
             ),
             |_, _| {
                 pick_list(
                     config
                         .floating_window_aspect_ratio
                         .or(DEFAULT_CONFIG.floating_window_aspect_ratio)
-                        .map(Into::<crate::komo_interop::aspect_ratio::AspectRatio>::into),
+                        .map(Into::<crate::komorebi::aspect_ratio::AspectRatio>::into),
                     [
-                        crate::komo_interop::aspect_ratio::AspectRatio::Standard,
-                        crate::komo_interop::aspect_ratio::AspectRatio::Widescreen,
-                        crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide,
-                        crate::komo_interop::aspect_ratio::AspectRatio::Custom(
+                        crate::komorebi::aspect_ratio::AspectRatio::Standard,
+                        crate::komorebi::aspect_ratio::AspectRatio::Widescreen,
+                        crate::komorebi::aspect_ratio::AspectRatio::Ultrawide,
+                        crate::komorebi::aspect_ratio::AspectRatio::Custom(
                             config
                                 .floating_window_aspect_ratio
                                 .map_or(4, |ar| match ar {
@@ -676,7 +676,7 @@ impl General {
                                 }),
                         ),
                     ],
-                    crate::komo_interop::aspect_ratio::AspectRatio::to_string,
+                    crate::komorebi::aspect_ratio::AspectRatio::to_string,
                 )
                 .on_select(|selected| {
                     Message::ConfigChange(ConfigChange::FloatingWindowAspectRatio(Some(
@@ -1016,23 +1016,23 @@ impl General {
 }
 
 fn get_aspect_ratio_description(
-    selected: Option<crate::komo_interop::aspect_ratio::AspectRatio>,
+    selected: Option<crate::komorebi::aspect_ratio::AspectRatio>,
 ) -> Option<&'static str> {
     if let Some(selected) = selected {
         match selected {
-            crate::komo_interop::aspect_ratio::AspectRatio::Standard => Some(
+            crate::komorebi::aspect_ratio::AspectRatio::Standard => Some(
                 "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
                 Selected: 'Standard (4:3)' -> Use a 4:3 ratio when toggling windows to floating",
             ),
-            crate::komo_interop::aspect_ratio::AspectRatio::Widescreen => Some(
+            crate::komorebi::aspect_ratio::AspectRatio::Widescreen => Some(
                 "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
                 Selected: 'Widescreen (16:9)' -> Use a 16:9 ratio when toggling windows to floating",
             ),
-            crate::komo_interop::aspect_ratio::AspectRatio::Ultrawide => Some(
+            crate::komorebi::aspect_ratio::AspectRatio::Ultrawide => Some(
                 "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
                 Selected: 'Ultrawide (21:9)' -> Use a 21:9 ratio when toggling windows to floating",
             ),
-            crate::komo_interop::aspect_ratio::AspectRatio::Custom(_, _) => Some(
+            crate::komorebi::aspect_ratio::AspectRatio::Custom(_, _) => Some(
                 "Aspect ratio to resize with when toggling floating mode for a window. (default: Standard (4:3))\n\n\
                 Selected: 'Custom' -> Use a custom ratio when toggling windows to floating",
             ),
@@ -1051,7 +1051,7 @@ fn title(title: &str) -> container::Container<'_, Message> {
 }
 
 fn pick_file() -> Task<Message> {
-    let (home_dir, _) = crate::config::home_path();
+    let (home_dir, _) = crate::komorebi::home_path();
     Task::future(async move {
         rfd::FileDialog::new()
             .add_filter("json", &["json"])

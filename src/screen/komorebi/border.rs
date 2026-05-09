@@ -1,7 +1,7 @@
 use crate::widget::opt_helpers::description_text as t;
 use crate::{
     BOLD_FONT, ITALIC_FONT,
-    config::DEFAULT_CONFIG,
+    komorebi::DEFAULT_CONFIG,
     widget::opt_helpers::{self, DisableArgs},
 };
 

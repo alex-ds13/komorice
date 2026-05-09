@@ -1,4 +1,4 @@
-use crate::live_debug::Message;
+use crate::komorebi::live_debug::Message;
 
 use std::io::{BufReader, Read};
 use std::sync::Arc;

@@ -1,0 +1,13 @@
+pub mod animation;
+pub mod border;
+pub mod general;
+pub mod live_debug;
+pub mod monitor;
+pub mod monitors;
+pub mod rule;
+pub mod rules;
+pub mod stackbar;
+pub mod theme;
+pub mod transparency;
+pub mod wallpaper;
+pub mod workspace;

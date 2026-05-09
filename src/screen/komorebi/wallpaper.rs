@@ -394,7 +394,7 @@ impl WallpaperScreen {
 }
 
 fn pick_file() -> Task<Message> {
-    let (home_dir, _) = crate::config::home_path();
+    let (home_dir, _) = crate::komorebi::home_path();
     Task::future(async move {
         rfd::FileDialog::new()
             .add_filter(

@@ -362,7 +362,15 @@ impl Default for Whkd {
 
 impl Whkd {
     pub fn init() -> (Self, Task<Message>) {
-        (Self::default(), Task::batch([find_whkd(), whkd_status()]))
+        (
+            Self::default(),
+            Task::batch([
+                load_task(config_path()),
+                load_commands(),
+                find_whkd(),
+                whkd_status(),
+            ]),
+        )
     }
 
     pub fn update(&mut self, message: Message) -> (Action, Task<Message>) {

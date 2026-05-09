@@ -1,5 +1,5 @@
 use super::{ConfigState, ConfigType, Configuration};
-use crate::{EMOJI_FONT, config, whkd, widget::icons};
+use crate::{EMOJI_FONT, komorebi, whkd, widget::icons};
 
 use iced::{
     Center, Element, Fill, Shrink, Task,
@@ -229,7 +229,7 @@ impl Home {
 }
 
 fn load_komorebi() -> Task<Message> {
-    let (home_dir, _) = config::home_path();
+    let (home_dir, _) = komorebi::home_path();
     Task::future(async move {
         rfd::FileDialog::new()
             .add_filter("json", &["json"])
@@ -243,7 +243,7 @@ fn load_komorebi() -> Task<Message> {
 }
 
 fn new_komorebi() -> Task<Message> {
-    let (home_dir, _) = config::home_path();
+    let (home_dir, _) = komorebi::home_path();
     Task::future(async move {
         rfd::FileDialog::new()
             .add_filter("json", &["json"])

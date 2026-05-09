@@ -1,4 +1,4 @@
-use crate::screen::monitors::DisplayInfo;
+use crate::screen::komorebi::monitors::DisplayInfo;
 
 use std::collections::HashMap;
 
