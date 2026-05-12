@@ -96,6 +96,7 @@ pub struct AppBindings {
     new_binding_state: Vec<combo_box::State<String>>,
     new_binding_content: Vec<text_editor::Content>,
     new_binding_process: Vec<text_editor::Content>,
+    pub new_binding_keys_sorted: Vec<String>,
     show_new_binding: bool,
     editing: HashSet<usize>,
     editing_states: Vec<Vec<combo_box::State<String>>>,
@@ -124,6 +125,7 @@ impl Default for AppBindings {
             new_binding_state: vec![Default::default()],
             new_binding_content: vec![text_editor::Content::new()],
             new_binding_process: vec![text_editor::Content::new()],
+            new_binding_keys_sorted: Vec::new(),
             show_new_binding: false,
             editing: Default::default(),
             editing_states: Default::default(),
@@ -263,6 +265,7 @@ impl AppBindings {
                 self.new_binding_state = vec![combo_box::State::new(commands.to_vec())];
                 self.new_binding_content = vec![text_editor::Content::new()];
                 self.new_binding_process = vec![text_editor::Content::new()];
+                self.update_new_binding_sorted_keys();
 
                 self.show_new_binding = false;
                 whkdrc.app_bindings.push(new_binding);
@@ -337,6 +340,7 @@ impl AppBindings {
                         );
                     }
                 }
+                self.update_new_binding_sorted_keys();
             }
             Message::ChangeNewBindingKey(keys) => {
                 for binding_keys in self
@@ -354,6 +358,7 @@ impl AppBindings {
                         binding_keys.extend(keys);
                     }
                 }
+                self.update_new_binding_sorted_keys();
             }
             Message::ChangeNewBindingCommand(idx, command) => {
                 if let Some((content, binding)) = self
@@ -496,6 +501,7 @@ impl AppBindings {
                                         {
                                             *k = key_combination.clone();
                                         }
+                                        self.update_new_binding_sorted_keys();
                                     }
                                     BindType::Existing(idx) => {
                                         if let Some(app_binding) = whkdrc.app_bindings.get_mut(*idx)
@@ -579,6 +585,7 @@ impl AppBindings {
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
+        new_binding_keys_sorted: &'a [String],
     ) -> View<'a, Message> {
         let add_new_binding_button =
             widget::button_with_icon(icons::plus(), text("Add New Binding"))
@@ -788,8 +795,10 @@ impl AppBindings {
             .fold(col, |col, (idx, app_binding)| {
                 let mut binding_keys = app_binding.0.clone();
                 binding_keys.sort();
-                let equals_new_binding =
-                    !self.new_binding.0.is_empty() && binding_keys == new_binding_keys;
+                let equals_new_binding = (!self.new_binding.0.is_empty()
+                    && binding_keys == new_binding_keys)
+                    || (!new_binding_keys_sorted.len() > 0
+                        && binding_keys == new_binding_keys_sorted);
                 let duplicated_keys = equals_new_binding
                     || whkdrc.app_bindings.iter().enumerate().any(|(b_idx, b)| {
                         let mut b_keys = b.0.clone();
@@ -1192,6 +1201,12 @@ impl AppBindings {
         self.editing.clear();
         self.editing_states.clear();
         self.editing_commands.clear();
+    }
+
+    fn update_new_binding_sorted_keys(&mut self) {
+        let mut sorted_keys = self.new_binding.0.clone();
+        sorted_keys.sort();
+        self.new_binding_keys_sorted = sorted_keys;
     }
 
     fn view_modal<'a>(&'a self, whkd_bin: &'a WhkdBinary) -> Option<Element<'a, Message>> {

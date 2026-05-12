@@ -68,6 +68,7 @@ pub struct Bindings {
     new_binding: HotkeyBinding,
     new_binding_state: combo_box::State<String>,
     new_binding_content: text_editor::Content,
+    pub new_binding_keys_sorted: Vec<String>,
     show_new_binding: bool,
     editing: HashSet<usize>,
     editing_states: HashMap<usize, combo_box::State<String>>,
@@ -88,6 +89,7 @@ impl Default for Bindings {
             },
             new_binding_state: Default::default(),
             new_binding_content: text_editor::Content::new(),
+            new_binding_keys_sorted: Vec::new(),
             show_new_binding: false,
             editing: Default::default(),
             editing_states: Default::default(),
@@ -180,6 +182,7 @@ impl Bindings {
                 let new_binding = std::mem::replace(&mut self.new_binding, default_binding);
                 self.new_binding_content = text_editor::Content::new();
                 self.show_new_binding = false;
+                self.update_new_binding_sorted_keys();
                 whkdrc.bindings.push(new_binding);
                 return (Action::None, operation::snap_to_end(SCROLLABLE_ID));
             }
@@ -218,6 +221,7 @@ impl Bindings {
                         self.new_binding.keys.len()
                     );
                 }
+                self.update_new_binding_sorted_keys();
             }
             Message::ChangeNewBindingKey(keys) => {
                 let sb = split_binding(&self.new_binding);
@@ -227,6 +231,7 @@ impl Bindings {
                     let keys = keys.split(&UNPADDED_SEPARATOR).map(|s| s.to_string());
                     self.new_binding.keys.extend(keys);
                 }
+                self.update_new_binding_sorted_keys();
             }
             Message::ChangeNewBindingCommand(command) => {
                 self.new_binding_content = text_editor::Content::with_text(&command);
@@ -279,6 +284,7 @@ impl Bindings {
                     match modal {
                         Modal::NewBinding => {
                             self.new_binding.keys = key_combination;
+                            self.update_new_binding_sorted_keys();
                         }
                         Modal::Binding(idx) => {
                             if let Some(binding) = whkdrc.bindings.get_mut(*idx) {
@@ -301,6 +307,7 @@ impl Bindings {
         commands: &'a [String],
         commands_desc: &'a HashMap<String, Vec<markdown::Item>>,
         theme: &'a Theme,
+        new_app_binding_keys_sorted: &'a [String],
     ) -> View<'a, Message> {
         let add_new_binding_button =
             widget::button_with_icon(icons::plus(), text("Add New Binding"))
@@ -396,8 +403,10 @@ impl Bindings {
             .fold(col, |col, (idx, binding)| {
                 let mut binding_keys = binding.keys.clone();
                 binding_keys.sort();
-                let equals_new_binding =
-                    !self.new_binding.keys.is_empty() && binding_keys == new_binding_keys;
+                let equals_new_binding = (!self.new_binding.keys.is_empty()
+                    && binding_keys == new_binding_keys)
+                    || (!new_app_binding_keys_sorted.len() > 0
+                        && binding_keys == new_app_binding_keys_sorted);
                 let duplicated_keys = equals_new_binding
                     || whkdrc.bindings.iter().enumerate().any(|(b_idx, b)| {
                         let mut b_keys = b.keys.clone();
@@ -626,6 +635,12 @@ impl Bindings {
         self.editing.clear();
         self.editing_states.clear();
         self.editing_contents.clear();
+    }
+
+    fn update_new_binding_sorted_keys(&mut self) {
+        let mut sorted_keys = self.new_binding.keys.clone();
+        sorted_keys.sort();
+        self.new_binding_keys_sorted = sorted_keys;
     }
 }
 

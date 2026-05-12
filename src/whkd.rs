@@ -559,6 +559,7 @@ impl Whkd {
                     &self.commands,
                     &self.commands_desc,
                     theme,
+                    &self.app_bindings.new_binding_keys_sorted,
                 )
                 .map(Message::Bindings),
             Screen::WhkdAppBindings => self
@@ -569,6 +570,7 @@ impl Whkd {
                     &self.commands,
                     &self.commands_desc,
                     theme,
+                    &self.bindings.new_binding_keys_sorted,
                 )
                 .map(Message::AppBindings),
             _ => space::horizontal().into(),
