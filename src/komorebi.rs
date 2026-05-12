@@ -74,7 +74,7 @@ pub struct Komorebi {
 impl Default for Komorebi {
     fn default() -> Self {
         Self {
-            screen: Default::default(),
+            screen: Screen::General,
             monitors: monitors::Monitors::new(&DEFAULT_CONFIG),
             border: Default::default(),
             general: Default::default(),
